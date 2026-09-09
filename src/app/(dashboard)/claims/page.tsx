@@ -3,10 +3,9 @@
 import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { PlusCircle, Search, Filter, FileText, ArrowUpDown, Download } from "lucide-react";
+import { Plus, Search, FileText, Download } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ClaimStatusBadge } from "@/components/claims/ClaimStatusBadge";
 import { useAuth } from "@/lib/auth/context";
 import { db } from "@/lib/mock-db/repository";
@@ -50,24 +49,24 @@ function ClaimsContent() {
   };
 
   const statuses = [
-    { label: "All Claims", value: "ALL" },
+    { label: "All", value: "ALL" },
     { label: "Drafts", value: "DRAFT" },
-    { label: "Pending Approval", value: "PENDING_MINISTRY_APPROVAL" },
-    { label: "Finance Review", value: "PENDING_FINANCE_REVIEW" },
+    { label: "In Review", value: "PENDING_MINISTRY_APPROVAL" },
+    { label: "Finance", value: "PENDING_FINANCE_REVIEW" },
     { label: "Returned", value: "RETURNED_FOR_CLARIFICATION" },
-    { label: "Approved for Payment", value: "APPROVED_FOR_PAYMENT" },
+    { label: "Approved", value: "APPROVED_FOR_PAYMENT" },
     { label: "Paid", value: "PAID" },
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-zinc-200/80 dark:border-zinc-800">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            Expense Claims Registry
+          <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+            Claims Registry
           </h1>
-          <p className="text-xs text-slate-500">
-            Browse, filter, and track status across all your church expense vouchers.
+          <p className="text-xs text-zinc-500">
+            Browse and filter expense reimbursement vouchers.
           </p>
         </div>
 
@@ -76,32 +75,32 @@ function ClaimsContent() {
             variant="outline"
             size="sm"
             onClick={handleExport}
-            className="gap-1.5 text-xs border-slate-300"
+            className="h-8 gap-1.5 text-xs border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3.5 h-3.5 text-zinc-400" />
             <span>Export CSV</span>
           </Button>
           <Link href="/claims/new">
-            <Button size="sm" className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5">
-              <PlusCircle className="w-4 h-4" />
-              <span>+ New Claim</span>
+            <Button size="sm" className="h-8 bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 text-xs shadow-2xs font-medium">
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Claim</span>
             </Button>
           </Link>
         </div>
       </div>
 
       {/* Filters Bar */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200">
-        {/* Status Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 md:pb-0">
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5">
+        {/* Status Tabs Segmented */}
+        <div className="flex items-center gap-1 p-1 rounded-lg bg-zinc-100 dark:bg-zinc-900 overflow-x-auto">
           {statuses.map((s) => (
             <button
               key={s.value}
               onClick={() => setSelectedStatus(s.value)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+              className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-all ${
                 selectedStatus === s.value
-                  ? "bg-emerald-700 text-white shadow-xs"
-                  : "text-slate-600 hover:bg-slate-100"
+                  ? "bg-white text-zinc-900 shadow-2xs font-semibold dark:bg-zinc-800 dark:text-zinc-100"
+                  : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
               }`}
             >
               {s.label}
@@ -111,81 +110,79 @@ function ClaimsContent() {
 
         {/* Search Box */}
         <div className="relative w-full md:w-64">
-          <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+          <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-zinc-400" />
           <input
             type="text"
-            placeholder="Search claim, event, purpose..."
+            placeholder="Search voucher, event, claimant..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-9 w-full pl-9 pr-3 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="h-7 w-full pl-8 pr-2.5 text-xs rounded-lg border border-zinc-200 bg-zinc-50/70 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-900"
           />
         </div>
       </div>
 
-      {/* Claims Table Card */}
-      <Card>
-        <CardContent className="p-0">
-          {filteredClaims.length === 0 ? (
-            <div className="py-16 text-center space-y-3">
-              <FileText className="w-12 h-12 text-slate-300 mx-auto" />
-              <p className="text-sm font-semibold text-slate-700">No claims match the filter</p>
-              <p className="text-xs text-slate-400">Try changing status filter or clearing your search term.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                    <th className="py-3 px-4">Claim #</th>
-                    <th className="py-3 px-4">Claimant</th>
-                    <th className="py-3 px-4">Date</th>
-                    <th className="py-3 px-4">Ministry & Programme</th>
-                    <th className="py-3 px-4">Cost Centre</th>
-                    <th className="py-3 px-4 text-right">Amount (RM)</th>
-                    <th className="py-3 px-4 text-center">Status</th>
-                    <th className="py-3 px-4 text-right">Action</th>
+      {/* Claims Table Container */}
+      <div className="rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-950 shadow-2xs overflow-hidden">
+        {filteredClaims.length === 0 ? (
+          <div className="py-16 text-center space-y-2.5">
+            <FileText className="w-8 h-8 text-zinc-300 mx-auto" />
+            <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">No claims match the filter</p>
+            <p className="text-[11px] text-zinc-400">Try changing status filter or clearing your search query.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-zinc-50/50 border-b border-zinc-100 dark:bg-zinc-900/50 dark:border-zinc-800 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
+                  <th className="py-2.5 px-4">Claim #</th>
+                  <th className="py-2.5 px-4">Claimant</th>
+                  <th className="py-2.5 px-4">Date</th>
+                  <th className="py-2.5 px-4">Ministry & Programme</th>
+                  <th className="py-2.5 px-4">Cost Centre</th>
+                  <th className="py-2.5 px-4 text-right">Amount (RM)</th>
+                  <th className="py-2.5 px-4 text-center">Status</th>
+                  <th className="py-2.5 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+                {filteredClaims.map((c) => (
+                  <tr key={c.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-900/50 transition-colors">
+                    <td className="py-3 px-4 font-mono font-medium text-zinc-900 dark:text-zinc-100">
+                      <Link href={`/claims/${c.id}`} className="hover:underline hover:text-emerald-700 dark:hover:text-emerald-400">
+                        {c.claim_number || "DRAFT"}
+                      </Link>
+                    </td>
+                    <td className="py-3 px-4 font-medium text-zinc-800 dark:text-zinc-200">
+                      {c.claimant?.full_name}
+                    </td>
+                    <td className="py-3 px-4 text-zinc-500 font-mono text-[11px]">{formatDate(c.claim_date)}</td>
+                    <td className="py-3 px-4">
+                      <span className="font-medium text-zinc-800 dark:text-zinc-200 block">{c.programme_event}</span>
+                      <span className="text-[10px] text-zinc-400">{c.ministry?.name}</span>
+                    </td>
+                    <td className="py-3 px-4 text-zinc-500 font-mono text-[11px]">
+                      {c.cost_centre?.code}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                      {formatCurrency(c.total_amount)}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <ClaimStatusBadge status={c.status} />
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <Link href={`/claims/${c.id}`}>
+                        <Button variant="ghost" size="sm" className="h-7 text-xs text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-2.5">
+                          View
+                        </Button>
+                      </Link>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredClaims.map((c) => (
-                    <tr key={c.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-3.5 px-4 font-bold text-slate-900">
-                        <Link href={`/claims/${c.id}`} className="hover:text-emerald-700 hover:underline">
-                          {c.claim_number || "DRAFT"}
-                        </Link>
-                      </td>
-                      <td className="py-3.5 px-4 font-semibold text-slate-800">
-                        {c.claimant?.full_name}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-500">{formatDate(c.claim_date)}</td>
-                      <td className="py-3.5 px-4">
-                        <span className="font-semibold text-slate-800 block">{c.programme_event}</span>
-                        <span className="text-[10px] text-slate-400">{c.ministry?.name}</span>
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-600 font-mono text-[11px]">
-                        {c.cost_centre?.code}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-black text-slate-900">
-                        {formatCurrency(c.total_amount)}
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <ClaimStatusBadge status={c.status} />
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <Link href={`/claims/${c.id}`}>
-                          <Button variant="ghost" size="sm" className="text-emerald-700 hover:bg-emerald-50 text-xs">
-                            View
-                          </Button>
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -8,12 +8,10 @@ import {
   Calendar, 
   Building2, 
   PieChart, 
-  DollarSign, 
   CreditCard, 
   Send, 
   Save, 
   ArrowLeft,
-  CheckCircle2,
   AlertCircle,
   HelpCircle,
   Lock
@@ -60,7 +58,6 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
 
   const today = new Date().toISOString().split("T")[0];
 
-  // Active payment methods configured by admin
   const activePaymentMethods = (formConfig.allowed_payment_methods || []).filter((pm: any) => pm.enabled !== false);
   const defaultPaymentMethod = activePaymentMethods[0]?.code || "PERSONAL_REIMBURSEMENT";
 
@@ -120,69 +117,81 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
 
-  // Filter cost centres for selected ministry if applicable
   const availableCostCentres = costCentres.filter(
-    cc => !cc.ministry_id || cc.ministry_id === ministryId
+    (cc) => !cc.ministry_id || cc.ministry_id === ministryId
   );
 
-  const validateForm = (isSubmit: boolean) => {
-    if (!user) throw new Error("Please log in to submit a claim");
-    if (isSubmit) {
-      if (!programmeEvent.trim()) throw new Error("Programme or Event name is required");
-      if (!purpose.trim()) throw new Error("Ministry purpose / reason is required");
-      if (!costCentreId) throw new Error("Please select a budget cost centre");
-      if (!declarationAccepted) throw new Error("You must confirm and accept the declaration to submit your claim");
+  const validate = (): string | null => {
+    if (!programmeEvent.trim()) return "Please specify the programme or event name.";
+    if (!purpose.trim()) return "Please provide the ministry purpose and justification.";
+    if (!ministryId) return "Please select a ministry.";
+    if (!costCentreId) return "Please select a budget cost centre.";
+    if (!claimDate) return "Please provide the claim date.";
 
-      if (expenses.length === 0) throw new Error("At least one expense line item is required");
-      for (let i = 0; i < expenses.length; i++) {
-        const exp = expenses[i];
-        if (!exp.description.trim()) throw new Error(`Expense item #${i + 1} requires a description`);
-        if (formConfig.require_vendor_name && (!exp.vendor || !exp.vendor.trim())) {
-          throw new Error(`Expense item #${i + 1} requires a merchant / vendor name (configured by admin).`);
-        }
-        const numAmount = typeof exp.amount === "string" ? parseFloat(exp.amount) : exp.amount;
-        if (isNaN(numAmount) || numAmount <= 0) {
-          throw new Error(`Expense item #${i + 1} amount must be greater than RM 0.00`);
-        }
-      }
+    if (expenses.length === 0) return "Please add at least one expense line item.";
 
-      if (formConfig.require_receipt_for_all_expenses && attachments.length === 0) {
-        throw new Error("Please upload at least one supporting receipt document before submitting (configured by admin).");
+    for (let i = 0; i < expenses.length; i++) {
+      const e = expenses[i];
+      if (!e.description.trim()) return `Item #${i + 1}: Description is required.`;
+      const amt = typeof e.amount === "string" ? parseFloat(e.amount) : e.amount;
+      if (isNaN(amt) || amt <= 0) return `Item #${i + 1}: Please enter a valid positive amount.`;
+      if (!e.expense_category_id) return `Item #${i + 1}: Category is required.`;
+      if (formConfig.require_vendor_name && !e.vendor?.trim()) {
+        return `Item #${i + 1}: Vendor/merchant name is required by church policy.`;
       }
     }
+
+    if (formConfig.require_receipt_for_all_expenses && attachments.length === 0) {
+      return "Supporting receipt files are required. Please upload at least one receipt.";
+    }
+
+    return null;
   };
 
   const handleSaveDraft = async () => {
+    setIsSavingDraft(true);
+    setError(null);
     try {
-      setIsSavingDraft(true);
-      setError(null);
-      validateForm(false);
+      const validExpenses = expenses.filter(e => e.description.trim() || e.amount);
+      const totalAmount = validExpenses.reduce((sum, e) => {
+        const val = typeof e.amount === "string" ? parseFloat(e.amount) : e.amount;
+        return isNaN(val) ? sum : sum + val;
+      }, 0);
 
-      const saved = db.saveClaimDraft({
-        id: initialClaim?.id,
-        claimant_id: user!.id,
+      const claimData = {
+        id: (isEditMode && initialClaim?.id) ? initialClaim.id : undefined,
+        claimant_id: user?.id || "u-jaeden-01",
         ministry_id: ministryId,
-        programme_event: programmeEvent || "Untitled Draft",
-        cost_centre_id: costCentreId || costCentres[0]?.id || "",
+        cost_centre_id: costCentreId,
         claim_date: claimDate,
-        purpose: purpose || "Draft expense",
+        purpose: purpose || "Draft expense claim",
+        programme_event: programmeEvent || "Untitled Event",
         payment_method: paymentMethod as any,
         internal_reference: internalRef || undefined,
-        expenses: expenses.map((e, idx) => ({
-          expense_date: e.expense_date || today,
-          expense_category_id: e.expense_category_id || categories[0]?.id || "",
-          vendor: e.vendor,
+        expenses: validExpenses.map((e, idx) => ({
+          expense_date: e.expense_date,
+          expense_category_id: e.expense_category_id,
+          vendor: e.vendor || undefined,
           description: e.description || "Draft item",
-          amount: typeof e.amount === "string" ? parseFloat(e.amount) || 0 : e.amount,
-          notes: e.notes,
+          amount: typeof e.amount === "string" ? parseFloat(e.amount) || 0 : e.amount || 0,
+          notes: e.notes || undefined,
           sort_order: idx + 1,
         })),
-        attachments,
-      });
+        attachments: attachments.map(a => ({
+          original_filename: a.original_filename,
+          file_size: a.file_size,
+          mime_type: a.mime_type,
+          storage_path: a.storage_path,
+          file_category: a.file_category,
+          uploaded_by: user?.id || "u-jaeden-01",
+          signed_url: a.signed_url,
+        })),
+      };
 
-      router.push(`/claims/${saved.id}`);
+      const savedClaim = db.saveClaimDraft(claimData);
+      router.push(`/claims/${savedClaim.id}`);
     } catch (err: any) {
-      setError(err.message || "Failed to save draft claim");
+      setError(err?.message || "Failed to save draft.");
     } finally {
       setIsSavingDraft(false);
     }
@@ -190,60 +199,78 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      setIsSubmitting(true);
-      setError(null);
-      validateForm(true);
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
 
-      const submitted = db.submitClaim({
-        id: initialClaim?.id,
-        claimant_id: user!.id,
+    if (!declarationAccepted) {
+      setError("You must acknowledge and accept the confirmation declaration before submitting.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const claimData = {
+        id: (isEditMode && initialClaim?.id) ? initialClaim.id : undefined,
+        claimant_id: user?.id || "u-jaeden-01",
         ministry_id: ministryId,
-        programme_event: programmeEvent.trim(),
         cost_centre_id: costCentreId,
         claim_date: claimDate,
-        purpose: purpose.trim(),
+        purpose,
+        programme_event: programmeEvent,
         payment_method: paymentMethod as any,
         internal_reference: internalRef || undefined,
         declaration_accepted: true,
         expenses: expenses.map((e, idx) => ({
           expense_date: e.expense_date,
           expense_category_id: e.expense_category_id,
-          vendor: e.vendor,
+          vendor: e.vendor || undefined,
           description: e.description,
           amount: typeof e.amount === "string" ? parseFloat(e.amount) : e.amount,
-          notes: e.notes,
+          notes: e.notes || undefined,
           sort_order: idx + 1,
         })),
-        attachments,
-      });
+        attachments: attachments.map(a => ({
+          original_filename: a.original_filename,
+          file_size: a.file_size,
+          mime_type: a.mime_type,
+          storage_path: a.storage_path,
+          file_category: a.file_category,
+          uploaded_by: user?.id || "u-jaeden-01",
+          signed_url: a.signed_url,
+        })),
+      };
 
+      const submitted = db.submitClaim(claimData);
       router.push(`/claims/${submitted.id}`);
     } catch (err: any) {
-      setError(err.message || "Failed to submit claim for approval");
+      setError(err?.message || "Failed to submit expense claim.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-5xl mx-auto pb-12">
-      {/* Top Header & Navigation */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl mx-auto pb-12">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-zinc-200/80 dark:border-zinc-800">
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
+          <Link href="/claims">
+            <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 text-zinc-500 hover:text-zinc-900">
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+          </Link>
           <div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+            <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
               {isEditMode ? `Edit Claim ${initialClaim?.claim_number || ""}` : "New Expense Claim"}
             </h1>
-            <p className="text-xs text-slate-500">
-              Submit ministry expenses for reimbursement or official record
+            <p className="text-xs text-zinc-500">
+              Submit ministry expense receipts for leader review and reimbursement payout.
             </p>
           </div>
         </div>
@@ -252,108 +279,101 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           <Button
             type="button"
             variant="outline"
+            size="sm"
             onClick={handleSaveDraft}
             disabled={isSavingDraft || isSubmitting}
-            className="flex items-center gap-1.5"
+            className="h-8 text-xs border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 gap-1.5"
           >
-            <Save className="w-4 h-4 text-slate-500" />
+            <Save className="w-3.5 h-3.5 text-zinc-400" />
             <span>{isSavingDraft ? "Saving..." : "Save Draft"}</span>
           </Button>
 
           <Button
             type="submit"
+            size="sm"
             disabled={isSubmitting || isSavingDraft}
-            className="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white"
+            className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-medium shadow-2xs gap-1.5"
           >
-            <Send className="w-4 h-4" />
+            <Send className="w-3.5 h-3.5" />
             <span>{isSubmitting ? "Submitting..." : "Submit Claim"}</span>
           </Button>
         </div>
       </div>
 
-      {/* Admin Configured Guidance Banner */}
+      {/* Admin Guidance Banner */}
       {formConfig.form_guidance_banner && (
-        <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-emerald-950 text-xs flex items-center gap-2.5 shadow-2xs">
-          <HelpCircle className="w-4 h-4 text-emerald-700 shrink-0" />
+        <div className="p-3 rounded-lg bg-zinc-50 border border-zinc-200/80 text-zinc-700 text-xs flex items-center gap-2.5 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-300">
+          <HelpCircle className="w-4 h-4 text-zinc-400 shrink-0" />
           <span>{formConfig.form_guidance_banner}</span>
         </div>
       )}
 
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="text-xs">
           <AlertCircle className="w-4 h-4" />
-          <AlertTitle>Validation Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertTitle className="text-xs font-semibold">Please check your submission</AlertTitle>
+          <AlertDescription className="text-xs">{error}</AlertDescription>
         </Alert>
       )}
 
-      {/* SECTION A: Claimant Information */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2 text-slate-800">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
-              A
-            </span>
-            Claimant Profile
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Auto-populated from your church staff / volunteer profile.
-          </CardDescription>
+      {/* STEP 1: Claimant Profile */}
+      <Card className="border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
+        <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800/80">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[10px] font-bold text-zinc-400">01</span>
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                Claimant Profile
+              </CardTitle>
+            </div>
+            <Link href="/profile" className="text-[11px] text-zinc-500 hover:text-zinc-900 hover:underline">
+              Edit in Profile
+            </Link>
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-              <span className="text-slate-400 block mb-0.5">Full Name</span>
-              <strong className="text-slate-800 dark:text-slate-200 text-sm font-semibold">{user?.full_name}</strong>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+            <div className="p-2.5 rounded-lg bg-zinc-50/70 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
+              <span className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-0.5">Name</span>
+              <strong className="text-zinc-900 dark:text-zinc-100 font-medium">{user?.full_name}</strong>
             </div>
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-              <span className="text-slate-400 block mb-0.5">Email Address</span>
-              <strong className="text-slate-800 dark:text-slate-200 font-semibold">{user?.email}</strong>
+            <div className="p-2.5 rounded-lg bg-zinc-50/70 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
+              <span className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-0.5">Email</span>
+              <strong className="text-zinc-900 dark:text-zinc-100 font-medium truncate block">{user?.email}</strong>
             </div>
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-              <span className="text-slate-400 block mb-0.5">Mobile Phone</span>
-              <strong className="text-slate-800 dark:text-slate-200 font-semibold">{user?.phone || "+60 12-345 6789"}</strong>
+            <div className="p-2.5 rounded-lg bg-zinc-50/70 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
+              <span className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-0.5">Phone</span>
+              <strong className="text-zinc-900 dark:text-zinc-100 font-medium">{user?.phone || "+60 12-345 6789"}</strong>
             </div>
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex justify-between items-start">
-              <div>
-                <span className="text-slate-400 block mb-0.5">Bank Details</span>
-                <strong className="text-slate-800 dark:text-slate-200 font-semibold">
-                  {user?.bank_name || "Maybank"} ({user?.bank_account_number || "114012345678"})
-                </strong>
-              </div>
-              <Link href="/profile" className="text-[11px] text-emerald-600 hover:text-emerald-700 hover:underline font-semibold ml-2">
-                Edit
-              </Link>
+            <div className="p-2.5 rounded-lg bg-zinc-50/70 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
+              <span className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-0.5">Bank Account</span>
+              <strong className="text-zinc-900 dark:text-zinc-100 font-medium truncate block">
+                {user?.bank_name || "Maybank"} • {user?.bank_account_number || "114012345678"}
+              </strong>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* SECTION B: Claim Information */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2 text-slate-800">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
-              B
-            </span>
-            Claim & Ministry Details
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Specify the ministry event, budget cost centre, and ministry purpose.
-          </CardDescription>
+      {/* STEP 2: Ministry & Context */}
+      <Card className="border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
+        <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800/80">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[10px] font-bold text-zinc-400">02</span>
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+              Claim & Ministry Context
+            </CardTitle>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <CardContent className="p-4 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
             {/* Ministry */}
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-between">
-                <span className="flex items-center gap-1">
-                  <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                  Ministry / Department *
-                </span>
+              <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider flex items-center justify-between">
+                <span>Ministry / Department *</span>
                 {!formConfig.allow_claimant_change_ministry && (
-                  <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
-                    <Lock className="w-2.5 h-2.5" /> Assigned Only
+                  <span className="text-[10px] text-zinc-400 flex items-center gap-0.5">
+                    <Lock className="w-2.5 h-2.5" /> Locked
                   </span>
                 )}
               </label>
@@ -361,7 +381,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                 value={ministryId}
                 onChange={(e) => setMinistryId(e.target.value)}
                 disabled={!formConfig.allow_claimant_change_ministry}
-                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:bg-slate-100 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-900"
+                className="flex h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 disabled:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
                 required
               >
                 {ministries.map((m) => (
@@ -374,29 +394,28 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
 
             {/* Programme / Event */}
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                <FileText className="w-3.5 h-3.5 text-slate-400" />
+              <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                 Programme / Event *
               </label>
               <Input
                 type="text"
-                placeholder="e.g. Youth Camp, Sunday Service, Missions Outreach"
+                placeholder="e.g. Youth Camp, Sunday Service"
                 value={programmeEvent}
                 onChange={(e) => setProgrammeEvent(e.target.value)}
+                className="h-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
                 required
               />
             </div>
 
             {/* Cost Centre */}
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                <PieChart className="w-3.5 h-3.5 text-slate-400" />
-                Budget / Cost Centre *
+              <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                Cost Centre *
               </label>
               <select
                 value={costCentreId}
                 onChange={(e) => setCostCentreId(e.target.value)}
-                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900"
+                className="flex h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
                 required
               >
                 {availableCostCentres.map((cc) => (
@@ -409,28 +428,27 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
 
             {/* Claim Date */}
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                Claim Submission Date *
+              <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                Submission Date *
               </label>
               <Input
                 type="date"
                 value={claimDate}
                 onChange={(e) => setClaimDate(e.target.value)}
+                className="h-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 font-mono"
                 required
               />
             </div>
 
             {/* Payment Method */}
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                <CreditCard className="w-3.5 h-3.5 text-slate-400" />
+              <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                 Payment Method *
               </label>
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as any)}
-                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900"
+                className="flex h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
               >
                 {activePaymentMethods.map((pm: any) => (
                   <option key={pm.code} value={pm.code}>{pm.label}</option>
@@ -441,28 +459,30 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
             {/* Internal Reference */}
             {formConfig.enable_internal_reference !== false && (
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Internal Reference (Optional)
+                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                  Reference Code (Optional)
                 </label>
                 <Input
                   type="text"
                   placeholder="e.g. YC-2026-SETUP"
                   value={internalRef}
                   onChange={(e) => setInternalRef(e.target.value)}
+                  className="h-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 font-mono"
                 />
               </div>
             )}
 
             {/* Ministry Purpose */}
             <div className="col-span-1 sm:col-span-2 md:col-span-3 space-y-1">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Ministry Purpose / Reason *
+              <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                Ministry Purpose / Justification *
               </label>
               <Textarea
                 rows={2}
-                placeholder="Explain the church ministry context and justification for this expense..."
+                placeholder="Explain the church ministry justification for these expenses..."
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value)}
+                className="text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 resize-y"
                 required
               />
             </div>
@@ -470,20 +490,17 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         </CardContent>
       </Card>
 
-      {/* SECTION C: Expense Line Items */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2 text-slate-800">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
-              C
-            </span>
-            Expense Line Items Breakdown
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Add one or more receipt lines. Amounts must be exact matching your official receipts.
-          </CardDescription>
+      {/* STEP 3: Line Items */}
+      <Card className="border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
+        <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800/80">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[10px] font-bold text-zinc-400">03</span>
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+              Expense Line Items Breakdown
+            </CardTitle>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4">
           <ExpenseItemsEditor
             expenses={expenses}
             categories={categories}
@@ -492,20 +509,17 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         </CardContent>
       </Card>
 
-      {/* SECTION D: Supporting Documents */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2 text-slate-800">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
-              D
-            </span>
-            Supporting Documents & Receipts
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Attach photo / scan of tax invoices, official receipts, or delivery orders (Max {formConfig.max_file_size_mb || 10}MB per file).
-          </CardDescription>
+      {/* STEP 4: Supporting Documents */}
+      <Card className="border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
+        <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800/80">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[10px] font-bold text-zinc-400">04</span>
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+              Receipts & Tax Invoices
+            </CardTitle>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4">
           <ReceiptUploader
             attachments={attachments}
             onChange={setAttachments}
@@ -514,50 +528,52 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         </CardContent>
       </Card>
 
-      {/* SECTION E: Declaration */}
-      <Card className="border-emerald-200 bg-emerald-50/30 dark:border-emerald-900/60 dark:bg-emerald-950/20">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2 text-emerald-900 dark:text-emerald-300">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-bold">
-              E
-            </span>
-            Claimant Confirmation & Declaration
-          </CardTitle>
+      {/* STEP 5: Declaration & Final Action */}
+      <Card className="border border-zinc-200/80 bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900/30 shadow-2xs">
+        <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800/80">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[10px] font-bold text-zinc-400">05</span>
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+              Claimant Confirmation & Submission
+            </CardTitle>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <label className="flex items-start gap-3 text-xs text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+        <CardContent className="p-4 space-y-4">
+          <label className="flex items-start gap-3 text-xs text-zinc-700 dark:text-zinc-300 cursor-pointer select-none">
             <input
               type="checkbox"
               checked={declarationAccepted}
               onChange={(e) => setDeclarationAccepted(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-emerald-400 text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+              className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-emerald-700 focus:ring-emerald-600 accent-emerald-700"
               required
             />
             <span className="leading-relaxed">
-              <strong>I confirm that: </strong>
+              <strong className="text-zinc-900 dark:text-zinc-100">Declaration: </strong>
               {formConfig.declaration_text || "These expenses were incurred for legitimate church ministry purposes, have not previously been claimed, and are supported by authentic receipts."}
             </span>
           </label>
 
-          <div className="flex items-center justify-between pt-4 border-t border-emerald-200/60 dark:border-emerald-900/40">
+          <div className="flex items-center justify-between pt-3 border-t border-zinc-200/80 dark:border-zinc-800">
             <Button
               type="button"
               variant="outline"
+              size="sm"
               onClick={handleSaveDraft}
               disabled={isSavingDraft || isSubmitting}
-              className="border-slate-300 text-slate-700"
+              className="h-8 text-xs border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 gap-1.5"
             >
-              <Save className="w-4 h-4 mr-1.5" />
-              Save Incomplete Draft
+              <Save className="w-3.5 h-3.5 text-zinc-400" />
+              <span>Save Incomplete Draft</span>
             </Button>
 
             <Button
               type="submit"
+              size="sm"
               disabled={isSubmitting || isSavingDraft || !declarationAccepted}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white shadow-md px-6"
+              className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-medium px-5 shadow-2xs gap-1.5"
             >
-              <Send className="w-4 h-4 mr-1.5" />
-              Submit Official Claim
+              <Send className="w-3.5 h-3.5" />
+              <span>Submit Official Claim</span>
             </Button>
           </div>
         </CardContent>

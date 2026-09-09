@@ -11,23 +11,24 @@ interface ClaimStatusBadgeProps {
 export function ClaimStatusBadge({ status, className }: ClaimStatusBadgeProps) {
   const config = STATUS_MAP[status] || {
     label: status,
-    bgClass: "bg-slate-100",
-    textClass: "text-slate-800",
-    borderClass: "border-slate-300",
+    bgClass: "bg-zinc-100 dark:bg-zinc-800",
+    textClass: "text-zinc-700 dark:text-zinc-300",
+    borderClass: "border-zinc-200 dark:border-zinc-700",
+    dotClass: "bg-zinc-400",
   };
 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold tracking-tight shadow-2xs",
+        "inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-medium tracking-tight whitespace-nowrap",
         config.bgClass,
         config.textClass,
         config.borderClass,
         className
       )}
     >
-      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-75" />
-      {config.label}
+      <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", config.dotClass)} />
+      <span>{config.label}</span>
     </span>
   );
 }

@@ -2,15 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { 
-  BarChart3, 
-  Download, 
-  Calendar, 
-  Building2, 
-  Tag, 
-  PieChart as PieIcon, 
-  TrendingUp,
-  FileSpreadsheet,
-  Layers
+  FileSpreadsheet
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -18,7 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth/context";
 import { db } from "@/lib/mock-db/repository";
 import { Claim } from "@/lib/types/database";
-import { formatCurrency, formatDate } from "@/lib/utils/formatters";
+import { formatCurrency } from "@/lib/utils/formatters";
 import { generateClaimsCsv, downloadCsv } from "@/lib/utils/export-csv";
 import { 
   BarChart, 
@@ -84,7 +76,7 @@ export default function FinancialReportsPage() {
   });
   const categoryChartData = Object.entries(categoryDataMap).map(([name, total]) => ({ name, total }));
 
-  const COLORS = ["#047857", "#0284c7", "#d97706", "#7c3aed", "#e11d48", "#475569", "#059669", "#2563eb", "#d946ef", "#06b6d4"];
+  const COLORS = ["#18181b", "#047857", "#2563eb", "#d97706", "#7c3aed", "#e11d48", "#71717a", "#059669"];
 
   const handleExportCsv = () => {
     const csv = generateClaimsCsv(filtered);
@@ -93,36 +85,36 @@ export default function FinancialReportsPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-zinc-200/80 dark:border-zinc-800">
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-              <BarChart3 className="w-7 h-7 text-emerald-700" />
-              Financial Reporting & Ledger
+            <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+              Financial Reporting
             </h1>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-zinc-500">
               Audit spend allocations, export monthly reconciliation files, and analyze budget utilization.
             </p>
           </div>
 
           <Button
             onClick={handleExportCsv}
-            className="bg-emerald-700 hover:bg-emerald-800 text-white gap-2 shadow-sm text-xs"
+            size="sm"
+            className="h-8 bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-2xs text-xs font-medium"
           >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>Download Excel / CSV</span>
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Download CSV</span>
           </Button>
         </div>
 
         {/* Filter Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-white p-3 rounded-2xl border border-slate-200">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
           <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Ministry</label>
+            <label className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">Ministry</label>
             <select
               value={selectedMinistry}
               onChange={(e) => setSelectedMinistry(e.target.value)}
-              className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
             >
               <option value="ALL">All Ministries</option>
               {ministries.map((m) => (
@@ -132,11 +124,11 @@ export default function FinancialReportsPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Category</label>
+            <label className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">Category</label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
             >
               <option value="ALL">All Categories</option>
               {categories.map((c) => (
@@ -146,88 +138,84 @@ export default function FinancialReportsPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">From Date</label>
+            <label className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">From Date</label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
             />
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">To Date</label>
+            <label className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">To Date</label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
             />
           </div>
         </div>
 
         {/* 4 Reporting Metric Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4 space-y-1">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Claims</span>
-              <p className="text-2xl font-black text-slate-900">{filtered.length}</p>
-              <span className="text-[11px] text-slate-500 block">Matching filter parameters</span>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="p-3.5 rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-900/80 shadow-2xs">
+            <span className="text-[11px] font-medium text-zinc-500 block mb-1">Total Claims</span>
+            <p className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 tabular-nums">{filtered.length}</p>
+            <span className="text-[10px] text-zinc-400 block mt-0.5">Matching filter</span>
+          </div>
 
-          <Card>
-            <CardContent className="p-4 space-y-1">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Claim Value</span>
-              <p className="text-2xl font-black text-emerald-800">{formatCurrency(totalClaimed)}</p>
-              <span className="text-[11px] text-slate-500 block">Gross submitted amount</span>
-            </CardContent>
-          </Card>
+          <div className="p-3.5 rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-900/80 shadow-2xs">
+            <span className="text-[11px] font-medium text-zinc-500 block mb-1">Total Claim Value</span>
+            <p className="text-xl font-bold font-mono tracking-tight text-zinc-900 dark:text-zinc-100 tabular-nums">{formatCurrency(totalClaimed)}</p>
+            <span className="text-[10px] text-zinc-400 block mt-0.5">Gross claimed amount</span>
+          </div>
 
-          <Card>
-            <CardContent className="p-4 space-y-1">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Disbursed (Paid)</span>
-              <p className="text-2xl font-black text-emerald-950">{formatCurrency(totalPaid)}</p>
-              <span className="text-[11px] text-slate-500 block">{paidClaims.length} vouchers reimbursed</span>
-            </CardContent>
-          </Card>
+          <div className="p-3.5 rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-900/80 shadow-2xs">
+            <span className="text-[11px] font-medium text-zinc-500 block mb-1">Disbursed (Paid)</span>
+            <p className="text-xl font-bold font-mono tracking-tight text-emerald-800 dark:text-emerald-400 tabular-nums">{formatCurrency(totalPaid)}</p>
+            <span className="text-[10px] text-zinc-400 block mt-0.5">{paidClaims.length} vouchers reimbursed</span>
+          </div>
 
-          <Card>
-            <CardContent className="p-4 space-y-1">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Average Claim</span>
-              <p className="text-2xl font-black text-slate-900">{formatCurrency(averageClaim)}</p>
-              <span className="text-[11px] text-slate-500 block">Per voucher</span>
-            </CardContent>
-          </Card>
+          <div className="p-3.5 rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-900/80 shadow-2xs">
+            <span className="text-[11px] font-medium text-zinc-500 block mb-1">Average Voucher</span>
+            <p className="text-xl font-bold font-mono tracking-tight text-zinc-900 dark:text-zinc-100 tabular-nums">{formatCurrency(averageClaim)}</p>
+            <span className="text-[10px] text-zinc-400 block mt-0.5">Per submission</span>
+          </div>
         </div>
 
         {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <Card className="lg:col-span-7">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-bold">Expenditure by Ministry</CardTitle>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <Card className="lg:col-span-7 border-zinc-200/80 shadow-2xs">
+            <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800">
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                Expenditure by Ministry
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="h-72 w-full">
+            <CardContent className="p-4">
+              <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={ministryChartData} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-25} textAnchor="end" stroke="#94a3b8" />
-                    <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" />
-                    <Tooltip formatter={(val: any) => [`RM ${Number(val).toFixed(2)}`, "Total"]} />
-                    <Bar dataKey="total" fill="#047857" radius={[6, 6, 0, 0]} />
+                  <BarChart data={ministryChartData} margin={{ top: 10, right: 10, left: -15, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#f4f4f5" />
+                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#71717a' }} interval={0} angle={-25} textAnchor="end" axisLine={{ stroke: '#e4e4e7' }} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: '#71717a' }} axisLine={{ stroke: '#e4e4e7' }} tickLine={false} />
+                    <Tooltip formatter={(val: any) => [`RM ${Number(val).toFixed(2)}`, "Total"]} contentStyle={{ borderRadius: '8px', fontSize: '11px', border: '1px solid #e4e4e7' }} />
+                    <Bar dataKey="total" fill="#18181b" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-5">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-bold">Category Distribution</CardTitle>
+          <Card className="lg:col-span-5 border-zinc-200/80 shadow-2xs">
+            <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800">
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                Category Distribution
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="h-72 w-full flex items-center justify-center">
+            <CardContent className="p-4">
+              <div className="h-64 w-full flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -236,7 +224,7 @@ export default function FinancialReportsPage() {
                       nameKey="name"
                       cx="50%"
                       cy="50%"
-                      outerRadius={90}
+                      outerRadius={80}
                       innerRadius={45}
                       paddingAngle={3}
                     >
@@ -244,7 +232,7 @@ export default function FinancialReportsPage() {
                         <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(val: any) => [`RM ${Number(val).toFixed(2)}`, "Spend"]} />
+                    <Tooltip formatter={(val: any) => [`RM ${Number(val).toFixed(2)}`, "Spend"]} contentStyle={{ borderRadius: '8px', fontSize: '11px', border: '1px solid #e4e4e7' }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>

@@ -14,86 +14,83 @@ import {
   ArrowRight
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 export default function AdminOverviewPage() {
   const adminModules = [
     {
       title: "Users & Roles",
-      desc: "Manage church staff accounts, assign RBAC permissions, and toggle user active status.",
-      icon: <Users className="w-6 h-6 text-emerald-700" />,
+      desc: "Manage church staff accounts, assign RBAC permissions, and configure bank accounts.",
+      icon: <Users className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />,
       href: "/admin/users",
     },
     {
       title: "Ministries & Departments",
       desc: "Configure church ministries and assign department leaders who approve claims.",
-      icon: <Building2 className="w-6 h-6 text-blue-700" />,
+      icon: <Building2 className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />,
       href: "/admin/ministries",
     },
     {
       title: "Expense Categories",
-      desc: "Maintain tax and expense categories (Transportation, Hospitality, Supplies, etc.).",
-      icon: <Tag className="w-6 h-6 text-amber-700" />,
+      desc: "Maintain tax and expense categories (Transportation, Hospitality, Supplies).",
+      icon: <Tag className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />,
       href: "/admin/categories",
     },
     {
       title: "Budget Cost Centres",
       desc: "Define budget line codes and link them to respective church ministries.",
-      icon: <PieChart className="w-6 h-6 text-purple-700" />,
+      icon: <PieChart className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />,
       href: "/admin/cost-centres",
     },
     {
-      title: "Approval Workflows & Thresholds",
-      desc: "Configure multi-level approval rules, custom ministry routes, and RM 500 final sign-off limits.",
-      icon: <GitBranch className="w-6 h-6 text-indigo-700" />,
+      title: "Approval Workflows",
+      desc: "Configure multi-level approval rules, custom ministry routes, and RM 500 limits.",
+      icon: <GitBranch className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />,
       href: "/admin/workflows",
     },
     {
-      title: "System-Wide Audit Trail",
+      title: "Security Audit Trail",
       desc: "Inspect immutable security logs of every claim submission, approval, edit, and payout.",
-      icon: <History className="w-6 h-6 text-rose-700" />,
+      icon: <History className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />,
       href: "/admin/audit",
     },
     {
-      title: "System & Numbering Settings",
-      desc: "Customize claim prefix (NLCC), fiscal year formatting, church branding, and emails.",
-      icon: <Settings className="w-6 h-6 text-slate-700" />,
+      title: "Form & Settings",
+      desc: "Customize declaration statement, guidance banner, upload limits, and payment methods.",
+      icon: <Settings className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />,
       href: "/admin/settings",
     },
   ];
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-            <ShieldCheck className="w-7 h-7 text-emerald-700" />
-            System Administration Suite
+      <div className="space-y-4">
+        <div className="pb-2 border-b border-zinc-200/80 dark:border-zinc-800">
+          <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+            System Administration
           </h1>
-          <p className="text-xs text-slate-500">
-            Configure master database tables, dynamic workflow routing, user security, and audit compliance.
+          <p className="text-xs text-zinc-500">
+            Configure master records, dynamic workflow routing, user permissions, and compliance settings.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {adminModules.map((m) => (
             <Link key={m.href} href={m.href} className="group">
-              <Card className="h-full hover:border-emerald-500 transition-all hover:shadow-md">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="p-2.5 rounded-xl bg-slate-50 group-hover:bg-emerald-50 transition-colors">
+              <div className="h-full p-4 rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-950 hover:border-zinc-400 dark:hover:border-zinc-700 transition-all shadow-2xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300">
                       {m.icon}
                     </div>
-                    <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-emerald-700 transition-colors" />
+                    <ArrowRight className="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors" />
                   </div>
-                  <CardTitle className="text-base font-bold mt-2 text-slate-900 group-hover:text-emerald-800">
+                  <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 group-hover:underline">
                     {m.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xs text-slate-500 leading-relaxed">{m.desc}</p>
-                </CardContent>
-              </Card>
+                  </h3>
+                  <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">{m.desc}</p>
+                </div>
+              </div>
             </Link>
           ))}
         </div>

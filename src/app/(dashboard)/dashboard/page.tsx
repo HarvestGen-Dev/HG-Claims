@@ -3,17 +3,14 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
-  PlusCircle, 
+  Plus, 
   FileText, 
   Clock, 
   RotateCcw, 
   CheckCircle2, 
   Banknote, 
-  ArrowRight,
-  TrendingUp,
+  ArrowUpRight,
   Search,
-  Layers,
-  Building2,
   AlertCircle
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -26,7 +23,7 @@ import { Claim } from "@/lib/types/database";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 
 export default function DashboardPage() {
-  const { user, hasRole } = useAuth();
+  const { user } = useAuth();
   const [claims, setClaims] = useState<Claim[]>([]);
   const [search, setSearch] = useState("");
 
@@ -63,158 +60,149 @@ export default function DashboardPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Welcome Banner */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-emerald-900 to-emerald-800 text-white p-6 rounded-3xl shadow-md">
-          <div className="space-y-1">
-            <span className="text-xs font-semibold tracking-wider text-emerald-300 uppercase">
-              Welcome back,
-            </span>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-              {user?.full_name}
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-zinc-200/80 dark:border-zinc-800">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+              Overview
             </h1>
-            <p className="text-xs sm:text-sm text-emerald-100 max-w-xl">
-              Track your ministry expense claims, respond to clarification requests, and check reimbursement payouts.
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Welcome back, <span className="font-medium text-zinc-700 dark:text-zinc-300">{user?.full_name}</span>. Track and submit your ministry claims.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <Link href="/claims/new">
-              <Button className="bg-white text-emerald-900 hover:bg-emerald-50 font-bold shadow-lg gap-2 text-sm">
-                <PlusCircle className="w-4 h-4 text-emerald-700" />
-                <span>+ New Expense Claim</span>
+              <Button size="sm" className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-medium shadow-2xs gap-1.5 h-8">
+                <Plus className="w-3.5 h-3.5" />
+                <span>New Claim</span>
               </Button>
             </Link>
           </div>
         </div>
 
-        {/* Action Required: Returned for Clarification Banner */}
+        {/* Action Required: Returned for Clarification */}
         {returnedCount > 0 && (
-          <div className="flex items-center justify-between p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 shadow-2xs">
+          <div className="flex items-center justify-between p-3.5 rounded-xl bg-rose-50/70 border border-rose-200/80 text-rose-950 dark:bg-rose-950/20 dark:border-rose-900/50">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
-                <RotateCcw className="w-5 h-5" />
+              <div className="h-8 w-8 rounded-lg bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 flex items-center justify-center shrink-0">
+                <RotateCcw className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-xs font-bold">Action Required ({returnedCount} Claim{returnedCount > 1 ? "s" : ""})</p>
-                <p className="text-xs text-rose-700">An approver requested clarification or missing receipts on your claim.</p>
+                <p className="text-xs font-semibold text-rose-900 dark:text-rose-200">
+                  {returnedCount} claim{returnedCount > 1 ? "s" : ""} returned for clarification
+                </p>
+                <p className="text-[11px] text-rose-700 dark:text-rose-400">
+                  An approver requested notes or updated receipts before approving.
+                </p>
               </div>
             </div>
             <Link href="/claims?status=RETURNED_FOR_CLARIFICATION">
-              <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white text-xs">
-                Review & Fix
+              <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-rose-700 border-rose-200 hover:bg-rose-50 dark:bg-zinc-900 dark:border-rose-900">
+                Review Claims
               </Button>
             </Link>
           </div>
         )}
 
         {/* Summary Stat Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <Link href="/claims?status=DRAFT" className="group">
-            <Card className="hover:border-slate-300 transition-all hover:shadow-sm">
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Drafts</span>
-                  <FileText className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
-                </div>
-                <p className="text-2xl font-black text-slate-800">{draftCount}</p>
-                <span className="text-[11px] text-slate-500 block">Not yet submitted</span>
-              </CardContent>
-            </Card>
+            <div className="p-3.5 rounded-xl border border-zinc-200/80 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/80 transition-all shadow-2xs">
+              <div className="flex items-center justify-between text-zinc-400 mb-1.5">
+                <span className="text-[11px] font-medium tracking-wide text-zinc-500">Drafts</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-zinc-300 group-hover:bg-zinc-500 transition-colors" />
+              </div>
+              <p className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 tabular-nums">{draftCount}</p>
+              <span className="text-[10px] text-zinc-400 block mt-0.5">Unsubmitted</span>
+            </div>
           </Link>
 
           <Link href="/claims?status=PENDING_MINISTRY_APPROVAL" className="group">
-            <Card className="hover:border-amber-300 transition-all hover:shadow-sm">
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">In Review</span>
-                  <Clock className="w-4 h-4 text-amber-500" />
-                </div>
-                <p className="text-2xl font-black text-amber-900">{pendingCount}</p>
-                <span className="text-[11px] text-amber-600/80 block">Awaiting approvals</span>
-              </CardContent>
-            </Card>
+            <div className="p-3.5 rounded-xl border border-zinc-200/80 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/80 transition-all shadow-2xs">
+              <div className="flex items-center justify-between text-zinc-400 mb-1.5">
+                <span className="text-[11px] font-medium tracking-wide text-zinc-500">In Review</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+              </div>
+              <p className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 tabular-nums">{pendingCount}</p>
+              <span className="text-[10px] text-zinc-400 block mt-0.5">Awaiting approvals</span>
+            </div>
           </Link>
 
           <Link href="/claims?status=RETURNED_FOR_CLARIFICATION" className="group">
-            <Card className="hover:border-rose-300 transition-all hover:shadow-sm">
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-rose-600 uppercase tracking-wider">Returned</span>
-                  <RotateCcw className="w-4 h-4 text-rose-500" />
-                </div>
-                <p className="text-2xl font-black text-rose-900">{returnedCount}</p>
-                <span className="text-[11px] text-rose-600/80 block">Needs your edit</span>
-              </CardContent>
-            </Card>
+            <div className="p-3.5 rounded-xl border border-zinc-200/80 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/80 transition-all shadow-2xs">
+              <div className="flex items-center justify-between text-zinc-400 mb-1.5">
+                <span className="text-[11px] font-medium tracking-wide text-zinc-500">Returned</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+              </div>
+              <p className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 tabular-nums">{returnedCount}</p>
+              <span className="text-[10px] text-zinc-400 block mt-0.5">Action required</span>
+            </div>
           </Link>
 
           <Link href="/claims?status=APPROVED_FOR_PAYMENT" className="group">
-            <Card className="hover:border-teal-300 transition-all hover:shadow-sm">
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-teal-600 uppercase tracking-wider">Approved</span>
-                  <CheckCircle2 className="w-4 h-4 text-teal-500" />
-                </div>
-                <p className="text-2xl font-black text-teal-900">{approvedCount}</p>
-                <span className="text-[11px] text-teal-600/80 block">Queued for payment</span>
-              </CardContent>
-            </Card>
+            <div className="p-3.5 rounded-xl border border-zinc-200/80 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/80 transition-all shadow-2xs">
+              <div className="flex items-center justify-between text-zinc-400 mb-1.5">
+                <span className="text-[11px] font-medium tracking-wide text-zinc-500">Approved</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              </div>
+              <p className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 tabular-nums">{approvedCount}</p>
+              <span className="text-[10px] text-zinc-400 block mt-0.5">Queued for payment</span>
+            </div>
           </Link>
 
           <Link href="/claims?status=PAID" className="group col-span-2 sm:col-span-1">
-            <Card className="hover:border-emerald-300 bg-emerald-50/40 transition-all hover:shadow-sm border-emerald-200">
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Reimbursed</span>
-                  <Banknote className="w-4 h-4 text-emerald-600" />
-                </div>
-                <p className="text-2xl font-black text-emerald-950">{paidCount}</p>
-                <span className="text-[11px] font-semibold text-emerald-700 block">{formatCurrency(totalPaidAmount)}</span>
-              </CardContent>
-            </Card>
+            <div className="p-3.5 rounded-xl border border-zinc-200/80 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/80 transition-all shadow-2xs">
+              <div className="flex items-center justify-between text-zinc-400 mb-1.5">
+                <span className="text-[11px] font-medium tracking-wide text-zinc-500">Paid Out</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+              </div>
+              <p className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 tabular-nums">{paidCount}</p>
+              <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 block mt-0.5 font-mono">{formatCurrency(totalPaidAmount)}</span>
+            </div>
           </Link>
         </div>
 
         {/* Recent Claims Section */}
-        <Card>
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-950 shadow-2xs overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border-b border-zinc-100 dark:border-zinc-800">
             <div>
-              <CardTitle className="text-base font-bold text-slate-900 dark:text-slate-100">
-                Recent Expense Claims
-              </CardTitle>
-              <p className="text-xs text-slate-500">
-                Summary of your recent submissions and active claim statuses.
+              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                Recent Claims
+              </h2>
+              <p className="text-[11px] text-zinc-400">
+                Your submitted and draft expense reimbursement records.
               </p>
             </div>
 
             <div className="flex items-center gap-2">
               <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-400" />
+                <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-zinc-400" />
                 <input
                   type="text"
                   placeholder="Filter claims..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-8 pl-8 pr-3 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="h-7 pl-7 pr-2.5 text-xs rounded-lg border border-zinc-200 bg-zinc-50/70 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-900"
                 />
               </div>
               <Link href="/claims">
-                <Button variant="outline" size="sm" className="text-xs gap-1">
+                <Button variant="ghost" size="sm" className="h-7 text-xs text-zinc-600 hover:text-zinc-900 gap-1 px-2">
                   <span>View All</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowUpRight className="w-3.5 h-3.5" />
                 </Button>
               </Link>
             </div>
-          </CardHeader>
+          </div>
 
-          <CardContent className="p-0">
+          <div>
             {filteredRecent.length === 0 ? (
-              <div className="py-12 text-center space-y-3">
-                <FileText className="w-10 h-10 text-slate-300 mx-auto" />
-                <p className="text-sm font-semibold text-slate-700">No claims found</p>
-                <p className="text-xs text-slate-400">Click "+ New Expense Claim" to submit your first claim.</p>
+              <div className="py-12 text-center space-y-2.5">
+                <FileText className="w-8 h-8 text-zinc-300 mx-auto" />
+                <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">No claims found</p>
+                <p className="text-[11px] text-zinc-400">Submit a new expense claim to get started.</p>
                 <Link href="/claims/new" className="inline-block mt-2">
-                  <Button size="sm" className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs">
+                  <Button size="sm" className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs h-7">
                     Create Claim
                   </Button>
                 </Link>
@@ -223,39 +211,39 @@ export default function DashboardPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                      <th className="py-3 px-4">Claim Number</th>
-                      <th className="py-3 px-4">Date</th>
-                      <th className="py-3 px-4">Ministry & Programme</th>
-                      <th className="py-3 px-4">Purpose</th>
-                      <th className="py-3 px-4 text-right">Amount (RM)</th>
-                      <th className="py-3 px-4 text-center">Status</th>
-                      <th className="py-3 px-4 text-right">Action</th>
+                    <tr className="bg-zinc-50/50 border-b border-zinc-100 dark:bg-zinc-900/50 dark:border-zinc-800 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
+                      <th className="py-2.5 px-4">Claim #</th>
+                      <th className="py-2.5 px-4">Date</th>
+                      <th className="py-2.5 px-4">Ministry & Programme</th>
+                      <th className="py-2.5 px-4">Purpose</th>
+                      <th className="py-2.5 px-4 text-right">Amount (RM)</th>
+                      <th className="py-2.5 px-4 text-center">Status</th>
+                      <th className="py-2.5 px-4 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
                     {filteredRecent.map((c) => (
-                      <tr key={c.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-3.5 px-4 font-bold text-slate-900">
-                          <Link href={`/claims/${c.id}`} className="hover:text-emerald-700 hover:underline">
+                      <tr key={c.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-900/50 transition-colors">
+                        <td className="py-3 px-4 font-mono font-medium text-zinc-900 dark:text-zinc-100">
+                          <Link href={`/claims/${c.id}`} className="hover:underline hover:text-emerald-700 dark:hover:text-emerald-400">
                             {c.claim_number || "DRAFT"}
                           </Link>
                         </td>
-                        <td className="py-3.5 px-4 text-slate-500">{formatDate(c.claim_date)}</td>
-                        <td className="py-3.5 px-4">
-                          <span className="font-semibold text-slate-800 block">{c.programme_event}</span>
-                          <span className="text-[10px] text-slate-400">{c.ministry?.name}</span>
+                        <td className="py-3 px-4 text-zinc-500 font-mono text-[11px]">{formatDate(c.claim_date)}</td>
+                        <td className="py-3 px-4">
+                          <span className="font-medium text-zinc-800 dark:text-zinc-200 block">{c.programme_event}</span>
+                          <span className="text-[10px] text-zinc-400">{c.ministry?.name}</span>
                         </td>
-                        <td className="py-3.5 px-4 text-slate-600 max-w-xs truncate">{c.purpose}</td>
-                        <td className="py-3.5 px-4 text-right font-black text-slate-900">
+                        <td className="py-3 px-4 text-zinc-500 max-w-xs truncate">{c.purpose}</td>
+                        <td className="py-3 px-4 text-right font-mono font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">
                           {formatCurrency(c.total_amount)}
                         </td>
-                        <td className="py-3.5 px-4 text-center">
+                        <td className="py-3 px-4 text-center">
                           <ClaimStatusBadge status={c.status} />
                         </td>
-                        <td className="py-3.5 px-4 text-right">
+                        <td className="py-3 px-4 text-right">
                           <Link href={`/claims/${c.id}`}>
-                            <Button variant="ghost" size="sm" className="text-emerald-700 hover:bg-emerald-50 text-xs">
+                            <Button variant="ghost" size="sm" className="h-7 text-xs text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-2.5">
                               View
                             </Button>
                           </Link>
@@ -266,8 +254,8 @@ export default function DashboardPage() {
                 </table>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </AppLayout>
   );

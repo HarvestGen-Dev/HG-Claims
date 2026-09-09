@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { UploadCloud, File, FileText, Image as ImageIcon, Trash2, Eye, CheckCircle2 } from "lucide-react";
+import { UploadCloud, File, FileText, Image as ImageIcon, Trash2, Eye } from "lucide-react";
 import { ClaimAttachment } from "@/lib/types/database";
 import { formatFileSize } from "@/lib/utils/formatters";
 import { ReceiptViewerModal } from "./ReceiptViewerModal";
@@ -64,7 +64,6 @@ export function ReceiptUploader({
         return;
       }
 
-      // Local mock preview URL
       const objectUrl = URL.createObjectURL(file);
 
       newAttachments.push({
@@ -94,19 +93,19 @@ export function ReceiptUploader({
   };
 
   const getFileIcon = (mime: string, name: string) => {
-    if (mime.includes("pdf") || name.endsWith(".pdf")) return <FileText className="w-5 h-5 text-red-500" />;
-    if (mime.startsWith("image/") || name.match(/\.(jpg|jpeg|png)$/i)) return <ImageIcon className="w-5 h-5 text-emerald-600" />;
-    return <File className="w-5 h-5 text-blue-500" />;
+    if (mime.includes("pdf") || name.endsWith(".pdf")) return <FileText className="w-4 h-4 text-rose-600" />;
+    if (mime.startsWith("image/") || name.match(/\.(jpg|jpeg|png)$/i)) return <ImageIcon className="w-4 h-4 text-emerald-600" />;
+    return <File className="w-4 h-4 text-zinc-500" />;
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div>
-        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wide">
-          Supporting Documents & Receipts ({attachments.length})
+        <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
+          Receipts & Invoices ({attachments.length})
         </h3>
-        <p className="text-xs text-slate-500">
-          Upload clear scans/photos of official receipts, tax invoices, and bank transfer slips (PDF, JPG, PNG up to 10MB).
+        <p className="text-[11px] text-zinc-400">
+          Upload clear scans/photos of official receipts (PDF, JPG, PNG up to 10MB).
         </p>
       </div>
 
@@ -116,10 +115,10 @@ export function ReceiptUploader({
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className={`cursor-pointer rounded-2xl border-2 border-dashed p-6 text-center transition-all ${
+          className={`cursor-pointer rounded-lg border border-dashed p-4 text-center transition-all ${
             isDragging
-              ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20"
-              : "border-slate-300 hover:border-emerald-500 hover:bg-slate-50/50 dark:border-slate-700 dark:hover:border-emerald-600"
+              ? "border-zinc-900 bg-zinc-100/60 dark:border-zinc-100 dark:bg-zinc-900/60"
+              : "border-zinc-300 hover:border-zinc-400 hover:bg-zinc-50/50 dark:border-zinc-700 dark:hover:border-zinc-600"
           }`}
         >
           <input
@@ -130,16 +129,16 @@ export function ReceiptUploader({
             className="hidden"
             onChange={(e) => handleFiles(e.target.files)}
           />
-          <div className="flex flex-col items-center justify-center space-y-2">
-            <div className="h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-700 dark:text-emerald-400">
-              <UploadCloud className="w-6 h-6" />
+          <div className="flex items-center justify-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-400 shrink-0">
+              <UploadCloud className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                Click to browse or drag and drop receipt photos
+            <div className="text-left">
+              <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">
+                Click to upload receipts, or drag and drop files
               </p>
-              <p className="text-xs text-slate-400 mt-0.5">
-                PNG, JPG, PDF, Excel up to 10MB per file
+              <p className="text-[10px] text-zinc-400">
+                PNG, JPG, PDF, Excel up to 10MB per receipt
               </p>
             </div>
           </div>
@@ -148,22 +147,22 @@ export function ReceiptUploader({
 
       {/* Attachment List */}
       {attachments.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {attachments.map((att, idx) => (
             <div
               key={att.id || idx}
-              className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 shadow-2xs"
+              className="flex items-center justify-between p-2.5 rounded-lg border border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-900/60 text-xs shadow-2xs"
             >
-              <div className="flex items-center gap-3 truncate pr-2">
-                <div className="h-9 w-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                <div className="h-7 w-7 rounded bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
                   {getFileIcon(att.mime_type, att.original_filename)}
                 </div>
-                <div className="truncate">
-                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                <div className="min-w-0">
+                  <p className="font-medium text-zinc-800 dark:text-zinc-200 truncate text-xs">
                     {att.original_filename}
                   </p>
-                  <p className="text-[10px] text-slate-400">
-                    {formatFileSize(att.file_size)} • {att.file_category}
+                  <p className="text-[10px] text-zinc-400 font-mono">
+                    {formatFileSize(att.file_size)}
                   </p>
                 </div>
               </div>
@@ -172,19 +171,19 @@ export function ReceiptUploader({
                 <button
                   type="button"
                   onClick={() => setPreviewItem(att as any)}
-                  className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-slate-100 rounded-lg"
-                  title="Preview Receipt"
+                  className="p-1 text-zinc-400 hover:text-zinc-800 hover:bg-zinc-100 rounded dark:hover:bg-zinc-800 transition-colors"
+                  title="Preview"
                 >
-                  <Eye className="w-4 h-4" />
+                  <Eye className="w-3.5 h-3.5" />
                 </button>
                 {!disabled && (
                   <button
                     type="button"
                     onClick={() => removeAttachment(idx)}
-                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                    title="Remove Receipt"
+                    className="p-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded dark:hover:bg-rose-950/40 transition-colors"
+                    title="Remove"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>

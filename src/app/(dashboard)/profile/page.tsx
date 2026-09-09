@@ -2,12 +2,12 @@
 
 import React, { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth/context";
 import { db } from "@/lib/mock-db/repository";
-import { UserCircle, CreditCard, Building2, CheckCircle2 } from "lucide-react";
+import { Check } from "lucide-react";
 import { MALAYSIAN_BANKS, BANK_CATEGORIES } from "@/lib/constants/banks";
 
 export default function ProfilePage() {
@@ -31,68 +31,68 @@ export default function ProfilePage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6 max-w-3xl mx-auto">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <UserCircle className="w-6 h-6 text-emerald-700" />
-            My Profile & Bank Details
+      <div className="space-y-4 max-w-2xl mx-auto pb-12">
+        <div className="pb-2 border-b border-zinc-200/80 dark:border-zinc-800">
+          <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+            Profile & Bank Settings
           </h1>
-          <p className="text-xs text-slate-500">
-            Keep your bank account information up to date so Finance can disburse approved reimbursement claims.
+          <p className="text-xs text-zinc-500">
+            Keep your contact and Malaysian bank account details current for reimbursement transfers.
           </p>
         </div>
 
         {saved && (
-          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold rounded-xl flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <div className="p-2.5 bg-emerald-50 border border-emerald-200/80 text-emerald-900 text-xs font-medium rounded-lg flex items-center gap-2 dark:bg-emerald-950/30 dark:border-emerald-900 dark:text-emerald-300">
+            <Check className="w-3.5 h-3.5 text-emerald-600" />
             <span>Profile and banking details updated successfully.</span>
           </div>
         )}
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-bold">Personal & Ministry Details</CardTitle>
+        {/* Profile Card */}
+        <Card className="border-zinc-200/80 shadow-2xs">
+          <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+              Personal Information
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 text-xs">
-            <div className="grid grid-cols-2 gap-4">
+          <CardContent className="p-4 space-y-3 text-xs">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <span className="text-slate-400 block mb-1">Full Name</span>
-                <strong className="text-slate-900 text-sm">{user?.full_name}</strong>
+                <span className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-0.5">Full Name</span>
+                <strong className="text-zinc-900 dark:text-zinc-100 text-xs font-medium">{user?.full_name}</strong>
               </div>
               <div>
-                <span className="text-slate-400 block mb-1">Email Address</span>
-                <strong className="text-slate-900">{user?.email}</strong>
+                <span className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-0.5">Email Address</span>
+                <strong className="text-zinc-900 dark:text-zinc-100 text-xs font-medium">{user?.email}</strong>
               </div>
             </div>
 
-            <div className="space-y-1 pt-2">
-              <label className="font-semibold text-slate-700">Mobile Phone Number</label>
+            <div className="space-y-1 pt-1">
+              <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Mobile Phone Number</label>
               <Input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
+                className="h-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
               />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-emerald-700" />
-              Reimbursement Bank Account
+        {/* Bank Account Card */}
+        <Card className="border-zinc-200/80 shadow-2xs">
+          <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+              Reimbursement Bank Account (Malaysia)
             </CardTitle>
-            <CardDescription className="text-xs">
-              Official Malaysian banking account for EFT / DuitNow bank transfers.
-            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 text-xs">
+          <CardContent className="p-4 space-y-3 text-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Bank Name</label>
+                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Bank Name</label>
                 <select
                   value={bankName}
                   onChange={(e) => setBankName(e.target.value)}
-                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+                  className="h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
                 >
                   {BANK_CATEGORIES.map((cat) => {
                     const categoryBanks = MALAYSIAN_BANKS.filter((b) => b.category === cat.key);
@@ -113,18 +113,18 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Account Number</label>
+                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Account Number</label>
                 <Input
                   value={accountNum}
                   onChange={(e) => setAccountNum(e.target.value)}
-                  className="font-mono font-bold"
+                  className="h-8 font-mono text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
                 />
               </div>
             </div>
 
             <div className="flex justify-end pt-2">
-              <Button onClick={handleSave} className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold">
-                Save Bank Information
+              <Button onClick={handleSave} className="h-8 bg-emerald-700 hover:bg-emerald-800 text-white font-medium text-xs px-4 shadow-2xs">
+                Save Changes
               </Button>
             </div>
           </CardContent>
