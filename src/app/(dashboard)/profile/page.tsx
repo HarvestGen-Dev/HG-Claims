@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,17 @@ import { MALAYSIAN_BANKS, BANK_CATEGORIES } from "@/lib/constants/banks";
 export default function ProfilePage() {
   const { user, switchUser } = useAuth();
   const [bankName, setBankName] = useState(user?.bank_name || "Maybank");
-  const [accountNum, setAccountNum] = useState(user?.bank_account_number || "114012345678");
-  const [phone, setPhone] = useState(user?.phone || "+60 12-345 6789");
+  const [accountNum, setAccountNum] = useState(user?.bank_account_number || "");
+  const [phone, setPhone] = useState(user?.phone || "");
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setBankName(user.bank_name || "Maybank");
+      setAccountNum(user.bank_account_number || "");
+      setPhone(user.phone || "");
+    }
+  }, [user]);
 
   const handleSave = () => {
     if (!user) return;
