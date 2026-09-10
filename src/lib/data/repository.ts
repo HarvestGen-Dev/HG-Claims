@@ -1,4 +1,4 @@
-import type { Profile, Claim, Ministry, ExpenseCategory, CostCentre, ApprovalRule, Notification, SystemSetting, AuditLog } from "@/lib/types/database";
+import type { Profile, Claim, Ministry, ExpenseCategory, CostCentre, ApprovalRule, Notification, SystemSetting, AuditLog, SignupInvitation, RoleCode } from "@/lib/types/database";
 
 interface Workspace {
   user_id: string;
@@ -11,8 +11,9 @@ interface Workspace {
   notifications: Notification[];
   systemSettings: SystemSetting[];
   auditLogs: AuditLog[];
+  signupInvitations?: SignupInvitation[];
 }
-const empty = (): Workspace => ({ user_id: "", profiles: [], claims: [], ministries: [], categories: [], costCentres: [], approvalRules: [], notifications: [], systemSettings: [], auditLogs: [] });
+const empty = (): Workspace => ({ user_id: "", profiles: [], claims: [], ministries: [], categories: [], costCentres: [], approvalRules: [], notifications: [], systemSettings: [], auditLogs: [], signupInvitations: [] });
 
 // A memory-only read model. Every write is authorized and committed by PostgreSQL.
 class Repository {
@@ -39,7 +40,7 @@ class Repository {
     return data;
   }
   getProfiles() { return this.data.profiles; }
-  getProfileById(id: string) { return this.data.profiles.find(profile => profile.id === id); }
+  getProfileById(id?: string | null) { if (!id) return undefined; return this.data.profiles.find(profile => profile.id === id); }
   getMinistries() { return this.data.ministries.map(m => ({ ...m, leader: m.leader_id ? this.getProfileById(m.leader_id) : null })); }
   getCategories() { return this.data.categories; }
   getCostCentres() { return this.data.costCentres.map(c => ({ ...c, ministry: this.getMinistries().find(m => m.id === c.ministry_id) })); }
@@ -48,12 +49,37 @@ class Repository {
   getSystemSettings() { return this.data.systemSettings; }
   getAuditLogs() { return this.data.auditLogs; }
   getNotifications(userId: string) { return this.data.notifications.filter(item => item.user_id === userId); }
+  getSignupInvitations() {
+    return (this.data.signupInvitations || []).map(inv => ({
+      ...inv,
+      ministry: inv.ministry_id ? this.getMinistries().find(m => m.id === inv.ministry_id) : null,
+      creator: this.getProfileById(inv.created_by),
+    }));
+  }
+  createSignupInvitation(data: { role_code: RoleCode; ministry_id?: string | null; max_uses?: number; expires_in_days?: number; description?: string }) {
+    return this.command("create_invitation", data);
+  }
+  revokeSignupInvitation(id: string) {
+    return this.command("revoke_invitation", { id });
+  }
+  async completeOnboarding(data: { full_name: string; phone?: string }) {
+    const result = await this.command("complete_onboarding", data);
+    return result;
+  }
   getClaims(_user?: Profile) {
     return this.data.claims.map(c => ({
-      ...c, claimant: this.getProfileById(c.claimant_id), ministry: this.getMinistries().find(m => m.id === c.ministry_id),
+      ...c,
+      claimant: this.getProfileById(c.claimant_id),
+      submitted_by: this.getProfileById(c.submitted_by_user_id || c.claimant_id),
+      ministry: this.getMinistries().find(m => m.id === c.ministry_id),
       cost_centre: this.getCostCentres().find(cc => cc.id === c.cost_centre_id),
       returned_by_user: c.returned_by ? this.getProfileById(c.returned_by) : null,
-      expenses: c.expenses?.map(e => ({ ...e, expense_category: this.getCategories().find(cat => cat.id === e.expense_category_id) })),
+      expenses: c.expenses?.map(e => ({
+        ...e,
+        expense_category: this.getCategories().find(cat => cat.id === e.expense_category_id),
+        cost_centre: this.getCostCentres().find(cc => cc.id === e.cost_centre_id),
+        attachments: (c.attachments || []).filter(a => a.expense_id === e.id)
+      })),
       workflow_steps: c.workflow_steps?.map(s => ({ ...s, assigned_user: this.getProfiles().find(p => p.id === s.assigned_user_id), completed_by_user: this.getProfiles().find(p => p.id === s.completed_by) })),
       approval_actions: c.approval_actions?.map(a => ({ ...a, actor: this.getProfileById(a.actor_id) })),
       comments: c.comments?.map(comment => ({ ...comment, author: this.getProfileById(comment.author_id) })),

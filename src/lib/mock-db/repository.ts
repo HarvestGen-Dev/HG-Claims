@@ -16,7 +16,8 @@ import {
   Payment,
   FinanceReview,
   ClaimStatus,
-  RoleCode
+  RoleCode,
+  SignupInvitation
 } from "@/lib/types/database";
 import {
   INITIAL_PROFILES,
@@ -26,10 +27,12 @@ import {
   INITIAL_APPROVAL_RULES,
   INITIAL_CLAIMS,
   INITIAL_NOTIFICATIONS,
-  INITIAL_SYSTEM_SETTINGS
+  INITIAL_SYSTEM_SETTINGS,
+  INITIAL_SIGNUP_INVITATIONS
 } from "./seed-data";
 import { calculateTotalAmount } from "@/lib/utils/calculations";
 import { formatClaimNumber } from "@/lib/utils/claim-number";
+import { generateSecureToken, hashToken } from "@/lib/utils/token";
 
 class DatabaseRepository {
   private profiles: Profile[] = [];
@@ -41,6 +44,7 @@ class DatabaseRepository {
   private notifications: Notification[] = [];
   private systemSettings: SystemSetting[] = [];
   private auditLogs: AuditLog[] = [];
+  private signupInvitations: SignupInvitation[] = [];
   private runningSequence: number = 125;
   private isInitialized = false;
 
@@ -58,6 +62,7 @@ class DatabaseRepository {
     this.claims = JSON.parse(JSON.stringify(INITIAL_CLAIMS));
     this.notifications = JSON.parse(JSON.stringify(INITIAL_NOTIFICATIONS));
     this.systemSettings = JSON.parse(JSON.stringify(INITIAL_SYSTEM_SETTINGS));
+    this.signupInvitations = JSON.parse(JSON.stringify(INITIAL_SIGNUP_INVITATIONS || []));
     this.auditLogs = [];
     if (typeof window !== "undefined") {
       const stored = window.localStorage.getItem("nlcc_workspace_v1");
@@ -75,6 +80,9 @@ class DatabaseRepository {
             this.notifications = data.notifications;
             this.systemSettings = data.systemSettings;
             this.auditLogs = data.auditLogs;
+            if (Array.isArray(data.signupInvitations)) {
+              this.signupInvitations = data.signupInvitations;
+            }
             this.runningSequence = data.runningSequence;
           }
         } catch { console.warn("Saved demo data could not be read."); }
@@ -90,7 +98,7 @@ class DatabaseRepository {
       profiles: this.profiles, ministries: this.ministries, categories: this.categories,
       costCentres: this.costCentres, approvalRules: this.approvalRules, claims: this.claims,
       notifications: this.notifications, systemSettings: this.systemSettings,
-      auditLogs: this.auditLogs, runningSequence: this.runningSequence,
+      auditLogs: this.auditLogs, signupInvitations: this.signupInvitations, runningSequence: this.runningSequence,
     }));
   }
 
@@ -99,7 +107,8 @@ class DatabaseRepository {
     return this.profiles;
   }
 
-  public getProfileById(id: string): Profile | undefined {
+  public getProfileById(id?: string | null): Profile | undefined {
+    if (!id) return undefined;
     return this.profiles.find(p => p.id === id);
   }
 
@@ -421,13 +430,15 @@ class DatabaseRepository {
   // --- Claims Access with Relations ---
   private enrichClaim(claim: Claim): Claim {
     const claimant = this.getProfileById(claim.claimant_id);
+    const submitted_by = this.getProfileById(claim.submitted_by_user_id || claim.claimant_id);
     const ministry = this.ministries.find(m => m.id === claim.ministry_id);
-    const cost_centre = this.costCentres.find(cc => cc.id === claim.cost_centre_id);
+    const cost_centre = claim.cost_centre_id ? this.costCentres.find(cc => cc.id === claim.cost_centre_id) : undefined;
     const returned_by_user = claim.returned_by ? this.getProfileById(claim.returned_by) : undefined;
 
     const expenses = (claim.expenses || []).map(exp => ({
       ...exp,
       expense_category: this.categories.find(c => c.id === exp.expense_category_id),
+      cost_centre: exp.cost_centre_id ? this.costCentres.find(cc => cc.id === exp.cost_centre_id) : undefined,
       attachments: (claim.attachments || []).filter(a => a.expense_id === exp.id),
     }));
 
@@ -445,6 +456,10 @@ class DatabaseRepository {
     return {
       ...claim,
       claimant,
+      submitted_by,
+      claimant_name: claim.claimant_name || claimant?.full_name || "Unknown Claimant",
+      claimant_email: claim.claimant_email || claimant?.email || "",
+      claimant_phone: claim.claimant_phone || claimant?.phone || "",
       ministry: ministry ? { ...ministry, leader: this.getProfileById(ministry.leader_id || "") } : undefined,
       cost_centre,
       returned_by_user,
@@ -468,22 +483,16 @@ class DatabaseRepository {
     if (currentUser) {
       const isSuper = currentUser.roles?.includes("SYSTEM_ADMIN") || currentUser.roles?.includes("FINANCE_OFFICER");
       const isLeader = currentUser.roles?.includes("MINISTRY_LEADER");
-      const isApprover = currentUser.roles?.includes("FINAL_APPROVER");
 
       if (!isSuper) {
         result = result.filter(c => {
-          // Claimant sees own claims
-          if (c.claimant_id === currentUser.id) return true;
+          // Submitter or claimant sees own claims
+          if ((c.submitted_by_user_id && c.submitted_by_user_id === currentUser.id) || c.claimant_id === currentUser.id) return true;
 
           // Ministry leader sees claims for their ministry
           if (isLeader) {
             const min = this.ministries.find(m => m.id === c.ministry_id);
-            if (min && min.leader_id === currentUser.id && c.status !== "DRAFT") return true;
-          }
-
-          // Final approver sees claims needing final approval
-          if (isApprover && (c.status === "PENDING_FINAL_APPROVAL" || c.status === "APPROVED_FOR_PAYMENT" || c.status === "PAID")) {
-            return true;
+            if (min && (min.leader_id === currentUser.id || currentUser.ministry_id === c.ministry_id) && c.status !== "DRAFT") return true;
           }
 
           return false;
@@ -499,7 +508,7 @@ class DatabaseRepository {
         result = result.filter(c => c.ministry_id === filters.ministry_id);
       }
       if (filters.claimant_id) {
-        result = result.filter(c => c.claimant_id === filters.claimant_id);
+        result = result.filter(c => (c.submitted_by_user_id === filters.claimant_id || c.claimant_id === filters.claimant_id));
       }
       if (filters.startDate) {
         result = result.filter(c => c.claim_date >= filters.startDate!);
@@ -511,10 +520,12 @@ class DatabaseRepository {
         const q = filters.search.toLowerCase();
         result = result.filter(c =>
           (c.claim_number && c.claim_number.toLowerCase().includes(q)) ||
-          c.programme_event.toLowerCase().includes(q) ||
           c.purpose.toLowerCase().includes(q) ||
+          (c.claimant_name && c.claimant_name.toLowerCase().includes(q)) ||
+          (c.claimant_email && c.claimant_email.toLowerCase().includes(q)) ||
           c.claimant?.full_name.toLowerCase().includes(q) ||
           c.claimant?.email.toLowerCase().includes(q) ||
+          c.submitted_by?.full_name.toLowerCase().includes(q) ||
           c.ministry?.name.toLowerCase().includes(q) ||
           (c.internal_reference && c.internal_reference.toLowerCase().includes(q)) ||
           (c.payment?.payment_reference && c.payment.payment_reference.toLowerCase().includes(q))
@@ -542,64 +553,27 @@ class DatabaseRepository {
 
   // --- Workflow Engine Logic ---
   private buildWorkflowSteps(claim: Claim): ClaimWorkflowStep[] {
-    const ministry = this.ministries.find(m => m.id === claim.ministry_id);
-    const thresholdSetting = this.getSetting("approval_thresholds") || { final_approval_threshold: 500.00 };
-    const threshold = Number(thresholdSetting.final_approval_threshold) || 500.00;
-
     const steps: ClaimWorkflowStep[] = [];
     const workflowId = `wf-${Date.now()}`;
     const now = new Date().toISOString();
 
-    // Check if claimant is the ministry leader!
-    const isClaimantLeader = ministry?.leader_id === claim.claimant_id;
+    const submitterId = claim.submitted_by_user_id || claim.claimant_id;
+    const financeUser = this.profiles.find(p => p.roles?.includes("FINANCE_OFFICER") && p.id !== submitterId && p.status === "ACTIVE");
 
-    // Step 1: Ministry Leader
-    // If claimant IS the leader, prevent self-approval! Route to senior pastor / final approver
-    const leaderUserId = isClaimantLeader ? "u-david-04" : (ministry?.leader_id || "u-sarah-02");
-    const leaderStepName = isClaimantLeader ? "Senior Pastor Endorsement (Self-Claim Alternate)" : "Ministry Leader Approval";
-
+    // Single Step: Finance Review
     steps.push({
       id: `ws-${Date.now()}-1`,
       workflow_id: workflowId,
       claim_id: claim.id,
       sequence: 1,
-      step_name: leaderStepName,
-      approver_role: "MINISTRY_LEADER",
-      assigned_user_id: leaderUserId,
+      step_name: "Finance Review",
+      approver_role: "FINANCE_OFFICER",
+      assigned_user_id: financeUser?.id || null,
       status: "IN_PROGRESS",
       started_at: now,
       created_at: now,
       updated_at: now,
     });
-
-    // Step 2: Finance Review
-    steps.push({
-      id: `ws-${Date.now()}-2`,
-      workflow_id: workflowId,
-      claim_id: claim.id,
-      sequence: 2,
-      step_name: "Finance Review & Verification",
-      approver_role: "FINANCE_OFFICER",
-      status: "PENDING",
-      created_at: now,
-      updated_at: now,
-    });
-
-    // Step 3: Final Approval (if > threshold)
-    if (claim.total_amount > threshold) {
-      steps.push({
-        id: `ws-${Date.now()}-3`,
-        workflow_id: workflowId,
-        claim_id: claim.id,
-        sequence: 3,
-        step_name: "Executive Final Approval (> RM500)",
-        approver_role: "FINAL_APPROVER",
-        assigned_user_id: "u-david-04",
-        status: "PENDING",
-        created_at: now,
-        updated_at: now,
-      });
-    }
 
     return steps;
   }
@@ -607,19 +581,24 @@ class DatabaseRepository {
   // --- Create or Save Draft Claim ---
   public saveClaimDraft(params: {
     id?: string;
-    claimant_id: string;
+    submitted_by_user_id?: string;
+    claimant_id?: string;
+    claimant_name: string;
+    claimant_email: string;
+    claimant_phone: string;
     ministry_id: string;
-    programme_event: string;
-    cost_centre_id: string;
     claim_date: string;
     purpose: string;
-    payment_method: any;
     internal_reference?: string;
     expenses: Array<Omit<ClaimExpense, "id" | "claim_id" | "created_at" | "updated_at">>;
     attachments?: Array<Omit<ClaimAttachment, "id" | "claim_id" | "created_at">>;
+    programme_event?: string;
+    cost_centre_id?: string;
+    payment_method?: any;
   }): Claim {
     const total_amount = calculateTotalAmount(params.expenses);
     const now = new Date().toISOString();
+    const submitterId = params.submitted_by_user_id || params.claimant_id || "u-sarah-02";
 
     if (params.id) {
       const idx = this.claims.findIndex(c => c.id === params.id);
@@ -630,18 +609,20 @@ class DatabaseRepository {
           id: (exp as any).id || `exp-${Date.now()}-${i}`,
           claim_id: existing.id,
           sort_order: i + 1,
-          created_at: now,
+          created_at: (exp as any).created_at || now,
           updated_at: now,
         }));
 
         this.claims[idx] = {
           ...existing,
+          submitted_by_user_id: submitterId,
+          claimant_id: params.claimant_id || existing.claimant_id || submitterId,
+          claimant_name: params.claimant_name,
+          claimant_email: params.claimant_email,
+          claimant_phone: params.claimant_phone,
           ministry_id: params.ministry_id,
-          programme_event: params.programme_event,
-          cost_centre_id: params.cost_centre_id,
           claim_date: params.claim_date,
           purpose: params.purpose,
-          payment_method: params.payment_method,
           internal_reference: params.internal_reference,
           total_amount,
           expenses: updatedExpenses,
@@ -649,7 +630,7 @@ class DatabaseRepository {
             ...attachment,
             id: (attachment as ClaimAttachment).id || `att-${Date.now()}-${index}`,
             claim_id: existing.id,
-            created_at: now,
+            created_at: (attachment as any).created_at || now,
           })),
           updated_at: now,
         };
@@ -678,13 +659,14 @@ class DatabaseRepository {
     const newClaim: Claim = {
       id: claimId,
       claim_number: null,
-      claimant_id: params.claimant_id,
+      submitted_by_user_id: submitterId,
+      claimant_id: params.claimant_id || submitterId,
+      claimant_name: params.claimant_name,
+      claimant_email: params.claimant_email,
+      claimant_phone: params.claimant_phone,
       ministry_id: params.ministry_id,
-      programme_event: params.programme_event,
-      cost_centre_id: params.cost_centre_id,
       claim_date: params.claim_date,
       purpose: params.purpose,
-      payment_method: params.payment_method,
       internal_reference: params.internal_reference,
       total_amount,
       currency: "MYR",
@@ -706,17 +688,21 @@ class DatabaseRepository {
   // --- Submit Claim for Approval ---
   public submitClaim(params: {
     id?: string;
-    claimant_id: string;
+    submitted_by_user_id?: string;
+    claimant_id?: string;
+    claimant_name: string;
+    claimant_email: string;
+    claimant_phone: string;
     ministry_id: string;
-    programme_event: string;
-    cost_centre_id: string;
     claim_date: string;
     purpose: string;
-    payment_method: any;
     internal_reference?: string;
     declaration_accepted: boolean;
     expenses: Array<Omit<ClaimExpense, "id" | "claim_id" | "created_at" | "updated_at">>;
     attachments?: Array<Omit<ClaimAttachment, "id" | "claim_id" | "created_at">>;
+    programme_event?: string;
+    cost_centre_id?: string;
+    payment_method?: any;
   }): Claim {
     if (!params.declaration_accepted) {
       throw new Error("Declaration must be accepted prior to submission");
@@ -725,12 +711,27 @@ class DatabaseRepository {
       throw new Error("At least one expense line is required");
     }
 
+    const formConfig = this.getSetting("claim_form_config");
+    if (formConfig?.require_receipt_for_all_expenses) {
+      const attachments = params.attachments || [];
+      params.expenses.forEach((exp, idx) => {
+        const expId = (exp as any).id;
+        const tempId = (exp as any).temp_id;
+        const hasAtt = attachments.some(a => (expId && a.expense_id === expId) || (tempId && (a as any).expense_id === tempId));
+        if (!hasAtt && (!attachments[idx] || attachments.length < params.expenses.length)) {
+          // throw validation error if any receipt lacks attachment
+          throw new Error(`Receipt #${idx + 1}: Please upload the supporting receipt`);
+        }
+      });
+    }
+
     const total_amount = calculateTotalAmount(params.expenses);
     if (total_amount <= 0) {
       throw new Error("Claim total must be greater than RM 0.00");
     }
 
     const now = new Date().toISOString();
+    const submitterId = params.submitted_by_user_id || params.claimant_id || "u-sarah-02";
     let claim: Claim;
 
     if (params.id) {
@@ -755,83 +756,93 @@ class DatabaseRepository {
       id: (exp as any).id || `exp-${Date.now()}-${i}`,
       claim_id: claim.id,
       sort_order: i + 1,
-      created_at: now,
+      created_at: (exp as any).created_at || now,
       updated_at: now,
     }));
 
-    const claimAttachments: ClaimAttachment[] = (params.attachments || []).map((att, i) => ({
-      ...att,
-      id: (att as any).id || `att-${Date.now()}-${i}`,
-      claim_id: claim.id,
-      created_at: now,
-    }));
+    // Re-map attachments to persisted expense IDs
+    const claimAttachments: ClaimAttachment[] = (params.attachments || []).map((att, i) => {
+      let expense_id = att.expense_id;
+      // Match by expense index if temp_id matched or if expense_id is not already an exp-*
+      if (!expense_id || !claimExpenses.some(e => e.id === expense_id)) {
+        if (claimExpenses[i]) {
+          expense_id = claimExpenses[i].id;
+        }
+      }
+      return {
+        ...att,
+        id: (att as any).id || `att-${Date.now()}-${i}`,
+        claim_id: claim.id,
+        expense_id: expense_id || null,
+        created_at: (att as any).created_at || now,
+      };
+    });
 
+    claim.submitted_by_user_id = submitterId;
+    claim.claimant_id = params.claimant_id || submitterId;
+    claim.claimant_name = params.claimant_name;
+    claim.claimant_email = params.claimant_email;
+    claim.claimant_phone = params.claimant_phone;
     claim.ministry_id = params.ministry_id;
-    claim.programme_event = params.programme_event;
-    claim.cost_centre_id = params.cost_centre_id;
     claim.claim_date = params.claim_date;
     claim.purpose = params.purpose;
-    claim.payment_method = params.payment_method;
     claim.internal_reference = params.internal_reference;
     claim.total_amount = total_amount;
     claim.declaration_accepted = true;
     claim.declaration_timestamp = now;
     claim.submitted_at = now;
-    claim.status = "PENDING_MINISTRY_APPROVAL";
+    claim.status = "PENDING_FINANCE_REVIEW";
     claim.expenses = claimExpenses;
     claim.attachments = claimAttachments;
     claim.current_step_sequence = 1;
 
-    // Instantiate workflow steps snapshot
+    // Instantiate workflow steps snapshot (Single Finance Review step)
     claim.workflow_steps = this.buildWorkflowSteps(claim);
 
     // Record submission action
+    const submitterProfile = this.getProfileById(submitterId);
     const submitAction: ApprovalAction = {
       id: `act-${Date.now()}`,
       claim_id: claim.id,
-      actor_id: params.claimant_id,
-      actor_role: "CLAIMANT",
+      actor_id: submitterId,
+      actor_role: submitterProfile?.roles?.[0] || "MINISTRY_LEADER",
       action: "SUBMIT",
-      comment: `Claim submitted for ${claim.programme_event} (Total: RM ${total_amount.toFixed(2)})`,
+      comment: `Claim submitted for ${claim.claimant_name} (Total: RM ${total_amount.toFixed(2)})`,
       previous_status: "DRAFT",
-      new_status: "PENDING_MINISTRY_APPROVAL",
+      new_status: "PENDING_FINANCE_REVIEW",
       created_at: now,
     };
     claim.approval_actions = [submitAction, ...(claim.approval_actions || [])];
 
-    // Dispatch notification to ministry leader
-    const firstStep = claim.workflow_steps[0];
-    if (firstStep && firstStep.assigned_user_id) {
-      this.createNotification({
-        user_id: firstStep.assigned_user_id,
-        claim_id: claim.id,
-        type: "CLAIM_SUBMITTED",
-        title: "New Claim Awaiting Approval",
-        message: `${this.getProfileById(params.claimant_id)?.full_name || "A claimant"} submitted ${claim.claim_number} (RM ${total_amount.toFixed(2)}) for approval.`,
-        link: `/approvals/${claim.id}`,
-      });
-    }
+    // Dispatch notification to Finance
+    this.notifyFinance({
+      claim_id: claim.id,
+      type: "CLAIM_SUBMITTED",
+      title: "New Claim Awaiting Finance Review",
+      message: `${submitterProfile?.full_name || "A ministry leader"} submitted ${claim.claim_number} (RM ${total_amount.toFixed(2)}) for ${claim.claimant_name}.`,
+      link: `/finance/claims/${claim.id}`,
+    });
 
     this.logAudit({
-      actor_id: params.claimant_id,
+      actor_id: submitterId,
       action: "CLAIM_SUBMITTED",
       entity_type: "CLAIM",
       entity_id: claim.id,
-      after_data: { claim_number: claim.claim_number, total_amount, status: claim.status },
+      after_data: { claim_number: claim.claim_number, claimant_name: claim.claimant_name, total_amount, status: claim.status },
     });
 
     this.persist();
     return this.enrichClaim(claim);
   }
 
-  // --- Approve Workflow Step ---
+  // --- Approve Workflow Step (Finance Review) ---
   public approveStep(claimId: string, actor: Profile, comment?: string): Claim {
     const claim = this.claims.find(c => c.id === claimId);
     if (!claim) throw new Error("Claim not found");
 
-    // Prevent Claimant from Approving their own claim
-    if (claim.claimant_id === actor.id) {
-      throw new Error("Security Violation: You cannot approve your own expense claim.");
+    // Prevent Submitter or Claimant from Approving their own submitted claim! (Cross-role self-review protection)
+    if (claim.submitted_by_user_id === actor.id || claim.claimant_id === actor.id) {
+      throw new Error("Security Violation: You cannot approve a claim that you submitted.");
     }
 
     const steps = claim.workflow_steps || [];
@@ -854,51 +865,11 @@ class DatabaseRepository {
     currentStep.completed_at = now;
     currentStep.completed_by = actor.id;
     currentStep.action_taken = "APPROVE";
-    currentStep.comments = comment || "Approved";
+    currentStep.comments = comment || "Approved by Finance";
 
-    // Determine next step or final approval
-    const nextStep = steps[currentStepIdx + 1];
-    let nextStatus: ClaimStatus;
-
-    if (nextStep) {
-      nextStep.status = "IN_PROGRESS";
-      nextStep.started_at = now;
-      claim.current_step_sequence = nextStep.sequence;
-
-      if (nextStep.approver_role === "FINANCE_OFFICER") {
-        nextStatus = "PENDING_FINANCE_REVIEW";
-      } else if (nextStep.approver_role === "FINAL_APPROVER") {
-        nextStatus = "PENDING_FINAL_APPROVAL";
-      } else {
-        nextStatus = "PENDING_MINISTRY_APPROVAL";
-      }
-
-      // Notify next approver
-      if (nextStep.assigned_user_id) {
-        this.createNotification({
-          user_id: nextStep.assigned_user_id,
-          claim_id: claim.id,
-          type: "APPROVAL_REQUIRED",
-          title: "Claim Awaiting Your Approval",
-          message: `Claim ${claim.claim_number} (RM ${claim.total_amount.toFixed(2)}) is now awaiting your review.`,
-          link: `/approvals/${claim.id}`,
-        });
-      }
-    } else {
-      // All workflow steps completed -> Ready for Payment
-      nextStatus = "APPROVED_FOR_PAYMENT";
-      claim.current_step_sequence = null;
-
-      // Notify Finance Team
-      this.notifyFinance({
-        claim_id: claim.id,
-        type: "CLAIM_APPROVED_FOR_PAYMENT",
-        title: "Claim Approved for Payment",
-        message: `${claim.claim_number} (RM ${claim.total_amount.toFixed(2)}) has completed all approvals and is ready for payment.`,
-        link: `/finance/claims/${claim.id}`,
-      });
-    }
-
+    // Finance Review completed -> Approved for Payment
+    const nextStatus: ClaimStatus = "APPROVED_FOR_PAYMENT";
+    claim.current_step_sequence = null;
     claim.status = nextStatus;
     claim.updated_at = now;
 
@@ -908,7 +879,7 @@ class DatabaseRepository {
       claim_id: claim.id,
       workflow_step_id: currentStep.id,
       actor_id: actor.id,
-      actor_role: actor.roles?.[0] || "APPROVER",
+      actor_role: actor.roles?.[0] || "FINANCE_OFFICER",
       action: "APPROVE",
       comment: comment || null,
       previous_status: prevStatus,
@@ -917,15 +888,18 @@ class DatabaseRepository {
     };
     claim.approval_actions = [approvalAction, ...(claim.approval_actions || [])];
 
-    // Notify claimant of step approval
-    this.createNotification({
-      user_id: claim.claimant_id,
-      claim_id: claim.id,
-      type: "CLAIM_STEP_APPROVED",
-      title: "Claim Progress Update",
-      message: `${actor.full_name} approved your claim ${claim.claim_number}. Current status: ${nextStatus.replace(/_/g, " ")}.`,
-      link: `/claims/${claim.id}`,
-    });
+    // Notify submitter of step approval
+    const submitterId = claim.submitted_by_user_id || claim.claimant_id;
+    if (submitterId) {
+      this.createNotification({
+        user_id: submitterId,
+        claim_id: claim.id,
+        type: "CLAIM_APPROVED_FOR_PAYMENT",
+        title: "Claim Approved for Payment",
+        message: `${actor.full_name} approved claim ${claim.claim_number} for ${claim.claimant_name}. Current status: Approved For Payment.`,
+        link: `/claims/${claim.id}`,
+      });
+    }
 
     this.logAudit({
       actor_id: actor.id,
@@ -972,7 +946,7 @@ class DatabaseRepository {
       claim_id: claim.id,
       workflow_step_id: currentStep?.id,
       actor_id: actor.id,
-      actor_role: actor.roles?.[0] || "APPROVER",
+      actor_role: actor.roles?.[0] || "FINANCE_OFFICER",
       action: "RETURN_FOR_CLARIFICATION",
       comment: reason,
       previous_status: prevStatus,
@@ -981,15 +955,18 @@ class DatabaseRepository {
     };
     claim.approval_actions = [action, ...(claim.approval_actions || [])];
 
-    // Notify claimant
-    this.createNotification({
-      user_id: claim.claimant_id,
-      claim_id: claim.id,
-      type: "CLAIM_RETURNED",
-      title: "Claim Requires Clarification",
-      message: `${actor.full_name} returned ${claim.claim_number}: "${reason}"`,
-      link: `/claims/${claim.id}/edit`,
-    });
+    // Notify submitter
+    const submitterId = claim.submitted_by_user_id || claim.claimant_id;
+    if (submitterId) {
+      this.createNotification({
+        user_id: submitterId,
+        claim_id: claim.id,
+        type: "CLAIM_RETURNED",
+        title: "Claim Requires Clarification",
+        message: `${actor.full_name} returned ${claim.claim_number}: "${reason}"`,
+        link: `/claims/${claim.id}/edit`,
+      });
+    }
 
     this.logAudit({
       actor_id: actor.id,
@@ -1036,7 +1013,7 @@ class DatabaseRepository {
       claim_id: claim.id,
       workflow_step_id: currentStep?.id,
       actor_id: actor.id,
-      actor_role: actor.roles?.[0] || "APPROVER",
+      actor_role: actor.roles?.[0] || "FINANCE_OFFICER",
       action: "REJECT",
       comment: reason,
       previous_status: prevStatus,
@@ -1045,15 +1022,18 @@ class DatabaseRepository {
     };
     claim.approval_actions = [action, ...(claim.approval_actions || [])];
 
-    // Notify claimant
-    this.createNotification({
-      user_id: claim.claimant_id,
-      claim_id: claim.id,
-      type: "CLAIM_REJECTED",
-      title: "Claim Rejected",
-      message: `Your claim ${claim.claim_number} was rejected by ${actor.full_name}: "${reason}"`,
-      link: `/claims/${claim.id}`,
-    });
+    // Notify submitter
+    const submitterId = claim.submitted_by_user_id || claim.claimant_id;
+    if (submitterId) {
+      this.createNotification({
+        user_id: submitterId,
+        claim_id: claim.id,
+        type: "CLAIM_REJECTED",
+        title: "Claim Rejected",
+        message: `Claim ${claim.claim_number} for ${claim.claimant_name} was rejected by ${actor.full_name}: "${reason}"`,
+        link: `/claims/${claim.id}`,
+      });
+    }
 
     this.logAudit({
       actor_id: actor.id,
@@ -1072,12 +1052,13 @@ class DatabaseRepository {
   public resubmitClaim(params: {
     claim_id: string;
     claimant: Profile;
+    submitted_by_user_id?: string;
+    claimant_name?: string;
+    claimant_email?: string;
+    claimant_phone?: string;
     ministry_id: string;
-    programme_event: string;
-    cost_centre_id: string;
     claim_date: string;
     purpose: string;
-    payment_method: any;
     internal_reference?: string;
     declaration_accepted: boolean;
     expenses: Array<Omit<ClaimExpense, "id" | "claim_id" | "created_at" | "updated_at">>;
@@ -1086,7 +1067,8 @@ class DatabaseRepository {
   }): Claim {
     const claim = this.claims.find(c => c.id === params.claim_id);
     if (!claim) throw new Error("Claim not found");
-    if (claim.claimant_id !== params.claimant.id) {
+    const submitterId = claim.submitted_by_user_id || claim.claimant_id;
+    if (submitterId !== params.claimant.id && claim.claimant_id !== params.claimant.id) {
       throw new Error("Unauthorized to resubmit this claim");
     }
 
@@ -1098,7 +1080,7 @@ class DatabaseRepository {
       id: (exp as any).id || `exp-${Date.now()}-${i}`,
       claim_id: claim.id,
       sort_order: i + 1,
-      created_at: now,
+      created_at: (exp as any).created_at || now,
       updated_at: now,
     }));
 
@@ -1106,51 +1088,47 @@ class DatabaseRepository {
       ...att,
       id: (att as any).id || `att-${Date.now()}-${i}`,
       claim_id: claim.id,
-      created_at: now,
+      created_at: (att as any).created_at || now,
     }));
 
+    claim.claimant_name = params.claimant_name || claim.claimant_name;
+    claim.claimant_email = params.claimant_email || claim.claimant_email;
+    claim.claimant_phone = params.claimant_phone || claim.claimant_phone;
     claim.ministry_id = params.ministry_id;
-    claim.programme_event = params.programme_event;
-    claim.cost_centre_id = params.cost_centre_id;
     claim.claim_date = params.claim_date;
     claim.purpose = params.purpose;
-    claim.payment_method = params.payment_method;
     claim.internal_reference = params.internal_reference;
     claim.total_amount = total_amount;
     claim.resubmitted_at = now;
-    claim.status = "PENDING_MINISTRY_APPROVAL";
+    claim.status = "PENDING_FINANCE_REVIEW";
     claim.expenses = updatedExpenses;
     claim.attachments = updatedAttachments;
     claim.current_step_sequence = 1;
 
-    // Reset workflow steps
+    // Reset workflow steps to single Finance Review step
     claim.workflow_steps = this.buildWorkflowSteps(claim);
 
     const action: ApprovalAction = {
       id: `act-${Date.now()}`,
       claim_id: claim.id,
       actor_id: params.claimant.id,
-      actor_role: "CLAIMANT",
+      actor_role: params.claimant.roles?.[0] || "MINISTRY_LEADER",
       action: "RESUBMIT",
       comment: params.response_comment || "Claim updated with requested clarifications and resubmitted.",
       previous_status: "RETURNED_FOR_CLARIFICATION",
-      new_status: "PENDING_MINISTRY_APPROVAL",
+      new_status: "PENDING_FINANCE_REVIEW",
       created_at: now,
     };
     claim.approval_actions = [action, ...(claim.approval_actions || [])];
 
-    // Notify leader
-    const firstStep = claim.workflow_steps[0];
-    if (firstStep?.assigned_user_id) {
-      this.createNotification({
-        user_id: firstStep.assigned_user_id,
-        claim_id: claim.id,
-        type: "CLAIM_RESUBMITTED",
-        title: "Claim Resubmitted for Approval",
-        message: `${params.claimant.full_name} has resubmitted ${claim.claim_number} with updated details.`,
-        link: `/approvals/${claim.id}`,
-      });
-    }
+    // Notify Finance
+    this.notifyFinance({
+      claim_id: claim.id,
+      type: "CLAIM_RESUBMITTED",
+      title: "Claim Resubmitted for Finance Review",
+      message: `${params.claimant.full_name} has resubmitted ${claim.claim_number} for ${claim.claimant_name} with updated details.`,
+      link: `/finance/claims/${claim.id}`,
+    });
 
     this.logAudit({
       actor_id: params.claimant.id,
@@ -1257,15 +1235,18 @@ class DatabaseRepository {
     };
     claim.approval_actions = [action, ...(claim.approval_actions || [])];
 
-    // Notify Claimant
-    this.createNotification({
-      user_id: claim.claimant_id,
-      claim_id: claim.id,
-      type: "PAYMENT_COMPLETED",
-      title: "Claim Payment Completed",
-      message: `Your claim ${claim.claim_number} (RM ${params.amount.toFixed(2)}) has been marked as Paid. Ref: ${params.payment_reference}`,
-      link: `/claims/${claim.id}`,
-    });
+    // Notify Submitter
+    const submitterId = claim.submitted_by_user_id || claim.claimant_id;
+    if (submitterId) {
+      this.createNotification({
+        user_id: submitterId,
+        claim_id: claim.id,
+        type: "PAYMENT_COMPLETED",
+        title: "Claim Payment Completed",
+        message: `Payment for claim ${claim.claim_number} (RM ${params.amount.toFixed(2)}) for ${claim.claimant_name} has been marked as Paid. Ref: ${params.payment_reference}`,
+        link: `/claims/${claim.id}`,
+      });
+    }
 
     this.logAudit({
       actor_id: params.processor.id,
@@ -1284,8 +1265,9 @@ class DatabaseRepository {
   public correctClaimMetadata(params: {
     claim_id: string;
     actor: Profile;
-    cost_centre_id: string;
-    programme_event: string;
+    cost_centre_id?: string;
+    programme_event?: string;
+    purpose?: string;
     internal_reference?: string;
     reason: string;
   }): Claim {
@@ -1294,13 +1276,13 @@ class DatabaseRepository {
 
     const beforeData = {
       cost_centre_id: claim.cost_centre_id,
-      programme_event: claim.programme_event,
+      purpose: claim.purpose,
       internal_reference: claim.internal_reference,
     };
 
-    claim.cost_centre_id = params.cost_centre_id;
-    claim.programme_event = params.programme_event;
-    claim.internal_reference = params.internal_reference;
+    if (params.cost_centre_id) claim.cost_centre_id = params.cost_centre_id;
+    if (params.purpose) claim.purpose = params.purpose;
+    if (params.internal_reference !== undefined) claim.internal_reference = params.internal_reference;
     claim.updated_at = new Date().toISOString();
 
     this.logAudit({
@@ -1311,7 +1293,7 @@ class DatabaseRepository {
       before_data: beforeData,
       after_data: {
         cost_centre_id: params.cost_centre_id,
-        programme_event: params.programme_event,
+        purpose: params.purpose,
         internal_reference: params.internal_reference,
         reason: params.reason,
       },
@@ -1342,7 +1324,8 @@ class DatabaseRepository {
 
     // If claimant commented, notify approvers; if approver commented, notify claimant
     if (visibility === "PUBLIC_WORKFLOW") {
-      if (author.id === claim.claimant_id) {
+      const isSubmitter = author.id === (claim.submitted_by_user_id || claim.claimant_id);
+      if (isSubmitter) {
         // notify current step approver
         const currentStep = claim.workflow_steps?.find(s => s.status === "IN_PROGRESS");
         if (currentStep?.assigned_user_id) {
@@ -1356,14 +1339,17 @@ class DatabaseRepository {
           });
         }
       } else {
-        this.createNotification({
-          user_id: claim.claimant_id,
-          claim_id: claim.id,
-          type: "NEW_COMMENT",
-          title: "New Comment on Your Claim",
-          message: `${author.full_name} commented on ${claim.claim_number}: "${content.slice(0, 80)}"`,
-          link: `/claims/${claim.id}`,
-        });
+        const targetUserId = claim.submitted_by_user_id || claim.claimant_id;
+        if (targetUserId) {
+          this.createNotification({
+            user_id: targetUserId,
+            claim_id: claim.id,
+            type: "NEW_COMMENT",
+            title: "New Comment on Your Claim",
+            message: `${author.full_name} commented on ${claim.claim_number}: "${content.slice(0, 80)}"`,
+            link: `/claims/${claim.id}`,
+          });
+        }
       }
     }
 
@@ -1491,6 +1477,162 @@ class DatabaseRepository {
       byMinistry: Object.values(ministryMap),
       byCategory: Object.values(categoryMap),
     };
+  }
+
+  // --- Signup Invitations Management ---
+  public getSignupInvitations(): SignupInvitation[] {
+    return this.signupInvitations.map(inv => ({
+      ...inv,
+      ministry: inv.ministry_id ? this.ministries.find(m => m.id === inv.ministry_id) : null,
+      creator: this.getProfileById(inv.created_by),
+    })).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }
+
+  public createSignupInvitation(params: {
+    role_code: RoleCode;
+    ministry_id?: string | null;
+    max_uses?: number;
+    expires_in_days?: number;
+    description?: string;
+    created_by: string;
+  }): { invitation: SignupInvitation; raw_token: string; signup_url: string } {
+    if (params.role_code === "MINISTRY_LEADER" && !params.ministry_id) {
+      throw new Error("A ministry assignment is required when creating an invitation for a Ministry Leader.");
+    }
+
+    const raw_token = generateSecureToken(32);
+    const token_hash = hashToken(raw_token);
+    const now = new Date();
+    const expiresDays = params.expires_in_days && params.expires_in_days > 0 ? params.expires_in_days : 7;
+    const expires_at = new Date(now.getTime() + expiresDays * 24 * 60 * 60 * 1000).toISOString();
+
+    const newInv: SignupInvitation = {
+      id: `inv-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      token_hash,
+      role_code: params.role_code,
+      ministry_id: params.role_code === "MINISTRY_LEADER" ? params.ministry_id : null,
+      created_by: params.created_by,
+      description: params.description || null,
+      expires_at,
+      max_uses: params.max_uses && params.max_uses > 0 ? params.max_uses : 1,
+      use_count: 0,
+      is_active: true,
+      created_at: now.toISOString(),
+      raw_token,
+      signup_url: `/signup?invite=${raw_token}`,
+    };
+
+    this.signupInvitations.unshift(newInv);
+    this.logAudit({
+      actor_id: params.created_by,
+      action: "CREATE_SIGNUP_INVITATION",
+      entity_type: "SIGNUP_INVITATION",
+      entity_id: newInv.id,
+      after_data: { role_code: params.role_code, ministry_id: params.ministry_id, max_uses: newInv.max_uses, expires_at },
+    });
+    this.persist();
+
+    return {
+      invitation: {
+        ...newInv,
+        ministry: newInv.ministry_id ? this.ministries.find(m => m.id === newInv.ministry_id) : null,
+        creator: this.getProfileById(newInv.created_by),
+      },
+      raw_token,
+      signup_url: newInv.signup_url!,
+    };
+  }
+
+  public validateSignupInvitation(token: string): { valid: boolean; reason?: string; invitation?: SignupInvitation } {
+    if (!token) {
+      return { valid: false, reason: "Invitation token is missing." };
+    }
+    const tokenHash = hashToken(token);
+    const inv = this.signupInvitations.find(i => i.token_hash === tokenHash || i.token_hash === token || (i as any).raw_token === token);
+    if (!inv || !inv.is_active) {
+      return { valid: false, reason: "Invitation link is invalid or has been revoked." };
+    }
+    if (new Date(inv.expires_at).getTime() < Date.now()) {
+      return { valid: false, reason: "Invitation link has expired." };
+    }
+    if (inv.use_count >= inv.max_uses) {
+      return { valid: false, reason: "Invitation link has already reached its maximum usage limit." };
+    }
+    return {
+      valid: true,
+      invitation: {
+        ...inv,
+        ministry: inv.ministry_id ? this.ministries.find(m => m.id === inv.ministry_id) : null,
+      },
+    };
+  }
+
+  public consumeSignupInvitation(token: string, userId: string): Profile {
+    const validation = this.validateSignupInvitation(token);
+    if (!validation.valid || !validation.invitation) {
+      throw new Error(validation.reason || "Invalid invitation token.");
+    }
+    const invIdx = this.signupInvitations.findIndex(i => i.id === validation.invitation!.id);
+    if (invIdx >= 0) {
+      this.signupInvitations[invIdx].use_count += 1;
+      this.signupInvitations[invIdx].last_used_at = new Date().toISOString();
+      if (this.signupInvitations[invIdx].use_count >= this.signupInvitations[invIdx].max_uses) {
+        // limit reached
+      }
+    }
+
+    const user = this.getProfileById(userId);
+    if (!user) throw new Error(`User ${userId} not found`);
+
+    const updated = this.updateProfile(userId, {
+      roles: [validation.invitation.role_code],
+      ministry_id: validation.invitation.ministry_id || null,
+      default_ministry_id: validation.invitation.ministry_id || null,
+    });
+
+    this.logAudit({
+      actor_id: userId,
+      action: "CONSUME_SIGNUP_INVITATION",
+      entity_type: "SIGNUP_INVITATION",
+      entity_id: validation.invitation.id,
+      after_data: { user_id: userId, role_code: validation.invitation.role_code },
+    });
+    this.persist();
+    return updated;
+  }
+
+  public revokeSignupInvitation(id: string, actorId?: string): boolean {
+    const idx = this.signupInvitations.findIndex(i => i.id === id);
+    if (idx === -1) return false;
+    this.signupInvitations[idx].is_active = false;
+    this.logAudit({
+      actor_id: actorId,
+      action: "REVOKE_SIGNUP_INVITATION",
+      entity_type: "SIGNUP_INVITATION",
+      entity_id: id,
+    });
+    this.persist();
+    return true;
+  }
+
+  // --- Onboarding Management ---
+  public completeOnboarding(userId: string, data: { full_name: string; phone?: string }): Profile {
+    if (!data.full_name || data.full_name.trim().length === 0) {
+      throw new Error("Full name is required to complete onboarding.");
+    }
+    const updated = this.updateProfile(userId, {
+      full_name: data.full_name.trim(),
+      phone: data.phone?.trim() || null,
+      onboarding_completed_at: new Date().toISOString(),
+    });
+    this.logAudit({
+      actor_id: userId,
+      action: "COMPLETE_ONBOARDING",
+      entity_type: "PROFILE",
+      entity_id: userId,
+      after_data: { full_name: data.full_name.trim(), phone: data.phone },
+    });
+    return updated;
   }
 }
 

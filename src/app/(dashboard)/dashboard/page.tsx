@@ -33,8 +33,8 @@ export default function DashboardPage() {
     setClaims(db.getClaims(user));
   }, [user]);
 
-  // Status counts for claimant
-  const myClaims = claims.filter(c => c.claimant_id === user?.id);
+  // Status counts for user (submitted by user or user is claimant)
+  const myClaims = claims.filter(c => c.submitted_by_user_id === user?.id || c.claimant_id === user?.id);
   const draftCount = myClaims.filter(c => c.status === "DRAFT").length;
   const pendingCount = myClaims.filter(c =>
     c.status.startsWith("PENDING_") || c.status === "SUBMITTED"
@@ -52,8 +52,11 @@ export default function DashboardPage() {
       const q = search.toLowerCase();
       return (
         (c.claim_number && c.claim_number.toLowerCase().includes(q)) ||
-        c.programme_event.toLowerCase().includes(q) ||
-        c.purpose.toLowerCase().includes(q)
+        (c.claimant_name && c.claimant_name.toLowerCase().includes(q)) ||
+        (c.claimant?.full_name && c.claimant.full_name.toLowerCase().includes(q)) ||
+        (c.submitted_by?.full_name && c.submitted_by.full_name.toLowerCase().includes(q)) ||
+        c.purpose.toLowerCase().includes(q) ||
+        (c.ministry?.name && c.ministry.name.toLowerCase().includes(q))
       );
     })
     .slice(0, 8);
@@ -214,9 +217,9 @@ export default function DashboardPage() {
                   <thead>
                     <tr className="bg-zinc-50/50 border-b border-zinc-100 dark:bg-zinc-900/50 dark:border-zinc-800 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
                       <th className="py-2.5 px-4">Claim #</th>
+                      <th className="py-2.5 px-4">Claimant</th>
                       <th className="py-2.5 px-4">Date</th>
-                      <th className="py-2.5 px-4">Ministry & Programme</th>
-                      <th className="py-2.5 px-4">Purpose</th>
+                      <th className="py-2.5 px-4">Ministry & Purpose</th>
                       <th className="py-2.5 px-4 text-right">Amount (RM)</th>
                       <th className="py-2.5 px-4 text-center">Status</th>
                       <th className="py-2.5 px-4 text-right">Action</th>
@@ -230,12 +233,14 @@ export default function DashboardPage() {
                             {c.claim_number || "DRAFT"}
                           </Link>
                         </td>
+                        <td className="py-3 px-4 font-medium text-zinc-800 dark:text-zinc-200">
+                          {c.claimant_name || c.claimant?.full_name || "-"}
+                        </td>
                         <td className="py-3 px-4 text-zinc-500 font-mono text-[11px]">{formatDate(c.claim_date)}</td>
-                        <td className="py-3 px-4">
-                          <span className="font-medium text-zinc-800 dark:text-zinc-200 block">{c.programme_event}</span>
+                        <td className="py-3 px-4 max-w-xs">
+                          <span className="font-medium text-zinc-800 dark:text-zinc-200 block truncate">{c.purpose}</span>
                           <span className="text-[10px] text-zinc-400">{c.ministry?.name}</span>
                         </td>
-                        <td className="py-3 px-4 text-zinc-500 max-w-xs truncate">{c.purpose}</td>
                         <td className="py-3 px-4 text-right font-mono font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">
                           {formatCurrency(c.total_amount)}
                         </td>

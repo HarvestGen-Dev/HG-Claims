@@ -4,22 +4,23 @@ import { formatCurrency, formatDate } from "./formatters";
 export function generateClaimsCsv(claims: Claim[]): string {
   const headers = [
     "Claim Number",
+    "Claim Date",
+    "Status",
+    "Submitted By",
     "Claimant Name",
     "Claimant Email",
+    "Claimant Phone",
     "Ministry",
-    "Programme / Event",
-    "Cost Centre",
-    "Submission Date",
-    "Expense Date",
+    "Receipt Date",
     "Expense Category",
+    "Cost Centre Code",
+    "Cost Centre Name",
+    "Vendor",
     "Description",
-    "Vendor / Merchant",
-    "Expense Amount (RM)",
-    "Claim Total (RM)",
-    "Payment Method",
-    "Claim Status",
+    "Amount",
+    "Receipt Attached",
     "Payment Date",
-    "Payment Reference",
+    "Payment Ref",
   ];
 
   const escapeCsv = (str: string | number | null | undefined): string => {
@@ -34,22 +35,27 @@ export function generateClaimsCsv(claims: Claim[]): string {
     const claimExpenses = claim.expenses && claim.expenses.length > 0 ? claim.expenses : [null];
 
     claimExpenses.forEach((exp) => {
+      const hasAttachment = exp
+        ? (claim.attachments?.some((a) => a.expense_id === exp.id) ?? false)
+        : ((claim.attachments?.length ?? 0) > 0);
+
       const row = [
         claim.claim_number || "DRAFT",
-        claim.claimant?.full_name || "",
-        claim.claimant?.email || "",
+        claim.claim_date ? formatDate(claim.claim_date, "yyyy-MM-dd") : (claim.submitted_at ? formatDate(claim.submitted_at, "yyyy-MM-dd") : ""),
+        claim.status,
+        claim.submitted_by?.full_name || claim.submitted_by?.email || "",
+        claim.claimant_name || claim.claimant?.full_name || "",
+        claim.claimant_email || claim.claimant?.email || "",
+        claim.claimant_phone || claim.claimant?.phone || "",
         claim.ministry?.name || "",
-        claim.programme_event,
-        claim.cost_centre?.name || claim.cost_centre?.code || "",
-        claim.submitted_at ? formatDate(claim.submitted_at, "yyyy-MM-dd") : "",
         exp ? formatDate(exp.expense_date, "yyyy-MM-dd") : "",
         exp?.expense_category?.name || "",
-        exp?.description || "",
+        exp?.cost_centre?.code || claim.cost_centre?.code || "",
+        exp?.cost_centre?.name || claim.cost_centre?.name || "",
         exp?.vendor || "",
-        exp ? Number(exp.amount).toFixed(2) : "",
-        Number(claim.total_amount).toFixed(2),
-        claim.payment_method,
-        claim.status,
+        exp?.description || "",
+        exp ? Number(exp.amount).toFixed(2) : Number(claim.total_amount).toFixed(2),
+        hasAttachment ? "Yes" : "No",
         claim.payment?.payment_date ? formatDate(claim.payment.payment_date, "yyyy-MM-dd") : "",
         claim.payment?.payment_reference || "",
       ];

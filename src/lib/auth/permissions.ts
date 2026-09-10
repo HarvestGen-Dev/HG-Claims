@@ -6,55 +6,76 @@ export function userHasRole(user: Profile | null | undefined, role: RoleCode): b
   return user.roles.includes(role);
 }
 
-export function canUserApproveClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
+export function canUserCreateClaim(user: Profile | null | undefined): boolean {
+  if (!user || user.status !== "ACTIVE" || !user.roles) return false;
+  return user.roles.includes("MINISTRY_LEADER") || user.roles.includes("SYSTEM_ADMIN");
+}
+
+export function isClaimSubmitter(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
   if (!user || !claim) return false;
+  return (claim.submitted_by_user_id || claim.claimant_id) === user.id;
+}
 
-  // Rule 1: Claimant can NEVER approve their own claim
-  if (claim.claimant_id === user.id) return false;
+export function canUserReviewClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
+  if (!user || !claim || user.status !== "ACTIVE" || !user.roles) return false;
+  // Rule 1: Submitter can NEVER review/approve/return/reject their own claim
+  if (isClaimSubmitter(user, claim)) return false;
 
-  // Rule 2: Must have an active in-progress step
-  const currentStep = claim.workflow_steps?.find(s => s.status === "IN_PROGRESS");
-  if (!currentStep) return false;
+  // Rule 2: Must be Finance Officer or System Admin
+  return user.roles.includes("FINANCE_OFFICER") || user.roles.includes("SYSTEM_ADMIN");
+}
 
-  // Rule 3: Admin can always override/approve if not own claim
-  if (user.roles?.includes("SYSTEM_ADMIN")) return true;
+export function canUserApproveClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
+  if (!canUserReviewClaim(user, claim)) return false;
+  if (!claim) return false;
+  return claim.status === "PENDING_FINANCE_REVIEW" || claim.status === "SUBMITTED" ||
+    (claim.workflow_steps?.some(s => s.status === "IN_PROGRESS") ?? false);
+}
 
-  // Rule 4: Match assigned user or role
-  if (currentStep.assigned_user_id) return currentStep.assigned_user_id === user.id;
+export function canUserReturnClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
+  return canUserApproveClaim(user, claim);
+}
 
-  if (currentStep.approver_role === "MINISTRY_LEADER") {
-    return !!(user.roles?.includes("MINISTRY_LEADER") || user.roles?.includes("SYSTEM_ADMIN"));
-  }
-
-  if (currentStep.approver_role === "FINANCE_OFFICER") {
-    return !!(user.roles?.includes("FINANCE_OFFICER") || user.roles?.includes("SYSTEM_ADMIN"));
-  }
-
-  if (currentStep.approver_role === "FINAL_APPROVER") {
-    return !!(user.roles?.includes("FINAL_APPROVER") || user.roles?.includes("SYSTEM_ADMIN"));
-  }
-
-  return false;
+export function canUserRejectClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
+  return canUserApproveClaim(user, claim);
 }
 
 export function canUserEditClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
-  if (!user || !claim) return false;
-  // Claimant can edit only if DRAFT or RETURNED_FOR_CLARIFICATION
-  if (claim.claimant_id === user.id && (claim.status === "DRAFT" || claim.status === "RETURNED_FOR_CLARIFICATION")) {
+  if (!user || !claim || user.status !== "ACTIVE") return false;
+  // Submitter can edit only if DRAFT or RETURNED_FOR_CLARIFICATION
+  if (isClaimSubmitter(user, claim) && (claim.status === "DRAFT" || claim.status === "RETURNED_FOR_CLARIFICATION")) {
     return true;
   }
   return false;
 }
 
 export function canUserRecordPayment(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
-  if (!user || !claim) return false;
+  if (!user || !claim || user.status !== "ACTIVE" || !user.roles) return false;
   if (claim.status !== "APPROVED_FOR_PAYMENT") return false;
-  if (claim.claimant_id === user.id) return false;
-  return userHasRole(user, "FINANCE_OFFICER") || userHasRole(user, "SYSTEM_ADMIN");
+  if (isClaimSubmitter(user, claim)) return false;
+  return user.roles.includes("FINANCE_OFFICER") || user.roles.includes("SYSTEM_ADMIN");
 }
 
 export function canUserVerifyClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
-  if (!user || !claim) return false;
-  if (claim.claimant_id === user.id || claim.status !== "PENDING_FINANCE_REVIEW") return false;
-  return userHasRole(user, "FINANCE_OFFICER") || userHasRole(user, "SYSTEM_ADMIN");
+  return canUserReviewClaim(user, claim);
 }
+
+export function canUserManageSystem(user: Profile | null | undefined): boolean {
+  if (!user || user.status !== "ACTIVE" || !user.roles) return false;
+  return user.roles.includes("SYSTEM_ADMIN");
+}
+
+export function canUserViewClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
+  if (!user || !claim || user.status !== "ACTIVE" || !user.roles) return false;
+  if (user.roles.includes("SYSTEM_ADMIN")) return true;
+  if (user.roles.includes("FINANCE_OFFICER")) return true;
+  if (isClaimSubmitter(user, claim)) return true;
+  if (user.roles.includes("MINISTRY_LEADER") && user.ministry_id && user.ministry_id === claim.ministry_id) return true;
+  return false;
+}
+
+export function isOnboardingCompleted(user: Profile | null | undefined): boolean {
+  if (!user) return false;
+  return !!user.onboarding_completed_at && typeof user.full_name === "string" && user.full_name.trim().length > 0;
+}
+

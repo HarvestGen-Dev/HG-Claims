@@ -17,8 +17,7 @@ import {
   FileText,
   Sliders,
   ShieldCheck,
-  HelpCircle,
-  CreditCard
+  HelpCircle
 } from "lucide-react";
 
 export default function SystemSettingsPage() {
@@ -44,12 +43,6 @@ export default function SystemSettingsPage() {
     form_guidance_banner: "Please ensure all receipts are itemized and clear before submitting for approval.",
     max_file_size_mb: 10,
     max_attachment_count: 15,
-    allowed_payment_methods: [
-      { code: "PERSONAL_REIMBURSEMENT", label: "Personal payment (Reimbursement to claimant)", enabled: true },
-      { code: "CHURCH_CARD", label: "Church Corporate Card", enabled: true },
-      { code: "DIRECT_VENDOR_PAYMENT", label: "Direct Church Payment to Vendor", enabled: true },
-      { code: "OTHER", label: "Other", enabled: true }
-    ]
   };
   const notifSetting = db.getSetting("notification_settings") || {
     email_enabled: true,
@@ -78,18 +71,11 @@ export default function SystemSettingsPage() {
   const [enableInternalRef, setEnableInternalRef] = useState(formConfigSetting.enable_internal_reference);
   const [maxFileSize, setMaxFileSize] = useState(formConfigSetting.max_file_size_mb || 10);
   const [maxFiles, setMaxFiles] = useState(formConfigSetting.max_attachment_count || 15);
-  const [paymentMethods, setPaymentMethods] = useState(formConfigSetting.allowed_payment_methods || []);
 
   const [notifEmail, setNotifEmail] = useState(notifSetting.email_enabled);
   const [notifInApp, setNotifInApp] = useState(notifSetting.in_app_enabled);
 
   const [saved, setSaved] = useState(false);
-
-  const togglePaymentMethod = (code: string) => {
-    setPaymentMethods(paymentMethods.map((pm: any) =>
-      pm.code === code ? { ...pm, enabled: !pm.enabled } : pm
-    ));
-  };
 
   const handleSaveAll = async () => {
     try {
@@ -120,7 +106,6 @@ export default function SystemSettingsPage() {
       form_guidance_banner: guidanceBanner,
       max_file_size_mb: Number(maxFileSize),
       max_attachment_count: Number(maxFiles),
-      allowed_payment_methods: paymentMethods,
     }, user?.id);
 
     // 4. Update Notifications
@@ -292,31 +277,6 @@ export default function SystemSettingsPage() {
                   value={maxFiles}
                   onChange={(e) => setMaxFiles(Number(maxFiles))}
                 />
-              </div>
-            </div>
-
-            {/* Allowed Payment Methods */}
-            <div className="space-y-2 pt-2 border-t border-slate-100">
-              <label className="font-bold text-slate-800 block">
-                Active Payment Methods Allowed in Claim Form:
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {paymentMethods.map((pm: any) => (
-                  <label
-                    key={pm.code}
-                    className={`flex items-center justify-between p-2.5 rounded-lg border cursor-pointer ${
-                      pm.enabled ? "bg-emerald-50 border-emerald-300 text-emerald-950 font-semibold" : "bg-slate-50 border-slate-200 text-slate-500"
-                    }`}
-                  >
-                    <span>{pm.label}</span>
-                    <input
-                      type="checkbox"
-                      checked={pm.enabled}
-                      onChange={() => togglePaymentMethod(pm.code)}
-                      className="rounded text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
-                    />
-                  </label>
-                ))}
               </div>
             </div>
           </CardContent>

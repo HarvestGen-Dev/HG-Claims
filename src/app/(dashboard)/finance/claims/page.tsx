@@ -50,8 +50,10 @@ function FinanceClaimsContent() {
       const q = search.toLowerCase();
       return (
         (c.claim_number && c.claim_number.toLowerCase().includes(q)) ||
-        c.claimant?.full_name.toLowerCase().includes(q) ||
-        c.programme_event.toLowerCase().includes(q) ||
+        (c.claimant_name && c.claimant_name.toLowerCase().includes(q)) ||
+        (c.claimant?.full_name && c.claimant.full_name.toLowerCase().includes(q)) ||
+        (c.submitted_by?.full_name && c.submitted_by.full_name.toLowerCase().includes(q)) ||
+        c.purpose.toLowerCase().includes(q) ||
         (c.payment?.payment_reference && c.payment.payment_reference.toLowerCase().includes(q))
       );
     }
@@ -150,7 +152,7 @@ function FinanceClaimsContent() {
             <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-zinc-400" />
             <input
               type="text"
-              placeholder="Search claimant, claim #..."
+              placeholder="Search claimant, submitter, purpose..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-8 w-full pl-8 pr-2.5 text-xs rounded-lg border border-zinc-200 bg-zinc-50/70 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-900"
@@ -172,8 +174,9 @@ function FinanceClaimsContent() {
                 <tr className="bg-zinc-50/50 border-b border-zinc-100 dark:bg-zinc-900/50 dark:border-zinc-800 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
                   <th className="py-2.5 px-4">Claim #</th>
                   <th className="py-2.5 px-4">Claimant</th>
+                  <th className="py-2.5 px-4">Submitter</th>
                   <th className="py-2.5 px-4">Ministry</th>
-                  <th className="py-2.5 px-4">Cost Centre</th>
+                  <th className="py-2.5 px-4">Purpose</th>
                   <th className="py-2.5 px-4 text-right">Amount (RM)</th>
                   <th className="py-2.5 px-4 text-center">Status</th>
                   <th className="py-2.5 px-4 text-center">Receipts</th>
@@ -189,10 +192,16 @@ function FinanceClaimsContent() {
                       </Link>
                     </td>
                     <td className="py-3 px-4 font-medium text-zinc-800 dark:text-zinc-200">
-                      {c.claimant?.full_name}
+                      <div>{c.claimant_name || c.claimant?.full_name || "-"}</div>
+                      {c.claimant_email && <div className="text-[10px] text-zinc-400">{c.claimant_email}</div>}
+                    </td>
+                    <td className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
+                      {c.submitted_by?.full_name || "-"}
                     </td>
                     <td className="py-3 px-4 text-zinc-600 dark:text-zinc-400">{c.ministry?.name}</td>
-                    <td className="py-3 px-4 font-mono text-[11px] text-zinc-500">{c.cost_centre?.code}</td>
+                    <td className="py-3 px-4 max-w-xs">
+                      <span className="font-medium text-zinc-800 dark:text-zinc-200 block truncate">{c.purpose}</span>
+                    </td>
                     <td className="py-3 px-4 text-right font-mono font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">
                       {formatCurrency(c.total_amount)}
                     </td>

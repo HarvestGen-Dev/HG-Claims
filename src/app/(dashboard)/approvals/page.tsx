@@ -27,14 +27,12 @@ export default function ApprovalsInboxPage() {
   }, [user]);
 
   const pendingApprovals = claims.filter(c => {
-    if (c.claimant_id === user?.id) return false;
+    if (c.submitted_by_user_id === user?.id || c.claimant_id === user?.id) return false;
     const currentStep = c.workflow_steps?.find(s => s.status === "IN_PROGRESS");
     if (!currentStep) return false;
 
     if (user?.roles?.includes("SYSTEM_ADMIN")) return true;
-    if (currentStep.assigned_user_id === user?.id) return true;
-    if (currentStep.approver_role === "MINISTRY_LEADER" && user?.roles?.includes("MINISTRY_LEADER")) return true;
-    if (currentStep.approver_role === "FINAL_APPROVER" && user?.roles?.includes("FINAL_APPROVER")) return true;
+    if (user?.roles?.includes("FINANCE_OFFICER") && currentStep.approver_role === "FINANCE_OFFICER") return true;
 
     return false;
   });
@@ -48,9 +46,11 @@ export default function ApprovalsInboxPage() {
     const q = search.toLowerCase();
     return (
       (c.claim_number && c.claim_number.toLowerCase().includes(q)) ||
-      c.claimant?.full_name.toLowerCase().includes(q) ||
-      c.programme_event.toLowerCase().includes(q) ||
-      c.ministry?.name.toLowerCase().includes(q)
+      (c.claimant_name && c.claimant_name.toLowerCase().includes(q)) ||
+      (c.claimant?.full_name && c.claimant.full_name.toLowerCase().includes(q)) ||
+      (c.submitted_by?.full_name && c.submitted_by.full_name.toLowerCase().includes(q)) ||
+      c.purpose.toLowerCase().includes(q) ||
+      (c.ministry?.name && c.ministry.name.toLowerCase().includes(q))
     );
   });
 
@@ -138,8 +138,9 @@ export default function ApprovalsInboxPage() {
                   <tr className="bg-zinc-50/50 border-b border-zinc-100 dark:bg-zinc-900/50 dark:border-zinc-800 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
                     <th className="py-2.5 px-4">Claim #</th>
                     <th className="py-2.5 px-4">Claimant</th>
+                    <th className="py-2.5 px-4">Submitter</th>
                     <th className="py-2.5 px-4">Ministry</th>
-                    <th className="py-2.5 px-4">Programme & Purpose</th>
+                    <th className="py-2.5 px-4">Purpose</th>
                     <th className="py-2.5 px-4">Submitted</th>
                     <th className="py-2.5 px-4 text-right">Amount (RM)</th>
                     <th className="py-2.5 px-4 text-center">Step</th>
@@ -157,13 +158,15 @@ export default function ApprovalsInboxPage() {
                           </Link>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="font-medium text-zinc-800 dark:text-zinc-200 block">{c.claimant?.full_name}</span>
-                          <span className="text-[10px] text-zinc-400">{c.claimant?.email}</span>
+                          <span className="font-medium text-zinc-800 dark:text-zinc-200 block">{c.claimant_name || c.claimant?.full_name}</span>
+                          <span className="text-[10px] text-zinc-400">{c.claimant_email || c.claimant?.email}</span>
+                        </td>
+                        <td className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
+                          {c.submitted_by?.full_name || "-"}
                         </td>
                         <td className="py-3 px-4 text-zinc-600 dark:text-zinc-400">{c.ministry?.name}</td>
                         <td className="py-3 px-4 max-w-xs">
-                          <span className="font-medium text-zinc-800 dark:text-zinc-200 block truncate">{c.programme_event}</span>
-                          <span className="text-[10px] text-zinc-400 truncate block">{c.purpose}</span>
+                          <span className="font-medium text-zinc-800 dark:text-zinc-200 block truncate">{c.purpose}</span>
                         </td>
                         <td className="py-3 px-4 text-zinc-500 font-mono text-[11px]">{formatDate(c.submitted_at)}</td>
                         <td className="py-3 px-4 text-right font-mono font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">

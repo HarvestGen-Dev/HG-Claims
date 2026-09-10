@@ -31,7 +31,7 @@ function ClaimsContent() {
 
   useEffect(() => {
     if (!user) return;
-    setClaims(db.getClaims(user).filter(claim => claim.claimant_id === user.id));
+    setClaims(db.getClaims(user).filter(claim => claim.submitted_by_user_id === user.id || claim.claimant_id === user.id));
   }, [user]);
 
   const filteredClaims = claims.filter((c) => {
@@ -44,10 +44,11 @@ function ClaimsContent() {
       const q = search.toLowerCase();
       return (
         (c.claim_number && c.claim_number.toLowerCase().includes(q)) ||
-        c.programme_event.toLowerCase().includes(q) ||
+        (c.claimant_name && c.claimant_name.toLowerCase().includes(q)) ||
+        (c.claimant?.full_name && c.claimant.full_name.toLowerCase().includes(q)) ||
+        (c.submitted_by?.full_name && c.submitted_by.full_name.toLowerCase().includes(q)) ||
         c.purpose.toLowerCase().includes(q) ||
-        c.ministry?.name.toLowerCase().includes(q) ||
-        c.claimant?.full_name.toLowerCase().includes(q)
+        (c.ministry?.name && c.ministry.name.toLowerCase().includes(q))
       );
     }
     return true;
@@ -75,7 +76,7 @@ function ClaimsContent() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-zinc-200/80 dark:border-zinc-800">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            My claims
+            My Claims
           </h1>
           <p className="text-xs text-zinc-500">
             {filteredClaims.length} claim{filteredClaims.length === 1 ? "" : "s"}
@@ -127,7 +128,7 @@ function ClaimsContent() {
           <input
             type="text"
             aria-label="Filter my claims"
-            placeholder="Search voucher, event, claimant..."
+            placeholder="Search voucher, claimant, purpose..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-7 w-full pl-8 pr-2.5 text-xs rounded-lg border border-zinc-200 bg-zinc-50/70 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-900"
@@ -151,9 +152,10 @@ function ClaimsContent() {
                 <tr className="bg-zinc-50/50 border-b border-zinc-100 dark:bg-zinc-900/50 dark:border-zinc-800 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
                   <th className="py-2.5 px-4">Claim #</th>
                   <th className="py-2.5 px-4">Claimant</th>
+                  <th className="py-2.5 px-4">Submitter</th>
                   <th className="py-2.5 px-4">Date</th>
-                  <th className="py-2.5 px-4">Ministry & Programme</th>
-                  <th className="py-2.5 px-4">Cost Centre</th>
+                  <th className="py-2.5 px-4">Ministry & Purpose</th>
+                  <th className="py-2.5 px-4 text-center">Receipts</th>
                   <th className="py-2.5 px-4 text-right">Amount (RM)</th>
                   <th className="py-2.5 px-4 text-center">Status</th>
                   <th className="py-2.5 px-4 text-right">Action</th>
@@ -168,15 +170,19 @@ function ClaimsContent() {
                       </Link>
                     </td>
                     <td className="py-3 px-4 font-medium text-zinc-800 dark:text-zinc-200">
-                      {c.claimant?.full_name}
+                      <div>{c.claimant_name || c.claimant?.full_name || "-"}</div>
+                      {c.claimant_email && <div className="text-[10px] text-zinc-400">{c.claimant_email}</div>}
+                    </td>
+                    <td className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
+                      {c.submitted_by?.full_name || "-"}
                     </td>
                     <td className="py-3 px-4 text-zinc-500 font-mono text-[11px]">{formatDate(c.claim_date)}</td>
-                    <td className="py-3 px-4">
-                      <span className="font-medium text-zinc-800 dark:text-zinc-200 block">{c.programme_event}</span>
+                    <td className="py-3 px-4 max-w-xs">
+                      <span className="font-medium text-zinc-800 dark:text-zinc-200 block truncate">{c.purpose}</span>
                       <span className="text-[10px] text-zinc-400">{c.ministry?.name}</span>
                     </td>
-                    <td className="py-3 px-4 text-zinc-500 font-mono text-[11px]">
-                      {c.cost_centre?.code}
+                    <td className="py-3 px-4 text-center text-zinc-600 dark:text-zinc-400 font-mono text-[11px]">
+                      {c.expenses?.length || 0} item{c.expenses?.length === 1 ? "" : "s"}
                     </td>
                     <td className="py-3 px-4 text-right font-mono font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">
                       {formatCurrency(c.total_amount)}

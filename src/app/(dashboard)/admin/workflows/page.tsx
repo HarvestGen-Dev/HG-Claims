@@ -294,9 +294,8 @@ export default function WorkflowConfigurationPage() {
                   onChange={(e) => setFormData({ ...formData, approver_role: e.target.value })}
                   className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs"
                 >
+                  <option value="FINANCE_OFFICER">Finance Officer (Standard Review)</option>
                   <option value="MINISTRY_LEADER">Ministry Leader</option>
-                  <option value="FINANCE_OFFICER">Finance Officer</option>
-                  <option value="FINAL_APPROVER">Final Approver (Senior Pastor)</option>
                   <option value="SPECIFIC_USER">Specific Designated User</option>
                 </select>
               </div>

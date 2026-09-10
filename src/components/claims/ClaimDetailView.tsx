@@ -14,9 +14,10 @@ import {
   Eye,
   FileText,
   ShieldCheck,
-  User,
+  Building2,
   Clock,
-  AlertCircle
+  AlertCircle,
+  UserCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -78,7 +79,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
       const updated = await db.returnForClarification(claim.id, user, reason);
       setClaim(updated);
       setShowReturnModal(false);
-      setActionSuccessMessage("Claim returned to claimant for clarification.");
+      setActionSuccessMessage("Claim returned to submitter for clarification.");
       setTimeout(() => setActionSuccessMessage(null), 4000);
     } catch (err: any) {
       alert(err.message || "Failed to return claim");
@@ -160,17 +161,22 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
 
   const handleAddComment = async (content: string, visibility: "PUBLIC_WORKFLOW" | "FINANCE_INTERNAL") => {
     try {
-    if (!user) return;
-    const updated = await db.addComment(claim.id, user, content, visibility);
-    setClaim(updated);
-
-    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
+      if (!user) return;
+      const updated = await db.addComment(claim.id, user, content, visibility);
+      setClaim(updated);
+    } catch (error) {
+      window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." }));
+    }
   };
 
-  const isClaimant = claim.claimant_id === user?.id;
+  const submitterId = claim.submitted_by_user_id || claim.claimant_id;
+  const isSubmitter = submitterId === user?.id;
   const isFinanceUser = hasRole("FINANCE_OFFICER") || hasRole("SYSTEM_ADMIN");
   const isApproverUser = canApprove(claim);
   const isEditable = canEdit(claim);
+
+  const claimantName = claim.claimant_name || claim.claimant?.full_name || "Unknown Claimant";
+  const submitterName = claim.submitted_by?.full_name || claim.claimant?.full_name || "Ministry Head";
 
   return (
     <div className="space-y-5 max-w-5xl mx-auto pb-12">
@@ -180,7 +186,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
           <div className="flex items-center gap-2.5 flex-wrap">
             <button
               onClick={() => router.back()}
-              className="p-1 rounded-md text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-850 transition-colors"
+              className="p-1 rounded-md text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
               title="Back"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -191,10 +197,12 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
             <ClaimStatusBadge status={claim.status} />
           </div>
           <p className="text-[11px] text-zinc-500 flex items-center gap-x-3 gap-y-0.5 flex-wrap">
-            <span>Claimant: <strong className="text-zinc-700 dark:text-zinc-300 font-medium">{claim.claimant?.full_name}</strong></span>
-            <span>•</span>
+            <span>Claimant: <strong className="text-zinc-700 dark:text-zinc-300 font-medium">{claimantName}</strong></span>
+            <span>&bull;</span>
+            <span>Submitted By: <strong className="text-zinc-700 dark:text-zinc-300 font-medium">{submitterName}</strong></span>
+            <span>&bull;</span>
             <span>Ministry: <strong className="text-zinc-700 dark:text-zinc-300 font-medium">{claim.ministry?.name}</strong></span>
-            <span>•</span>
+            <span>&bull;</span>
             <span>Date: <strong className="text-zinc-700 dark:text-zinc-300 font-medium font-mono">{formatDate(claim.submitted_at || claim.created_at)}</strong></span>
           </p>
         </div>
@@ -209,7 +217,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
             </Button>
           </Link>
 
-          {/* Claimant Edit / Resubmit */}
+          {/* Submitter Edit / Resubmit */}
           {isEditable && (
             <Link href={`/claims/${claim.id}/edit`}>
               <Button size="sm" className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-2xs font-medium">
@@ -315,7 +323,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
           <AlertTitle className="font-semibold text-xs text-rose-900">Clarification Requested by Approver</AlertTitle>
           <AlertDescription className="text-xs text-rose-800">
             <p className="mt-1">{claim.clarification_reason || "Approver requested additional information or receipts."}</p>
-            {isClaimant && (
+            {isSubmitter && (
               <div className="mt-2.5">
                 <Link href={`/claims/${claim.id}/edit`}>
                   <Button size="sm" className="h-7 text-xs bg-rose-700 hover:bg-rose-800 text-white">
@@ -379,37 +387,45 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
         <div className="space-y-4">
           {/* Metadata Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Claimant & Submitter Card */}
             <Card className="border-zinc-200/80 shadow-2xs">
               <CardContent className="p-3.5 space-y-2 text-xs">
-                <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">Ministry Context</span>
+                <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">
+                  Claimant & Submitter
+                </span>
                 <div>
-                  <p className="text-[10px] text-zinc-400">Ministry</p>
-                  <p className="font-medium text-zinc-900 dark:text-zinc-100">{claim.ministry?.name}</p>
+                  <p className="text-[10px] text-zinc-400">Claimant (Payee)</p>
+                  <p className="font-semibold text-zinc-900 dark:text-zinc-100">{claimantName}</p>
+                  <p className="text-[11px] text-zinc-500 font-mono">{claim.claimant_email || "-"}</p>
+                  <p className="text-[11px] text-zinc-500 font-mono">{claim.claimant_phone || "-"}</p>
                 </div>
-                <div>
-                  <p className="text-[10px] text-zinc-400">Programme / Event</p>
-                  <p className="font-medium text-zinc-900 dark:text-zinc-100">{claim.programme_event}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-zinc-400">Cost Centre</p>
-                  <p className="font-mono text-zinc-700 dark:text-zinc-300">{claim.cost_centre?.code} - {claim.cost_centre?.name}</p>
+                <div className="pt-1.5 border-t border-zinc-100 dark:border-zinc-800">
+                  <p className="text-[10px] text-zinc-400">Submitted By (Ministry Head)</p>
+                  <p className="font-medium text-zinc-800 dark:text-zinc-200">{submitterName}</p>
                 </div>
               </CardContent>
             </Card>
 
+            {/* Ministry Context Card */}
             <Card className="border-zinc-200/80 shadow-2xs">
               <CardContent className="p-3.5 space-y-2 text-xs">
-                <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">Payment & Bank</span>
+                <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">
+                  Ministry & Reference
+                </span>
                 <div>
-                  <p className="text-[10px] text-zinc-400">Method</p>
-                  <p className="font-medium text-zinc-900 dark:text-zinc-100">{claim.payment_method.replace(/_/g, " ")}</p>
+                  <p className="text-[10px] text-zinc-400">Ministry / Department</p>
+                  <p className="font-medium text-zinc-900 dark:text-zinc-100">{claim.ministry?.name}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-zinc-400">Payee Account</p>
-                  <p className="font-mono text-zinc-800 dark:text-zinc-200">
-                    {claim.claimant?.bank_name || "Maybank"} • {claim.claimant?.bank_account_number || "114012345678"}
-                  </p>
+                  <p className="text-[10px] text-zinc-400">Submission Date</p>
+                  <p className="font-mono text-zinc-800 dark:text-zinc-200">{formatDate(claim.claim_date)}</p>
                 </div>
+                {claim.internal_reference && (
+                  <div>
+                    <p className="text-[10px] text-zinc-400">Reference Code</p>
+                    <p className="font-mono text-zinc-800 dark:text-zinc-200">{claim.internal_reference}</p>
+                  </div>
+                )}
                 {claim.payment && (
                   <div className="pt-1.5 border-t border-zinc-100 dark:border-zinc-800">
                     <p className="text-emerald-700 text-[10px] font-semibold">Payment Settled</p>
@@ -421,14 +437,17 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
               </CardContent>
             </Card>
 
+            {/* Total Banner */}
             <Card className="bg-zinc-900 text-white flex flex-col justify-between border-zinc-800 shadow-2xs">
               <CardContent className="p-4">
-                <span className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold block">Total Claim Amount</span>
+                <span className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold block">
+                  Total Claim Amount
+                </span>
                 <p className="text-2xl font-bold font-mono text-emerald-400 mt-1.5 tabular-nums">
                   {formatCurrency(claim.total_amount)}
                 </p>
                 <p className="text-[10px] text-zinc-400 mt-1">
-                  {claim.expenses?.length || 0} line item{(claim.expenses?.length || 0) > 1 ? "s" : ""}
+                  {claim.expenses?.length || 0} receipt{(claim.expenses?.length || 0) > 1 ? "s" : ""}
                 </p>
               </CardContent>
             </Card>
@@ -448,11 +467,11 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
             </CardContent>
           </Card>
 
-          {/* Expense Breakdown Table */}
+          {/* Expense Breakdown Table with Per-Receipt Cost Centre */}
           <Card className="border-zinc-200/80 shadow-2xs overflow-hidden">
             <CardHeader className="py-2.5 px-4 border-b border-zinc-100 dark:border-zinc-800 flex flex-row items-center justify-between">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                Itemized Expenses Breakdown
+                Itemized Receipts & Cost Allocations
               </CardTitle>
               <span className="text-xs font-mono font-semibold text-zinc-900 dark:text-zinc-100">
                 Subtotal: {formatCurrency(claim.total_amount)}
@@ -465,36 +484,58 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                     <tr className="bg-zinc-50/50 border-b border-zinc-100 dark:bg-zinc-900/50 dark:border-zinc-800 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
                       <th className="py-2 px-4 w-8">#</th>
                       <th className="py-2 px-4 w-24">Date</th>
-                      <th className="py-2 px-4 w-36">Category</th>
+                      <th className="py-2 px-4 w-32">Category</th>
+                      <th className="py-2 px-4 w-36">Cost Centre</th>
                       <th className="py-2 px-4">Description</th>
-                      <th className="py-2 px-4 w-32">Merchant</th>
+                      <th className="py-2 px-4 w-28">Merchant</th>
+                      <th className="py-2 px-4 w-24 text-center">Receipt</th>
                       <th className="py-2 px-4 w-28 text-right">Amount (RM)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
-                    {(claim.expenses || []).map((exp, idx) => (
-                      <tr key={exp.id || idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/40">
-                        <td className="py-2.5 px-4 text-zinc-400 font-mono text-[11px]">{idx + 1}</td>
-                        <td className="py-2.5 px-4 text-zinc-500 font-mono text-[11px]">{formatDate(exp.expense_date)}</td>
-                        <td className="py-2.5 px-4 font-medium text-zinc-800 dark:text-zinc-200">
-                          {exp.expense_category?.name || "Other"}
-                        </td>
-                        <td className="py-2.5 px-4 text-zinc-900 dark:text-zinc-100">
-                          <span>{exp.description}</span>
-                          {exp.notes && (
-                            <span className="text-[10px] text-zinc-400 block">{exp.notes}</span>
-                          )}
-                        </td>
-                        <td className="py-2.5 px-4 text-zinc-500">{exp.vendor || "-"}</td>
-                        <td className="py-2.5 px-4 text-right font-mono font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">
-                          {Number(exp.amount).toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
+                    {(claim.expenses || []).map((exp, idx) => {
+                      const expAttachment = (claim.attachments || []).find(a => a.expense_id === exp.id);
+                      return (
+                        <tr key={exp.id || idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/40">
+                          <td className="py-2.5 px-4 text-zinc-400 font-mono text-[11px]">{idx + 1}</td>
+                          <td className="py-2.5 px-4 text-zinc-500 font-mono text-[11px]">{formatDate(exp.expense_date)}</td>
+                          <td className="py-2.5 px-4 font-medium text-zinc-800 dark:text-zinc-200">
+                            {exp.expense_category?.name || "Other"}
+                          </td>
+                          <td className="py-2.5 px-4 font-mono text-[11px] text-zinc-600 dark:text-zinc-400">
+                            {exp.cost_centre?.code || "-"}
+                          </td>
+                          <td className="py-2.5 px-4 text-zinc-900 dark:text-zinc-100">
+                            <span>{exp.description}</span>
+                            {exp.notes && (
+                              <span className="text-[10px] text-zinc-400 block">{exp.notes}</span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-4 text-zinc-500">{exp.vendor || "-"}</td>
+                          <td className="py-2.5 px-4 text-center">
+                            {expAttachment ? (
+                              <button
+                                type="button"
+                                onClick={() => setPreviewAttachment(expAttachment)}
+                                className="inline-flex items-center gap-1 text-[11px] text-emerald-700 hover:text-emerald-800 hover:underline dark:text-emerald-400 font-medium"
+                              >
+                                <Eye className="w-3 h-3" />
+                                <span>View</span>
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-zinc-400">-</span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-4 text-right font-mono font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                            {Number(exp.amount).toFixed(2)}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                   <tfoot>
                     <tr className="border-t border-zinc-200 dark:border-zinc-800 font-semibold bg-zinc-50/50 dark:bg-zinc-900/50">
-                      <td colSpan={5} className="py-2.5 px-4 text-right text-[10px] uppercase tracking-wider text-zinc-500">
+                      <td colSpan={7} className="py-2.5 px-4 text-right text-[10px] uppercase tracking-wider text-zinc-500">
                         Total Amount:
                       </td>
                       <td className="py-2.5 px-4 text-right font-mono text-xs text-zinc-900 dark:text-zinc-100">

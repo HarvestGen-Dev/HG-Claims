@@ -7,12 +7,8 @@ import {
   ChevronDown,
   LogOut,
   User,
-  CreditCard,
   FileText,
   Bell,
-  Check,
-  ShieldCheck,
-  ArrowRightLeft
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -25,9 +21,8 @@ interface TopHeaderProps {
 }
 
 export function TopHeader({ onToggleMobileMenu }: TopHeaderProps) {
-  const { user, logout, hasRole } = useAuth();
+  const { user, logout } = useAuth();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [showAdminSwitcher, setShowAdminSwitcher] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -49,7 +44,6 @@ export function TopHeader({ onToggleMobileMenu }: TopHeaderProps) {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false);
-        setShowAdminSwitcher(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -57,14 +51,10 @@ export function TopHeader({ onToggleMobileMenu }: TopHeaderProps) {
   }, []);
 
   const roleLabelMap: Record<string, string> = {
-    CLAIMANT: "Claimant",
     MINISTRY_LEADER: "Ministry Leader",
     FINANCE_OFFICER: "Finance Officer",
-    FINAL_APPROVER: "Final Approver",
     SYSTEM_ADMIN: "System Administrator",
   };
-
-  const isAdmin = hasRole("SYSTEM_ADMIN");
 
   return (
     <header className="sticky top-0 z-40 flex shrink-0 h-14 w-full items-center justify-between border-b border-zinc-200/80 bg-white/90 px-4 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/90 sm:px-6">
@@ -145,21 +135,12 @@ export function TopHeader({ onToggleMobileMenu }: TopHeaderProps) {
               {/* Navigation Links */}
               <div className="py-1 px-1 space-y-0.5">
                 <Link
-                  href="/profile"
-                  onClick={() => setShowProfileMenu(false)}
-                  className="flex items-center gap-2.5 px-3 py-1.5 text-xs text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 rounded-lg dark:text-zinc-300 dark:hover:bg-zinc-800 transition-colors"
-                >
-                  <CreditCard className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>Profile & Bank Details</span>
-                </Link>
-
-                <Link
                   href="/claims"
                   onClick={() => setShowProfileMenu(false)}
                   className="flex items-center gap-2.5 px-3 py-1.5 text-xs text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 rounded-lg dark:text-zinc-300 dark:hover:bg-zinc-800 transition-colors"
                 >
                   <FileText className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>My Expense Claims</span>
+                  <span>Claims</span>
                 </Link>
 
                 <Link

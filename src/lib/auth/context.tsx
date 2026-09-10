@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { Profile, RoleCode, Claim } from "@/lib/types/database";
 import { db } from "@/lib/data/repository";
 import { createClient } from "@/lib/supabase/client";
-import { userHasRole, canUserApproveClaim, canUserEditClaim, canUserRecordPayment, canUserVerifyClaim } from "./permissions";
+import { userHasRole, canUserCreateClaim, canUserApproveClaim, canUserEditClaim, canUserRecordPayment, canUserVerifyClaim, canUserReviewClaim, isOnboardingCompleted } from "./permissions";
 
 interface AuthContextType {
   user: Profile | null;
@@ -17,7 +17,9 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
   setActiveRole: (role: RoleCode) => void;
   hasRole: (role: RoleCode) => boolean;
+  canCreateClaim: () => boolean;
   canApprove: (claim: Claim) => boolean;
+  canReview: (claim: Claim) => boolean;
   canEdit: (claim: Claim) => boolean;
   canPay: (claim: Claim) => boolean;
   canVerify: (claim: Claim) => boolean;
@@ -26,14 +28,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<Profile | null>(null);
-  const [activeRole, setActiveRole] = useState<RoleCode>("CLAIMANT");
+  const [activeRole, setActiveRole] = useState<RoleCode>("MINISTRY_LEADER");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const pathname = usePathname();
   const refreshUser = useCallback(async () => {
     const profile = await db.refresh();
     setUser(profile);
-    setActiveRole(profile.roles?.[0] || "CLAIMANT");
+    const primaryRole = (profile?.roles?.[0] as RoleCode) || "MINISTRY_LEADER";
+    setActiveRole(primaryRole);
     setError("");
   }, []);
   useEffect(() => {
@@ -55,13 +58,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true; unsubscribe(); };
   }, [refreshUser]);
   useEffect(() => {
-    if (!user?.id || ["/","/login","/forgot-password","/reset-password"].includes(pathname)) return;
+    if (!user?.id || ["/","/login","/signup","/forgot-password","/reset-password"].includes(pathname)) return;
     let active = true;
     setIsLoading(true);
     refreshUser().catch(cause => { if (active) setError(cause instanceof Error ? cause.message : "Unable to refresh the workspace."); })
       .finally(() => { if (active) setIsLoading(false); });
     return () => { active = false; };
   }, [pathname, user?.id, refreshUser]);
+
+  // Onboarding route enforcement
+  useEffect(() => {
+    if (isLoading || !user) return;
+    const isPublic = ["/", "/login", "/signup", "/forgot-password", "/reset-password"].includes(pathname);
+    const onboarded = isOnboardingCompleted(user);
+
+    if (!onboarded && pathname !== "/onboarding" && !isPublic) {
+      window.location.assign("/onboarding");
+    } else if (onboarded && pathname === "/onboarding") {
+      window.location.assign("/dashboard");
+    }
+  }, [user, pathname, isLoading]);
+
   const login = async (email: string, password: string) => {
     const client = createClient();
     const { error: signInError } = await client.auth.signInWithPassword({ email, password });
@@ -75,10 +92,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     db.clear(); setUser(null);
     window.location.assign("/login");
   };
-  const publicPage = ["/","/login","/forgot-password","/reset-password"].includes(pathname);
+  const publicPage = ["/","/login","/signup","/forgot-password","/reset-password"].includes(pathname);
   return <AuthContext.Provider value={{
     user, activeRole, isAuthenticated: !!user, isLoading, error, login, logout, refreshUser, setActiveRole,
-    hasRole: role => userHasRole(user, role), canApprove: claim => canUserApproveClaim(user, claim),
+    hasRole: role => userHasRole(user, role), canCreateClaim: () => canUserCreateClaim(user), canApprove: claim => canUserApproveClaim(user, claim),
+    canReview: claim => canUserReviewClaim(user, claim),
     canEdit: claim => canUserEditClaim(user, claim), canPay: claim => canUserRecordPayment(user, claim),
     canVerify: claim => canUserVerifyClaim(user, claim),
   }}>

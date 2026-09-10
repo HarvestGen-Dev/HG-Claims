@@ -18,12 +18,11 @@ import {
   GitBranch,
   History,
   Bell,
-  UserCircle,
   Building2,
-  ShieldCheck,
-  CreditCard
+  ShieldCheck
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
+import { canUserCreateClaim } from "@/lib/auth/permissions";
 import { db } from "@/lib/data/repository";
 import { cn } from "@/lib/utils/cn";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -34,7 +33,7 @@ interface SidebarProps {
 
 export function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname();
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, canCreateClaim } = useAuth();
   const [approvalsCount, setApprovalsCount] = useState(0);
   const [financeCount, setFinanceCount] = useState(0);
 
@@ -44,12 +43,11 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       const all = db.getClaims(user);
 
       const pendingApprovals = all.filter(c => {
-        if (c.claimant_id === user.id) return false;
+        if (c.claimant_id === user.id || c.submitted_by_user_id === user.id) return false;
         const currentStep = c.workflow_steps?.find(s => s.status === "IN_PROGRESS");
         if (!currentStep) return false;
-        if (currentStep.assigned_user_id === user.id) return true;
-        if (currentStep.approver_role === "MINISTRY_LEADER" && user.roles?.includes("MINISTRY_LEADER")) return true;
-        if (currentStep.approver_role === "FINAL_APPROVER" && user.roles?.includes("FINAL_APPROVER")) return true;
+        if (user.roles?.includes("SYSTEM_ADMIN")) return true;
+        if (currentStep.approver_role === "FINANCE_OFFICER" && user.roles?.includes("FINANCE_OFFICER")) return true;
         return false;
       }).length;
       setApprovalsCount(pendingApprovals);
@@ -65,9 +63,10 @@ export function Sidebar({ onNavigate }: SidebarProps) {
     return () => clearInterval(interval);
   }, [user]);
 
-  const isApprover = hasRole("MINISTRY_LEADER") || hasRole("FINAL_APPROVER") || hasRole("SYSTEM_ADMIN");
   const isFinance = hasRole("FINANCE_OFFICER") || hasRole("SYSTEM_ADMIN");
+  const isApprover = isFinance;
   const isAdmin = hasRole("SYSTEM_ADMIN");
+  const canCreate = canCreateClaim() || canUserCreateClaim(user);
 
   const navItem = (href: string, label: string, icon: React.ReactNode, badge?: number, exact = false) => {
     const isActive = exact ? pathname === href : pathname.startsWith(href);
@@ -116,17 +115,19 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         <p className="mt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">Expense Portal</p>
       </div>
 
-      {/* Primary Action */}
-      <div className="px-1 mb-3">
-        <Link
-          href="/claims/new"
-          onClick={onNavigate}
-          className="flex items-center justify-center gap-1.5 w-full py-1.5 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-2xs transition-colors"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>New Claim</span>
-        </Link>
-      </div>
+      {/* Primary Action - Only for Ministry Leaders and Admins */}
+      {canCreate && (
+        <div className="px-1 mb-3">
+          <Link
+            href="/claims/new"
+            onClick={onNavigate}
+            className="flex items-center justify-center gap-1.5 w-full py-1.5 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-2xs transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>New Claim</span>
+          </Link>
+        </div>
+      )}
 
       {/* Navigation Groups */}
       <div className="flex-1 space-y-4 overflow-y-auto pr-0.5">
@@ -136,7 +137,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             Workspace
           </div>
           {navItem("/dashboard", "Dashboard", <LayoutDashboard className="w-4 h-4" />, undefined, true)}
-          {navItem("/claims", "My Claims", <FileText className="w-4 h-4" />, undefined, true)}
+          {navItem("/claims", "Claims", <FileText className="w-4 h-4" />, undefined, true)}
         </div>
 
         {/* Approver Inbox */}
@@ -183,7 +184,6 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
             Account
           </div>
-          {navItem("/profile", "Profile & Bank Details", <CreditCard className="w-4 h-4" />)}
           {navItem("/notifications", "Notifications", <Bell className="w-4 h-4" />)}
         </div>
       </div>

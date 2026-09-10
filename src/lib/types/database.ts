@@ -1,24 +1,27 @@
 export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
 
 export type RoleCode =
-  | 'CLAIMANT'
   | 'MINISTRY_LEADER'
   | 'FINANCE_OFFICER'
-  | 'FINAL_APPROVER'
   | 'SYSTEM_ADMIN';
+
+export type LegacyRoleCode =
+  | RoleCode
+  | 'CLAIMANT'
+  | 'FINAL_APPROVER';
 
 export type ClaimStatus =
   | 'DRAFT'
-  | 'SUBMITTED'
-  | 'PENDING_MINISTRY_APPROVAL'
   | 'PENDING_FINANCE_REVIEW'
-  | 'PENDING_FINAL_APPROVAL'
   | 'RETURNED_FOR_CLARIFICATION'
   | 'REJECTED'
-  | 'APPROVED'
   | 'APPROVED_FOR_PAYMENT'
   | 'PAID'
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'SUBMITTED'
+  | 'PENDING_MINISTRY_APPROVAL'
+  | 'PENDING_FINAL_APPROVAL'
+  | 'APPROVED';
 
 export type WorkflowStepStatus =
   | 'PENDING'
@@ -50,19 +53,42 @@ export type CommentVisibility =
   | 'FINANCE_INTERNAL'
   | 'ADMIN_ONLY';
 
+export interface SignupInvitation {
+  id: string;
+  token_hash: string;
+  role_code: RoleCode;
+  ministry_id?: string | null;
+  ministry?: Ministry | null;
+  created_by: string;
+  creator?: Profile | null;
+  description?: string | null;
+  expires_at: string;
+  max_uses: number;
+  use_count: number;
+  is_active: boolean;
+  created_at: string;
+  last_used_at?: string | null;
+  raw_token?: string;
+  signup_url?: string;
+}
+
 export interface Profile {
   id: string;
   email: string;
   full_name: string;
   phone?: string | null;
   ministry_id?: string | null;
+  default_ministry_id?: string | null;
   status: UserStatus;
+  onboarding_completed_at?: string | null;
+  /** @deprecated Removed from profile requirements */
   bank_name?: string | null;
+  /** @deprecated Removed from profile requirements */
   bank_account_number?: string | null;
   avatar_url?: string | null;
   created_at: string;
   updated_at: string;
-  roles?: RoleCode[];
+  roles?: (RoleCode | LegacyRoleCode)[];
 }
 
 export interface Role {
@@ -123,7 +149,10 @@ export interface ClaimExpense {
   expense_category?: ExpenseCategory | null;
   vendor?: string | null;
   description: string;
+  cost_centre_id: string;
+  cost_centre?: CostCentre | null;
   amount: number;
+  /** @deprecated Removed from new expense forms */
   notes?: string | null;
   sort_order: number;
   created_at: string;
@@ -233,16 +262,27 @@ export interface Claim {
   version?: number;
   id: string;
   claim_number?: string | null;
-  claimant_id: string;
+  submitted_by_user_id: string;
+  submitted_by?: Profile | null;
+  claimant_name: string;
+  claimant_email?: string | null;
+  claimant_phone?: string | null;
+  /** @deprecated Historical field - use submitted_by_user_id and claimant_name */
+  claimant_id?: string | null;
+  /** @deprecated Historical field - use claimant_name snapshot */
   claimant?: Profile | null;
   ministry_id: string;
   ministry?: Ministry | null;
-  programme_event: string;
-  cost_centre_id: string;
+  /** @deprecated Removed from claim requirements */
+  programme_event?: string | null;
+  /** @deprecated Moved to receipt level (claim_expenses.cost_centre_id) */
+  cost_centre_id?: string | null;
+  /** @deprecated Moved to receipt level */
   cost_centre?: CostCentre | null;
   claim_date: string;
   purpose: string;
-  payment_method: PaymentMethodType;
+  /** @deprecated Removed from submission */
+  payment_method?: PaymentMethodType | null;
   internal_reference?: string | null;
   total_amount: number;
   currency: string;

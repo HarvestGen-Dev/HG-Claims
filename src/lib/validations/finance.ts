@@ -18,8 +18,7 @@ export const recordPaymentSchema = z.object({
 
 export const adminCorrectionSchema = z.object({
   claim_id: z.string().min(1, "Claim ID is required"),
-  cost_centre_id: z.string().min(1, "Cost centre is required"),
-  programme_event: z.string().min(2, "Programme is required"),
+  cost_centre_id: z.string().optional().nullable(),
   internal_reference: z.string().optional().nullable(),
   reason: z.string().min(5, "Reason for administrative correction is required for audit trail"),
 });

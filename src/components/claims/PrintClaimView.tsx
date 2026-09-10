@@ -15,6 +15,9 @@ interface PrintClaimViewProps {
 export function PrintClaimView({ claim }: PrintClaimViewProps) {
   const router = useRouter();
 
+  const claimantName = claim.claimant_name || claim.claimant?.full_name || "Unknown Claimant";
+  const submitterName = claim.submitted_by?.full_name || claim.claimant?.full_name || "Ministry Head";
+
   return (
     <div className="bg-white min-h-screen text-slate-900 p-4 sm:p-8 font-sans">
       {/* Print Control Bar (Hidden on print) */}
@@ -49,16 +52,18 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
         {/* Header Metadata Grid */}
         <div className="grid grid-cols-2 gap-4 text-xs border border-slate-300 rounded p-4 mb-6 bg-slate-50/50">
           <div>
-            <p className="mb-1"><span className="text-slate-500 inline-block w-28">Claimant Name:</span> <strong>{claim.claimant?.full_name}</strong></p>
-            <p className="mb-1"><span className="text-slate-500 inline-block w-28">Email:</span> {claim.claimant?.email}</p>
-            <p className="mb-1"><span className="text-slate-500 inline-block w-28">Phone:</span> {claim.claimant?.phone || "-"}</p>
-            <p><span className="text-slate-500 inline-block w-28">Bank Account:</span> <strong>{claim.claimant?.bank_name} ({claim.claimant?.bank_account_number})</strong></p>
+            <p className="mb-1"><span className="text-slate-500 inline-block w-28">Claimant Name:</span> <strong>{claimantName}</strong></p>
+            <p className="mb-1"><span className="text-slate-500 inline-block w-28">Email:</span> {claim.claimant_email || claim.claimant?.email || "-"}</p>
+            <p className="mb-1"><span className="text-slate-500 inline-block w-28">Phone:</span> {claim.claimant_phone || claim.claimant?.phone || "-"}</p>
+            <p><span className="text-slate-500 inline-block w-28">Submitted By:</span> <strong>{submitterName}</strong></p>
           </div>
           <div>
-            <p className="mb-1"><span className="text-slate-500 inline-block w-28">Ministry / Dept:</span> <strong>{claim.ministry?.name}</strong></p>
-            <p className="mb-1"><span className="text-slate-500 inline-block w-28">Programme / Event:</span> <strong>{claim.programme_event}</strong></p>
-            <p className="mb-1"><span className="text-slate-500 inline-block w-28">Cost Centre:</span> {claim.cost_centre?.code} ({claim.cost_centre?.name})</p>
-            <p><span className="text-slate-500 inline-block w-28">Claim Date:</span> {formatDate(claim.claim_date)}</p>
+            <p className="mb-1"><span className="text-slate-500 inline-block w-28">Ministry / Dept:</span> <strong>{claim.ministry?.name || "-"}</strong></p>
+            <p className="mb-1"><span className="text-slate-500 inline-block w-28">Claim Date:</span> {formatDate(claim.claim_date)}</p>
+            {claim.internal_reference && (
+              <p className="mb-1"><span className="text-slate-500 inline-block w-28">Reference Code:</span> <span className="font-mono">{claim.internal_reference}</span></p>
+            )}
+            <p><span className="text-slate-500 inline-block w-28">Receipt Count:</span> {claim.expenses?.length || 0} receipt{(claim.expenses?.length || 0) > 1 ? "s" : ""}</p>
           </div>
         </div>
 
@@ -72,13 +77,14 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
 
         {/* Itemized Expenses Table */}
         <div className="mb-6">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Itemized Expense Breakdown</h3>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Itemized Receipts & Cost Allocations</h3>
           <table className="w-full text-left text-xs border-collapse border border-slate-300">
             <thead>
               <tr className="bg-slate-100 border-b border-slate-300 font-bold">
                 <th className="p-2 border-r border-slate-300 w-8 text-center">#</th>
                 <th className="p-2 border-r border-slate-300 w-24">Date</th>
-                <th className="p-2 border-r border-slate-300 w-36">Category</th>
+                <th className="p-2 border-r border-slate-300 w-32">Category</th>
+                <th className="p-2 border-r border-slate-300 w-36">Cost Centre</th>
                 <th className="p-2 border-r border-slate-300">Description & Vendor</th>
                 <th className="p-2 w-28 text-right">Amount (RM)</th>
               </tr>
@@ -89,6 +95,9 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
                   <td className="p-2 border-r border-slate-300 text-center text-slate-500">{i + 1}</td>
                   <td className="p-2 border-r border-slate-300">{formatDate(exp.expense_date)}</td>
                   <td className="p-2 border-r border-slate-300 font-medium">{exp.expense_category?.name}</td>
+                  <td className="p-2 border-r border-slate-300 font-mono text-[11px] text-slate-600">
+                    {exp.cost_centre?.code || "-"}
+                  </td>
                   <td className="p-2 border-r border-slate-300">
                     <span className="font-semibold text-slate-900">{exp.description}</span>
                     {exp.vendor && <span className="text-slate-500 block text-[11px]">Merchant: {exp.vendor}</span>}
@@ -99,7 +108,7 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
             </tbody>
             <tfoot>
               <tr className="bg-slate-100 font-black text-xs border-t-2 border-slate-400">
-                <td colSpan={4} className="p-2 text-right uppercase tracking-wider">TOTAL CLAIM AMOUNT:</td>
+                <td colSpan={5} className="p-2 text-right uppercase tracking-wider">TOTAL CLAIM AMOUNT:</td>
                 <td className="p-2 text-right text-emerald-900 text-sm font-black">{formatCurrency(claim.total_amount)}</td>
               </tr>
             </tfoot>
@@ -120,12 +129,12 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
 
         {/* Declaration & Approval Signatures */}
         <div className="border border-slate-300 rounded p-4 mb-6 bg-slate-50 text-xs">
-          <p className="font-bold text-slate-900 mb-1">Claimant Declaration:</p>
+          <p className="font-bold text-slate-900 mb-1">Submitter / Claimant Declaration:</p>
           <p className="text-slate-700 italic mb-2">
             &quot;I confirm that these expenses were incurred for legitimate church ministry purposes, have not previously been claimed, and are supported by the documents provided.&quot;
           </p>
           <p className="text-slate-500">
-            Digitally Signed by: <strong>{claim.claimant?.full_name}</strong> on {formatDateTime(claim.declaration_timestamp || claim.submitted_at)}
+            Digitally Signed on {formatDateTime(claim.declaration_timestamp || claim.submitted_at || claim.created_at)}
           </p>
         </div>
 
