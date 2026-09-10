@@ -24,6 +24,8 @@ import {
   Users,
   AlertCircle
 } from "lucide-react";
+import { showToast } from "@/lib/utils/toast";
+
 
 export default function UserManagementPage() {
   const [profiles, setProfiles] = useState<Profile[]>(db.getProfiles());
@@ -97,10 +99,9 @@ export default function UserManagementPage() {
       });
       setProfiles(db.getProfiles());
       setEditingUser(null);
+      showToast.success("Changes have been made.", "User Updated");
     } catch (error) {
-      window.dispatchEvent(new CustomEvent("workspace-error", {
-        detail: error instanceof Error ? error.message : "Unable to save changes."
-      }));
+      showToast.error(error instanceof Error ? error.message : "Unable to save changes.", "Save Error");
     }
   };
 
@@ -109,10 +110,9 @@ export default function UserManagementPage() {
       const newStatus = u.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
       await db.updateProfile(u.id, { status: newStatus });
       setProfiles(db.getProfiles());
+      showToast.info(`User status changed to ${newStatus.toLowerCase()}.`, "Status Updated");
     } catch (error) {
-      window.dispatchEvent(new CustomEvent("workspace-error", {
-        detail: error instanceof Error ? error.message : "Unable to update status."
-      }));
+      showToast.error(error instanceof Error ? error.message : "Unable to update status.", "Error");
     }
   };
 
@@ -140,6 +140,7 @@ export default function UserManagementPage() {
       const fullUrl = `${origin}${result.signup_url || `/signup?invite=${result.raw_token}`}`;
       setGeneratedLink(fullUrl);
       setInvitations(db.getSignupInvitations());
+      showToast.success("Invitation link generated successfully.", "Invitation Created");
     } catch (err: any) {
       setInviteError(err instanceof Error ? err.message : "Unable to create invitation link.");
     } finally {
@@ -150,6 +151,7 @@ export default function UserManagementPage() {
   const handleCopyLink = (url: string) => {
     navigator.clipboard.writeText(url);
     setCopied(true);
+    showToast.success("Invitation link copied to clipboard.", "Link Copied");
     setTimeout(() => setCopied(false), 2500);
   };
 
@@ -158,8 +160,9 @@ export default function UserManagementPage() {
       try {
         await db.revokeSignupInvitation(id);
         setInvitations(db.getSignupInvitations());
+        showToast.info("Invitation link has been revoked.", "Invitation Revoked");
       } catch (err: any) {
-        alert(err instanceof Error ? err.message : "Failed to revoke invitation.");
+        showToast.error(err instanceof Error ? err.message : "Failed to revoke invitation.", "Revoke Error");
       }
     }
   };

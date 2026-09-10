@@ -30,9 +30,15 @@ import { RejectModal } from "./RejectModal";
 import { PaymentModal } from "./PaymentModal";
 import { AdminCorrectionModal } from "./AdminCorrectionModal";
 import { ReceiptViewerModal } from "./ReceiptViewerModal";
+
+
+
 import { useAuth } from "@/lib/auth/context";
 import { db } from "@/lib/data/repository";
 import { Claim, ClaimAttachment } from "@/lib/types/database";
+import { showToast } from "@/lib/utils/toast";
+
+
 import { formatCurrency, formatDate, formatDateTime, formatFileSize } from "@/lib/utils/formatters";
 
 interface ClaimDetailViewProps {
@@ -63,10 +69,9 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
       setLoadingAction(true);
       const updated = await db.approveStep(claim.id, user, "Approved in accordance with ministry guidelines.");
       setClaim(updated);
-      setActionSuccessMessage("Claim successfully approved!");
-      setTimeout(() => setActionSuccessMessage(null), 4000);
+      showToast.success("Claim has been successfully approved.", "Claim Approved");
     } catch (err: any) {
-      alert(err.message || "Failed to approve claim");
+      showToast.error(err.message || "Failed to approve claim", "Approval Error");
     } finally {
       setLoadingAction(false);
     }
@@ -79,10 +84,9 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
       const updated = await db.returnForClarification(claim.id, user, reason);
       setClaim(updated);
       setShowReturnModal(false);
-      setActionSuccessMessage("Claim returned to submitter for clarification.");
-      setTimeout(() => setActionSuccessMessage(null), 4000);
+      showToast.info("Claim returned to submitter for clarification.", "Claim Returned");
     } catch (err: any) {
-      alert(err.message || "Failed to return claim");
+      showToast.error(err.message || "Failed to return claim", "Return Error");
     } finally {
       setLoadingAction(false);
     }
@@ -95,10 +99,9 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
       const updated = await db.rejectClaim(claim.id, user, reason);
       setClaim(updated);
       setShowRejectModal(false);
-      setActionSuccessMessage("Claim has been marked as Rejected.");
-      setTimeout(() => setActionSuccessMessage(null), 4000);
+      showToast.warning("Claim has been marked as rejected.", "Claim Rejected");
     } catch (err: any) {
-      alert(err.message || "Failed to reject claim");
+      showToast.error(err.message || "Failed to reject claim", "Rejection Error");
     } finally {
       setLoadingAction(false);
     }
@@ -110,10 +113,9 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
       setLoadingAction(true);
       const updated = await db.verifyClaim(claim.id, user, "All receipts and cost allocations verified.");
       setClaim(updated);
-      setActionSuccessMessage("Finance verification recorded.");
-      setTimeout(() => setActionSuccessMessage(null), 4000);
+      showToast.success("Finance verification recorded.", "Finance Verified");
     } catch (err: any) {
-      alert(err.message || "Failed to verify claim");
+      showToast.error(err.message || "Failed to verify claim", "Verification Error");
     } finally {
       setLoadingAction(false);
     }
@@ -130,10 +132,9 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
       });
       setClaim(updated);
       setShowPaymentModal(false);
-      setActionSuccessMessage(`Payment recorded successfully (Ref: ${paymentData.payment_reference})`);
-      setTimeout(() => setActionSuccessMessage(null), 4000);
+      showToast.success(`Payment recorded successfully (Ref: ${paymentData.payment_reference})`, "Payment Recorded");
     } catch (err: any) {
-      alert(err.message || "Failed to record payment");
+      showToast.error(err.message || "Failed to record payment", "Payment Error");
     } finally {
       setLoadingAction(false);
     }
@@ -150,10 +151,9 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
       });
       setClaim(updated);
       setShowCorrectionModal(false);
-      setActionSuccessMessage("Administrative fields updated and audited.");
-      setTimeout(() => setActionSuccessMessage(null), 4000);
+      showToast.success("Changes have been made to administrative fields.", "Claim Updated");
     } catch (err: any) {
-      alert(err.message || "Failed to save correction");
+      showToast.error(err.message || "Failed to save correction", "Update Error");
     } finally {
       setLoadingAction(false);
     }
@@ -164,8 +164,9 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
       if (!user) return;
       const updated = await db.addComment(claim.id, user, content, visibility);
       setClaim(updated);
+      showToast.success(visibility === "FINANCE_INTERNAL" ? "Internal finance note added." : "Comment posted successfully.", "Comment Added");
     } catch (error) {
-      window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." }));
+      showToast.error(error instanceof Error ? error.message : "Unable to save comment.", "Comment Error");
     }
   };
 

@@ -11,6 +11,7 @@ interface AuthContextType {
   activeRole: RoleCode;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isRefreshing: boolean;
   error: string;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
@@ -30,6 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<Profile | null>(null);
   const [activeRole, setActiveRole] = useState<RoleCode>("MINISTRY_LEADER");
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
   const pathname = usePathname();
   const refreshUser = useCallback(async () => {
@@ -60,9 +62,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user?.id || ["/","/login","/signup","/forgot-password","/reset-password"].includes(pathname)) return;
     let active = true;
-    setIsLoading(true);
+    setIsRefreshing(true);
     refreshUser().catch(cause => { if (active) setError(cause instanceof Error ? cause.message : "Unable to refresh the workspace."); })
-      .finally(() => { if (active) setIsLoading(false); });
+      .finally(() => { if (active) setIsRefreshing(false); });
     return () => { active = false; };
   }, [pathname, user?.id, refreshUser]);
 
@@ -94,14 +96,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
   const publicPage = ["/","/login","/signup","/forgot-password","/reset-password"].includes(pathname);
   return <AuthContext.Provider value={{
-    user, activeRole, isAuthenticated: !!user, isLoading, error, login, logout, refreshUser, setActiveRole,
+    user, activeRole, isAuthenticated: !!user, isLoading, isRefreshing, error, login, logout, refreshUser, setActiveRole,
     hasRole: role => userHasRole(user, role), canCreateClaim: () => canUserCreateClaim(user), canApprove: claim => canUserApproveClaim(user, claim),
     canReview: claim => canUserReviewClaim(user, claim),
     canEdit: claim => canUserEditClaim(user, claim), canPay: claim => canUserRecordPayment(user, claim),
     canVerify: claim => canUserVerifyClaim(user, claim),
   }}>
-    {isLoading && !publicPage ? <div role="status" className="min-h-screen flex items-center justify-center text-sm">Loading workspace...</div> :
-      error && !publicPage ? <main className="max-w-lg mx-auto p-8"><h1 className="text-xl font-semibold">Workspace unavailable</h1><p role="alert" className="mt-3 text-sm">{error}</p><button className="mt-4 underline" onClick={() => window.location.reload()}>Try again</button><a className="ml-4 underline" href="/login">Sign in</a></main> : children}
+    {isLoading && !publicPage ? (
+      <div role="status" className="min-h-screen flex flex-col items-center justify-center bg-slate-50/60 dark:bg-zinc-950">
+        <div className="h-8 w-8 rounded-full border-2 border-emerald-700 border-t-transparent animate-spin mb-3" />
+        <p className="text-xs font-medium text-slate-500">Connecting to workspace...</p>
+      </div>
+    ) : error && !publicPage ? (
+      <main className="max-w-lg mx-auto p-8"><h1 className="text-xl font-semibold">Workspace unavailable</h1><p role="alert" className="mt-3 text-sm">{error}</p><button className="mt-4 underline" onClick={() => window.location.reload()}>Try again</button><a className="ml-4 underline" href="/login">Sign in</a></main>
+    ) : children}
   </AuthContext.Provider>;
 }
 export function useAuth() {

@@ -19,6 +19,8 @@ import {
   ShieldCheck,
   HelpCircle
 } from "lucide-react";
+import { showToast } from "@/lib/utils/toast";
+
 
 export default function SystemSettingsPage() {
   const { user } = useAuth();
@@ -118,9 +120,12 @@ export default function SystemSettingsPage() {
     }, user?.id);
 
     setSaved(true);
+    showToast.success("Changes have been made.", "Settings Saved");
     setTimeout(() => setSaved(false), 4000);
 
-    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
+    } catch (error) {
+      showToast.error(error instanceof Error ? error.message : "Unable to save changes.", "Save Error");
+    }
   };
 
   return (

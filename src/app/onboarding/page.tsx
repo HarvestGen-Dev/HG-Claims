@@ -8,6 +8,7 @@ import { db } from "@/lib/data/repository";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BrandLogo } from "@/components/BrandLogo";
+import { showToast } from "@/lib/utils/toast";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -49,7 +50,10 @@ export default function OnboardingPage() {
       // 2. Refresh auth context so user state is updated
       await refreshUser();
 
-      // 3. Navigate to dashboard
+      // 3. Flash welcome toast
+      showToast.flashSuccess("Welcome to NLCC Expenses! Your profile setup is complete.", "Profile Setup Complete");
+
+      // 4. Navigate to dashboard
       router.replace("/dashboard");
     } catch (cause: any) {
       setError(cause instanceof Error ? cause.message : "Unable to complete onboarding. Please try again.");
@@ -57,6 +61,7 @@ export default function OnboardingPage() {
       setBusy(false);
     }
   }
+
 
   if (isLoading || !user) {
     return (

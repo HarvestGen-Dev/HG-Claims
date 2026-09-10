@@ -10,6 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { db } from "@/lib/data/repository";
 import { CostCentre } from "@/lib/types/database";
 import { PieChart, Plus, Edit } from "lucide-react";
+import { showToast } from "@/lib/utils/toast";
+
+
 
 export default function CostCentreManagementPage() {
   const [costCentres, setCostCentres] = useState<CostCentre[]>(db.getCostCentres());
@@ -54,42 +57,47 @@ export default function CostCentreManagementPage() {
 
   const handleSave = async () => {
     try {
-    if (!formData.name.trim() || !formData.code.trim()) {
-      setError("Cost centre name and code are required.");
-      return;
+      if (!formData.name.trim() || !formData.code.trim()) {
+        setError("Cost centre name and code are required.");
+        return;
+      }
+
+      if (isCreating) {
+        await db.createCostCentre({
+          code: formData.code.trim().toUpperCase(),
+          name: formData.name.trim(),
+          ministry_id: formData.ministry_id || null,
+          description: formData.description.trim(),
+          is_active: formData.is_active,
+        });
+        setIsCreating(false);
+        showToast.success("Cost centre created successfully.", "Cost Centre Created");
+      } else if (editingCC) {
+        await db.updateCostCentre(editingCC.id, {
+          code: formData.code.trim().toUpperCase(),
+          name: formData.name.trim(),
+          ministry_id: formData.ministry_id || null,
+          description: formData.description.trim(),
+          is_active: formData.is_active,
+        });
+        setEditingCC(null);
+        showToast.success("Changes have been made.", "Cost Centre Updated");
+      }
+
+      refresh();
+    } catch (error) {
+      showToast.error(error instanceof Error ? error.message : "Unable to save changes.", "Save Error");
     }
-
-    if (isCreating) {
-      await db.createCostCentre({
-        code: formData.code.trim().toUpperCase(),
-        name: formData.name.trim(),
-        ministry_id: formData.ministry_id || null,
-        description: formData.description.trim(),
-        is_active: formData.is_active,
-      });
-      setIsCreating(false);
-    } else if (editingCC) {
-      await db.updateCostCentre(editingCC.id, {
-        code: formData.code.trim().toUpperCase(),
-        name: formData.name.trim(),
-        ministry_id: formData.ministry_id || null,
-        description: formData.description.trim(),
-        is_active: formData.is_active,
-      });
-      setEditingCC(null);
-    }
-
-    refresh();
-
-    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
   const handleToggleStatus = async (cc: CostCentre) => {
     try {
-    await db.updateCostCentre(cc.id, { is_active: !cc.is_active });
-    refresh();
-
-    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
+      await db.updateCostCentre(cc.id, { is_active: !cc.is_active });
+      refresh();
+      showToast.info(`Cost centre status changed to ${!cc.is_active ? "Active" : "Inactive"}.`, "Status Updated");
+    } catch (error) {
+      showToast.error(error instanceof Error ? error.message : "Unable to update status.", "Error");
+    }
   };
 
   return (
@@ -180,7 +188,7 @@ export default function CostCentreManagementPage() {
           <div className="space-y-3 my-2 text-xs">
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Code (e.g. YOUTH-2026) *</label>
+                <label className="font-semibold text-slate-700">Code</label>
                 <Input
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}

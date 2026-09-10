@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth/context";
 import { db } from "@/lib/data/repository";
 import { Check, User } from "lucide-react";
+import { showToast } from "@/lib/utils/toast";
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth();
@@ -28,11 +29,13 @@ export default function ProfilePage() {
       });
       await refreshUser();
       setSaved(true);
+      showToast.success("Changes have been made.", "Profile Updated");
       setTimeout(() => setSaved(false), 3000);
     } catch (error) {
-      window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." }));
+      showToast.error(error instanceof Error ? error.message : "Unable to save changes.", "Save Error");
     }
   };
+
 
   return (
     <AppLayout>

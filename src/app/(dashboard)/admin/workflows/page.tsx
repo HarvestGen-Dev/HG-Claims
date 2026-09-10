@@ -11,6 +11,8 @@ import { db } from "@/lib/data/repository";
 import { ApprovalRule, Ministry, ExpenseCategory } from "@/lib/types/database";
 import { GitBranch, Plus, ShieldCheck, CheckCircle2, Edit, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils/formatters";
+import { showToast } from "@/lib/utils/toast";
+
 
 export default function WorkflowConfigurationPage() {
   const [rules, setRules] = useState<ApprovalRule[]>(db.getApprovalRules());
@@ -43,11 +45,13 @@ export default function WorkflowConfigurationPage() {
 
   const handleSaveThreshold = async () => {
     try {
-    await db.updateSetting("approval_thresholds", { final_approval_threshold: Number(threshold), currency: "MYR" });
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
-
-    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
+      await db.updateSetting("approval_thresholds", { final_approval_threshold: Number(threshold), currency: "MYR" });
+      setSavedSuccess(true);
+      showToast.success("Changes have been made.", "Threshold Updated");
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (error) {
+      showToast.error(error instanceof Error ? error.message : "Unable to save changes.", "Save Error");
+    }
   };
 
   const handleOpenCreate = () => {
@@ -86,45 +90,50 @@ export default function WorkflowConfigurationPage() {
 
   const handleSaveRule = async () => {
     try {
-    if (!formData.name.trim()) {
-      setError("Rule name is required.");
-      return;
+      if (!formData.name.trim()) {
+        setError("Rule name is required.");
+        return;
+      }
+
+      const payload = {
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        ministry_id: formData.ministry_id || null,
+        expense_category_id: formData.expense_category_id || null,
+        min_amount: Number(formData.min_amount) || 0,
+        max_amount: formData.max_amount ? Number(formData.max_amount) : null,
+        sequence: Number(formData.sequence) || 1,
+        approver_role: formData.approver_role as any,
+        approver_user_id: formData.approver_user_id || null,
+        is_active: formData.is_active,
+      };
+
+      if (isCreating) {
+        await db.createApprovalRule(payload);
+        setIsCreating(false);
+        showToast.success("Workflow rule created successfully.", "Rule Created");
+      } else if (editingRule) {
+        await db.updateApprovalRule(editingRule.id, payload);
+        setEditingRule(null);
+        showToast.success("Changes have been made.", "Workflow Saved");
+      }
+
+      refresh();
+    } catch (error) {
+      showToast.error(error instanceof Error ? error.message : "Unable to save changes.", "Save Error");
     }
-
-    const payload = {
-      name: formData.name.trim(),
-      description: formData.description.trim(),
-      ministry_id: formData.ministry_id || null,
-      expense_category_id: formData.expense_category_id || null,
-      min_amount: Number(formData.min_amount) || 0,
-      max_amount: formData.max_amount ? Number(formData.max_amount) : null,
-      sequence: Number(formData.sequence) || 1,
-      approver_role: formData.approver_role as any,
-      approver_user_id: formData.approver_user_id || null,
-      is_active: formData.is_active,
-    };
-
-    if (isCreating) {
-      await db.createApprovalRule(payload);
-      setIsCreating(false);
-    } else if (editingRule) {
-      await db.updateApprovalRule(editingRule.id, payload);
-      setEditingRule(null);
-    }
-
-    refresh();
-
-    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
   const handleDeleteRule = async (id: string) => {
     try {
-    if (confirm("Are you sure you want to remove this approval rule?")) {
-      await db.deleteApprovalRule(id);
-      refresh();
+      if (confirm("Are you sure you want to remove this approval rule?")) {
+        await db.deleteApprovalRule(id);
+        refresh();
+        showToast.info("Workflow rule deleted.", "Rule Removed");
+      }
+    } catch (error) {
+      showToast.error(error instanceof Error ? error.message : "Unable to delete rule.", "Delete Error");
     }
-
-    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
   return (

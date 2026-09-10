@@ -3,6 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 export const dynamic = "force-dynamic";
 import { AuthProvider } from "@/lib/auth/context";
+import { TopProgressBar } from "@/components/layout/TopProgressBar";
+import { WorkspaceFeedback } from "@/components/layout/WorkspaceFeedback";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,8 +21,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <TopProgressBar />
+          <WorkspaceFeedback />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
 }
+
+

@@ -10,6 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { db } from "@/lib/data/repository";
 import { Ministry, Profile } from "@/lib/types/database";
 import { Building2, Plus, Edit, CheckCircle2, UserCheck } from "lucide-react";
+import { showToast } from "@/lib/utils/toast";
+
+
 
 export default function MinistryManagementPage() {
   const [ministries, setMinistries] = useState<Ministry[]>(db.getMinistries());
@@ -56,42 +59,47 @@ export default function MinistryManagementPage() {
 
   const handleSave = async () => {
     try {
-    if (!formData.name.trim() || !formData.code.trim()) {
-      setError("Ministry name and code are required.");
-      return;
+      if (!formData.name.trim() || !formData.code.trim()) {
+        setError("Ministry name and code are required.");
+        return;
+      }
+
+      if (isCreating) {
+        await db.createMinistry({
+          code: formData.code.trim().toUpperCase(),
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+          leader_id: formData.leader_id || null,
+          is_active: formData.is_active,
+        });
+        setIsCreating(false);
+        showToast.success("Ministry created successfully.", "Ministry Created");
+      } else if (editingMin) {
+        await db.updateMinistry(editingMin.id, {
+          code: formData.code.trim().toUpperCase(),
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+          leader_id: formData.leader_id || null,
+          is_active: formData.is_active,
+        });
+        setEditingMin(null);
+        showToast.success("Changes have been made.", "Ministry Updated");
+      }
+
+      refresh();
+    } catch (error) {
+      showToast.error(error instanceof Error ? error.message : "Unable to save changes.", "Save Error");
     }
-
-    if (isCreating) {
-      await db.createMinistry({
-        code: formData.code.trim().toUpperCase(),
-        name: formData.name.trim(),
-        description: formData.description.trim(),
-        leader_id: formData.leader_id || null,
-        is_active: formData.is_active,
-      });
-      setIsCreating(false);
-    } else if (editingMin) {
-      await db.updateMinistry(editingMin.id, {
-        code: formData.code.trim().toUpperCase(),
-        name: formData.name.trim(),
-        description: formData.description.trim(),
-        leader_id: formData.leader_id || null,
-        is_active: formData.is_active,
-      });
-      setEditingMin(null);
-    }
-
-    refresh();
-
-    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
   const handleToggleStatus = async (m: Ministry) => {
     try {
-    await db.updateMinistry(m.id, { is_active: !m.is_active });
-    refresh();
-
-    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
+      await db.updateMinistry(m.id, { is_active: !m.is_active });
+      refresh();
+      showToast.info(`Ministry status changed to ${!m.is_active ? "Active" : "Inactive"}.`, "Status Updated");
+    } catch (error) {
+      showToast.error(error instanceof Error ? error.message : "Unable to update status.", "Error");
+    }
   };
 
   return (

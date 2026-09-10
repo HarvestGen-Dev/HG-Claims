@@ -26,6 +26,8 @@ import { db } from "@/lib/data/repository";
 import { Claim, Ministry, ExpenseCategory, CostCentre } from "@/lib/types/database";
 import { Dialog, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/utils/formatters";
+import { showToast } from "@/lib/utils/toast";
+
 
 interface ClaimFormProps {
   initialClaim?: Claim | null;
@@ -256,6 +258,10 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         request_key: requestKey.current,
       });
       setDirty(false);
+      showToast.flashSuccess(
+        isEditMode ? "Changes have been saved to the draft." : "Claim draft saved successfully.",
+        "Draft Saved"
+      );
       router.push(`/claims/${savedClaim.id}`);
     } catch (err: any) {
       setError(err?.message || "Failed to save draft.");
@@ -315,6 +321,10 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         request_key: requestKey.current,
       });
       setDirty(false);
+      showToast.flashSuccess(
+        isEditMode ? "Changes have been made and submitted for review." : "Claim has been submitted successfully.",
+        "Claim Submitted"
+      );
       router.push(`/claims/${submitted.id}`);
     } catch (err: any) {
       setError(err?.message || "Failed to submit expense claim.");

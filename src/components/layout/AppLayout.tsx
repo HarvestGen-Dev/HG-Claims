@@ -6,7 +6,8 @@ import { useAuth } from "@/lib/auth/context";
 import { Sidebar } from "./Sidebar";
 import { TopHeader } from "./TopHeader";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
-import { WorkspaceFeedback } from "./WorkspaceFeedback";
+
+
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -42,9 +43,9 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col antialiased font-sans">
       <div className="flex h-screen overflow-hidden">
-        <WorkspaceFeedback />
         {/* Desktop Fixed Sidebar */}
         <div className="hidden lg:flex lg:w-64 lg:flex-col lg:inset-y-0 z-30">
+
           <Sidebar />
         </div>
 
