@@ -3,19 +3,19 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { 
-  ArrowLeft, 
-  Printer, 
-  Edit, 
-  CheckCircle2, 
-  RotateCcw, 
-  XCircle, 
-  Banknote, 
-  Eye, 
-  FileText, 
-  ShieldCheck, 
-  User, 
-  Clock, 
+import {
+  ArrowLeft,
+  Printer,
+  Edit,
+  CheckCircle2,
+  RotateCcw,
+  XCircle,
+  Banknote,
+  Eye,
+  FileText,
+  ShieldCheck,
+  User,
+  Clock,
   AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,7 @@ import { PaymentModal } from "./PaymentModal";
 import { AdminCorrectionModal } from "./AdminCorrectionModal";
 import { ReceiptViewerModal } from "./ReceiptViewerModal";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { Claim, ClaimAttachment } from "@/lib/types/database";
 import { formatCurrency, formatDate, formatDateTime, formatFileSize } from "@/lib/utils/formatters";
 
@@ -60,7 +60,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
     if (!user) return;
     try {
       setLoadingAction(true);
-      const updated = db.approveStep(claim.id, user, "Approved in accordance with ministry guidelines.");
+      const updated = await db.approveStep(claim.id, user, "Approved in accordance with ministry guidelines.");
       setClaim(updated);
       setActionSuccessMessage("Claim successfully approved!");
       setTimeout(() => setActionSuccessMessage(null), 4000);
@@ -75,7 +75,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
     if (!user) return;
     try {
       setLoadingAction(true);
-      const updated = db.returnForClarification(claim.id, user, reason);
+      const updated = await db.returnForClarification(claim.id, user, reason);
       setClaim(updated);
       setShowReturnModal(false);
       setActionSuccessMessage("Claim returned to claimant for clarification.");
@@ -91,7 +91,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
     if (!user) return;
     try {
       setLoadingAction(true);
-      const updated = db.rejectClaim(claim.id, user, reason);
+      const updated = await db.rejectClaim(claim.id, user, reason);
       setClaim(updated);
       setShowRejectModal(false);
       setActionSuccessMessage("Claim has been marked as Rejected.");
@@ -107,7 +107,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
     if (!user) return;
     try {
       setLoadingAction(true);
-      const updated = db.verifyClaim(claim.id, user, "All receipts and cost allocations verified.");
+      const updated = await db.verifyClaim(claim.id, user, "All receipts and cost allocations verified.");
       setClaim(updated);
       setActionSuccessMessage("Finance verification recorded.");
       setTimeout(() => setActionSuccessMessage(null), 4000);
@@ -122,7 +122,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
     if (!user) return;
     try {
       setLoadingAction(true);
-      const updated = db.recordPayment({
+      const updated = await db.recordPayment({
         ...paymentData,
         claim_id: claim.id,
         processor: user,
@@ -142,7 +142,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
     if (!user) return;
     try {
       setLoadingAction(true);
-      const updated = db.correctClaimMetadata({
+      const updated = await db.correctClaimMetadata({
         ...data,
         claim_id: claim.id,
         actor: user,
@@ -159,9 +159,12 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
   };
 
   const handleAddComment = async (content: string, visibility: "PUBLIC_WORKFLOW" | "FINANCE_INTERNAL") => {
+    try {
     if (!user) return;
-    const updated = db.addComment(claim.id, user, content, visibility);
+    const updated = await db.addComment(claim.id, user, content, visibility);
     setClaim(updated);
+
+    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
   const isClaimant = claim.claimant_id === user?.id;

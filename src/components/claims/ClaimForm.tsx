@@ -1,16 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { 
-  FileText, 
-  Calendar, 
-  Building2, 
-  PieChart, 
-  CreditCard, 
-  Send, 
-  Save, 
+import {
+  FileText,
+  Calendar,
+  Building2,
+  PieChart,
+  CreditCard,
+  Send,
+  Save,
   ArrowLeft,
   AlertCircle,
   HelpCircle,
@@ -24,8 +24,9 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { ExpenseItemsEditor, ExpenseItemDraft } from "./ExpenseItemsEditor";
 import { ReceiptUploader, AttachmentDraft } from "./ReceiptUploader";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { Claim, Ministry, ExpenseCategory, CostCentre } from "@/lib/types/database";
+import { Dialog, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 interface ClaimFormProps {
   initialClaim?: Claim | null;
@@ -116,6 +117,41 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const errorRef = useRef<HTMLDivElement>(null);
+  const [dirty, setDirty] = useState(false);
+  const [leaveHref, setLeaveHref] = useState<string | null>(null);
+  const requestKey = useRef<string>();
+  if (!requestKey.current && typeof window !== "undefined") requestKey.current = crypto.randomUUID();
+
+  useEffect(() => {
+    if (!dirty) return;
+    const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    const navigate = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = (event.target as Element).closest<HTMLAnchorElement>("a[href]");
+      if (!link || link.target === "_blank" || link.hasAttribute("download")) return;
+      const destination = new URL(link.href);
+      if (destination.origin !== location.origin || destination.href === location.href || destination.hash) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setLeaveHref(destination.pathname + destination.search);
+    };
+    window.addEventListener("beforeunload", beforeUnload);
+    document.addEventListener("click", navigate, true);
+    return () => { window.removeEventListener("beforeunload", beforeUnload); document.removeEventListener("click", navigate, true); };
+  }, [dirty]);
+
+  useEffect(() => {
+    const available = costCentres.filter(cc => !cc.ministry_id || cc.ministry_id === ministryId);
+    if (!available.some(cc => cc.id === costCentreId)) setCostCentreId(available[0]?.id || "");
+  }, [ministryId, costCentreId, costCentres]);
+
+  useEffect(() => {
+    if (error) {
+      errorRef.current?.focus();
+      errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [error]);
 
   const availableCostCentres = costCentres.filter(
     (cc) => !cc.ministry_id || cc.ministry_id === ministryId
@@ -126,12 +162,14 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
     if (!purpose.trim()) return "Please provide the ministry purpose and justification.";
     if (!ministryId) return "Please select a ministry.";
     if (!costCentreId) return "Please select a budget cost centre.";
+    if (!availableCostCentres.some(cc => cc.id === costCentreId)) return "Choose a cost centre for this ministry.";
     if (!claimDate) return "Please provide the claim date.";
 
     if (expenses.length === 0) return "Please add at least one expense line item.";
 
     for (let i = 0; i < expenses.length; i++) {
       const e = expenses[i];
+      if (!e.expense_date) return `Item #${i + 1}: Date is required.`;
       if (!e.description.trim()) return `Item #${i + 1}: Description is required.`;
       const amt = typeof e.amount === "string" ? parseFloat(e.amount) : e.amount;
       if (isNaN(amt) || amt <= 0) return `Item #${i + 1}: Please enter a valid positive amount.`;
@@ -188,7 +226,8 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         })),
       };
 
-      const savedClaim = db.saveClaimDraft(claimData);
+      const savedClaim = await db.saveClaimDraft({ ...claimData, version: initialClaim?.version, request_key: requestKey.current });
+      setDirty(false);
       router.push(`/claims/${savedClaim.id}`);
     } catch (err: any) {
       setError(err?.message || "Failed to save draft.");
@@ -202,7 +241,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
     const validationError = validate();
     if (validationError) {
       setError(validationError);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
 
@@ -246,7 +285,8 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         })),
       };
 
-      const submitted = db.submitClaim(claimData);
+      const submitted = await db.submitClaim({ ...claimData, version: initialClaim?.version, request_key: requestKey.current });
+      setDirty(false);
       router.push(`/claims/${submitted.id}`);
     } catch (err: any) {
       setError(err?.message || "Failed to submit expense claim.");
@@ -256,12 +296,12 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl mx-auto pb-12">
+    <form onChangeCapture={() => setDirty(true)} onSubmit={handleSubmit} className="claim-form space-y-6 max-w-4xl mx-auto pb-12">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-zinc-200/80 dark:border-zinc-800">
         <div className="flex items-center gap-3">
           <Link href="/claims">
-            <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 text-zinc-500 hover:text-zinc-900">
+            <Button type="button" variant="ghost" aria-label="Back to claims" size="sm" className="h-8 w-8 p-0 text-zinc-500 hover:text-zinc-900">
               <ArrowLeft className="w-4 h-4" />
             </Button>
           </Link>
@@ -270,7 +310,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
               {isEditMode ? `Edit Claim ${initialClaim?.claim_number || ""}` : "New Expense Claim"}
             </h1>
             <p className="text-xs text-zinc-500">
-              Submit ministry expense receipts for leader review and reimbursement payout.
+              {initialClaim?.claim_number || "Expense reimbursement"}
             </p>
           </div>
         </div>
@@ -309,15 +349,15 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
       )}
 
       {error && (
-        <Alert variant="destructive" className="text-xs">
+        <Alert ref={errorRef} tabIndex={-1} variant="destructive" className="text-xs">
           <AlertCircle className="w-4 h-4" />
           <AlertTitle className="text-xs font-semibold">Please check your submission</AlertTitle>
           <AlertDescription className="text-xs">{error}</AlertDescription>
         </Alert>
       )}
 
-      {/* STEP 1: Claimant Profile */}
-      <Card className="border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
+      {/* STEP 1: Claimant */}
+      <Card className="claim-section border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
         <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800/80">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -327,7 +367,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
               </CardTitle>
             </div>
             <Link href="/profile" className="text-[11px] text-zinc-500 hover:text-zinc-900 hover:underline">
-              Edit in Profile
+              Profile
             </Link>
           </div>
         </CardHeader>
@@ -356,12 +396,12 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
       </Card>
 
       {/* STEP 2: Ministry & Context */}
-      <Card className="border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
+      <Card className="claim-section border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
         <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800/80">
           <div className="flex items-center gap-2">
             <span className="font-mono text-[10px] font-bold text-zinc-400">02</span>
             <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-              Claim & Ministry Context
+              Claim details
             </CardTitle>
           </div>
         </CardHeader>
@@ -369,7 +409,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
             {/* Ministry */}
             <div className="space-y-1">
-              <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider flex items-center justify-between">
+              <label htmlFor="ministryId" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider flex items-center justify-between">
                 <span>Ministry / Department *</span>
                 {!formConfig.allow_claimant_change_ministry && (
                   <span className="text-[10px] text-zinc-400 flex items-center gap-0.5">
@@ -378,6 +418,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                 )}
               </label>
               <select
+                id="ministryId"
                 value={ministryId}
                 onChange={(e) => setMinistryId(e.target.value)}
                 disabled={!formConfig.allow_claimant_change_ministry}
@@ -394,12 +435,13 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
 
             {/* Programme / Event */}
             <div className="space-y-1">
-              <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+              <label htmlFor="programmeEvent" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                 Programme / Event *
               </label>
               <Input
                 type="text"
                 placeholder="e.g. Youth Camp, Sunday Service"
+                id="programmeEvent"
                 value={programmeEvent}
                 onChange={(e) => setProgrammeEvent(e.target.value)}
                 className="h-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
@@ -409,10 +451,11 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
 
             {/* Cost Centre */}
             <div className="space-y-1">
-              <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+              <label htmlFor="costCentreId" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                 Cost Centre *
               </label>
               <select
+                id="costCentreId"
                 value={costCentreId}
                 onChange={(e) => setCostCentreId(e.target.value)}
                 className="flex h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
@@ -428,11 +471,12 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
 
             {/* Claim Date */}
             <div className="space-y-1">
-              <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+              <label htmlFor="claimDate" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                 Submission Date *
               </label>
               <Input
                 type="date"
+                id="claimDate"
                 value={claimDate}
                 onChange={(e) => setClaimDate(e.target.value)}
                 className="h-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 font-mono"
@@ -442,10 +486,11 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
 
             {/* Payment Method */}
             <div className="space-y-1">
-              <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+              <label htmlFor="paymentMethod" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                 Payment Method *
               </label>
               <select
+                id="paymentMethod"
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as any)}
                 className="flex h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
@@ -459,13 +504,14 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
             {/* Internal Reference */}
             {formConfig.enable_internal_reference !== false && (
               <div className="space-y-1">
-                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                <label htmlFor="internalRef" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                   Reference Code (Optional)
                 </label>
                 <Input
                   type="text"
                   placeholder="e.g. YC-2026-SETUP"
-                  value={internalRef}
+                  id="internalRef"
+                value={internalRef}
                   onChange={(e) => setInternalRef(e.target.value)}
                   className="h-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 font-mono"
                 />
@@ -474,12 +520,13 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
 
             {/* Ministry Purpose */}
             <div className="col-span-1 sm:col-span-2 md:col-span-3 space-y-1">
-              <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+              <label htmlFor="purpose" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                 Ministry Purpose / Justification *
               </label>
               <Textarea
                 rows={2}
                 placeholder="Explain the church ministry justification for these expenses..."
+                id="purpose"
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value)}
                 className="text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 resize-y"
@@ -491,12 +538,12 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
       </Card>
 
       {/* STEP 3: Line Items */}
-      <Card className="border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
+      <Card className="claim-section border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
         <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800/80">
           <div className="flex items-center gap-2">
             <span className="font-mono text-[10px] font-bold text-zinc-400">03</span>
             <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-              Expense Line Items Breakdown
+              Expenses
             </CardTitle>
           </div>
         </CardHeader>
@@ -504,37 +551,39 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           <ExpenseItemsEditor
             expenses={expenses}
             categories={categories}
-            onChange={setExpenses}
+            onChange={items => { setExpenses(items); setDirty(true); }}
           />
         </CardContent>
       </Card>
 
       {/* STEP 4: Supporting Documents */}
-      <Card className="border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
+      <Card className="claim-section border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
         <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800/80">
           <div className="flex items-center gap-2">
             <span className="font-mono text-[10px] font-bold text-zinc-400">04</span>
             <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-              Receipts & Tax Invoices
+              Supporting receipts
             </CardTitle>
           </div>
         </CardHeader>
         <CardContent className="p-4">
           <ReceiptUploader
+            maxFileSizeMb={formConfig.max_file_size_mb}
+            maxAttachments={formConfig.max_attachment_count}
             attachments={attachments}
-            onChange={setAttachments}
+            onChange={items => { setAttachments(items); setDirty(true); }}
             userId={user?.id || "u-jaeden-01"}
           />
         </CardContent>
       </Card>
 
       {/* STEP 5: Declaration & Final Action */}
-      <Card className="border border-zinc-200/80 bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900/30 shadow-2xs">
+      <Card className="claim-section border border-zinc-200/80 bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900/30 shadow-2xs">
         <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800/80">
           <div className="flex items-center gap-2">
             <span className="font-mono text-[10px] font-bold text-zinc-400">05</span>
             <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-              Claimant Confirmation & Submission
+              Declaration
             </CardTitle>
           </div>
         </CardHeader>
@@ -553,7 +602,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
             </span>
           </label>
 
-          <div className="flex items-center justify-between pt-3 border-t border-zinc-200/80 dark:border-zinc-800">
+          <div className="claim-actions flex items-center justify-between border-t border-zinc-200/80 dark:border-zinc-800">
             <Button
               type="button"
               variant="outline"
@@ -563,7 +612,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
               className="h-8 text-xs border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 gap-1.5"
             >
               <Save className="w-3.5 h-3.5 text-zinc-400" />
-              <span>Save Incomplete Draft</span>
+              <span>{isSavingDraft ? "Saving..." : "Save draft"}</span>
             </Button>
 
             <Button
@@ -573,11 +622,20 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
               className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-medium px-5 shadow-2xs gap-1.5"
             >
               <Send className="w-3.5 h-3.5" />
-              <span>Submit Official Claim</span>
+              <span>{isSubmitting ? "Submitting..." : "Submit claim"}</span>
             </Button>
           </div>
         </CardContent>
       </Card>
+      <Dialog open={leaveHref !== null} onOpenChange={open => { if (!open) setLeaveHref(null); }}>
+        <DialogTitle>Leave this claim?</DialogTitle>
+        <p className="text-sm text-zinc-600 mt-3">Your changes have not been saved.</p>
+        <DialogFooter className="gap-2">
+          <Button type="button" variant="outline" onClick={() => setLeaveHref(null)}>Keep editing</Button>
+          <Button type="button" variant="outline" onClick={() => { const href = leaveHref; setDirty(false); setLeaveHref(null); if (href) router.push(href); }}>Discard changes</Button>
+          <Button type="button" onClick={() => { setLeaveHref(null); void handleSaveDraft(); }}>Save draft</Button>
+        </DialogFooter>
+      </Dialog>
     </form>
   );
 }

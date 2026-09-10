@@ -7,8 +7,9 @@ import { Plus, Search, FileText, Download } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { ClaimStatusBadge } from "@/components/claims/ClaimStatusBadge";
+import { MobileClaimList } from "@/components/claims/MobileClaimList";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { Claim, ClaimStatus } from "@/lib/types/database";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 import { generateClaimsCsv, downloadCsv } from "@/lib/utils/export-csv";
@@ -24,12 +25,21 @@ function ClaimsContent() {
   const [search, setSearch] = useState(initialSearch);
 
   useEffect(() => {
+    setSearch(initialSearch);
+    setSelectedStatus(initialStatus || "ALL");
+  }, [initialSearch, initialStatus]);
+
+  useEffect(() => {
     if (!user) return;
-    setClaims(db.getClaims(user));
+    setClaims(db.getClaims(user).filter(claim => claim.claimant_id === user.id));
   }, [user]);
 
   const filteredClaims = claims.filter((c) => {
-    if (selectedStatus !== "ALL" && c.status !== selectedStatus) return false;
+    if (selectedStatus === "IN_REVIEW") {
+      if (!c.status.startsWith("PENDING_") && c.status !== "SUBMITTED") return false;
+    } else if (selectedStatus === "APPROVED") {
+      if (c.status !== "APPROVED" && c.status !== "APPROVED_FOR_PAYMENT") return false;
+    } else if (selectedStatus !== "ALL" && c.status !== selectedStatus) return false;
     if (search.trim()) {
       const q = search.toLowerCase();
       return (
@@ -51,11 +61,13 @@ function ClaimsContent() {
   const statuses = [
     { label: "All", value: "ALL" },
     { label: "Drafts", value: "DRAFT" },
-    { label: "In Review", value: "PENDING_MINISTRY_APPROVAL" },
+    { label: "In review", value: "IN_REVIEW" },
     { label: "Finance", value: "PENDING_FINANCE_REVIEW" },
     { label: "Returned", value: "RETURNED_FOR_CLARIFICATION" },
-    { label: "Approved", value: "APPROVED_FOR_PAYMENT" },
+    { label: "Approved", value: "APPROVED" },
     { label: "Paid", value: "PAID" },
+    { label: "Rejected", value: "REJECTED" },
+    { label: "Cancelled", value: "CANCELLED" },
   ];
 
   return (
@@ -63,10 +75,10 @@ function ClaimsContent() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-zinc-200/80 dark:border-zinc-800">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            Claims Registry
+            My claims
           </h1>
           <p className="text-xs text-zinc-500">
-            Browse and filter expense reimbursement vouchers.
+            {filteredClaims.length} claim{filteredClaims.length === 1 ? "" : "s"}
           </p>
         </div>
 
@@ -96,6 +108,7 @@ function ClaimsContent() {
           {statuses.map((s) => (
             <button
               key={s.value}
+              aria-pressed={selectedStatus === s.value}
               onClick={() => setSelectedStatus(s.value)}
               className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-all ${
                 selectedStatus === s.value
@@ -113,6 +126,7 @@ function ClaimsContent() {
           <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-zinc-400" />
           <input
             type="text"
+            aria-label="Filter my claims"
             placeholder="Search voucher, event, claimant..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -128,9 +142,10 @@ function ClaimsContent() {
             <FileText className="w-8 h-8 text-zinc-300 mx-auto" />
             <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">No claims match the filter</p>
             <p className="text-[11px] text-zinc-400">Try changing status filter or clearing your search query.</p>
+            <Button variant="outline" onClick={() => { setSearch(""); setSelectedStatus("ALL"); }}>Clear filters</Button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <><MobileClaimList claims={filteredClaims} /><div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-zinc-50/50 border-b border-zinc-100 dark:bg-zinc-900/50 dark:border-zinc-800 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
@@ -180,7 +195,7 @@ function ClaimsContent() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </div></>
         )}
       </div>
     </div>

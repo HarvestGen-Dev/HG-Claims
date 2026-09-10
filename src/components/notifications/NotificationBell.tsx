@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Bell, CheckCheck, Clock, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { Notification } from "@/lib/types/database";
 import { formatDateTime } from "@/lib/utils/formatters";
 
@@ -40,16 +40,22 @@ export function NotificationBell() {
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
-  const handleMarkAllRead = () => {
+  const handleMarkAllRead = async () => {
+    try {
     if (!user) return;
-    db.markAllNotificationsAsRead(user.id);
+    await db.markAllNotificationsAsRead(user.id);
     setNotifications(db.getNotifications(user.id));
+
+    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
-  const handleItemClick = (n: Notification) => {
-    db.markNotificationAsRead(n.id);
+  const handleItemClick = async (n: Notification) => {
+    try {
+    await db.markNotificationAsRead(n.id);
     setNotifications(prev => prev.map(item => item.id === n.id ? { ...item, is_read: true } : item));
     setIsOpen(false);
+
+    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
   return (

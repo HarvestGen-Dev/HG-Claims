@@ -141,11 +141,12 @@ export function ExpenseItemsEditor({
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-2.5 text-xs">
               {/* Date */}
               <div className="md:col-span-3 space-y-1">
-                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                <label htmlFor={`expense-${idx}-expense_date`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                   Date *
                 </label>
                 <Input
                   type="date"
+                  id={`expense-${idx}-expense_date`}
                   value={item.expense_date}
                   disabled={disabled}
                   onChange={(e) => updateField(idx, "expense_date", e.target.value)}
@@ -156,10 +157,11 @@ export function ExpenseItemsEditor({
 
               {/* Category */}
               <div className="md:col-span-3 space-y-1">
-                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                <label htmlFor={`expense-${idx}-expense_category_id`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                   Category *
                 </label>
                 <select
+                  id={`expense-${idx}-expense_category_id`}
                   value={item.expense_category_id}
                   disabled={disabled}
                   onChange={(e) => updateField(idx, "expense_category_id", e.target.value)}
@@ -177,12 +179,13 @@ export function ExpenseItemsEditor({
 
               {/* Merchant / Vendor */}
               <div className="md:col-span-3 space-y-1">
-                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                <label htmlFor={`expense-${idx}-vendor`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                   Vendor
                 </label>
                 <Input
                   type="text"
                   placeholder="e.g. Grab, Pelita"
+                  id={`expense-${idx}-vendor`}
                   value={item.vendor || ""}
                   disabled={disabled}
                   onChange={(e) => updateField(idx, "vendor", e.target.value)}
@@ -192,7 +195,7 @@ export function ExpenseItemsEditor({
 
               {/* Amount */}
               <div className="md:col-span-3 space-y-1">
-                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                <label htmlFor={`expense-${idx}-amount`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                   Amount (RM) *
                 </label>
                 <div className="relative">
@@ -204,7 +207,8 @@ export function ExpenseItemsEditor({
                     step="0.01"
                     min="0.01"
                     placeholder="0.00"
-                    value={item.amount}
+                    id={`expense-${idx}-amount`}
+                  value={item.amount}
                     disabled={disabled}
                     onChange={(e) => updateField(idx, "amount", e.target.value)}
                     className="h-8 pl-8 font-mono font-semibold text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-xs"
@@ -215,12 +219,13 @@ export function ExpenseItemsEditor({
 
               {/* Description */}
               <div className="md:col-span-8 space-y-1">
-                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                <label htmlFor={`expense-${idx}-description`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                   Description / Purpose *
                 </label>
                 <Input
                   type="text"
                   placeholder="e.g. Grab transport to camp venue"
+                  id={`expense-${idx}-description`}
                   value={item.description}
                   disabled={disabled}
                   onChange={(e) => updateField(idx, "description", e.target.value)}
@@ -231,12 +236,13 @@ export function ExpenseItemsEditor({
 
               {/* Notes */}
               <div className="md:col-span-4 space-y-1">
-                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                <label htmlFor={`expense-${idx}-notes`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                   Notes
                 </label>
                 <Input
                   type="text"
                   placeholder="e.g. 12 volunteers"
+                  id={`expense-${idx}-notes`}
                   value={item.notes || ""}
                   disabled={disabled}
                   onChange={(e) => updateField(idx, "notes", e.target.value)}

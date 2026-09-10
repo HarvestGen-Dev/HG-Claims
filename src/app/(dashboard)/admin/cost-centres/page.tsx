@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { CostCentre } from "@/lib/types/database";
 import { PieChart, Plus, Edit } from "lucide-react";
 
@@ -52,14 +52,15 @@ export default function CostCentreManagementPage() {
     setError("");
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    try {
     if (!formData.name.trim() || !formData.code.trim()) {
       setError("Cost centre name and code are required.");
       return;
     }
 
     if (isCreating) {
-      db.createCostCentre({
+      await db.createCostCentre({
         code: formData.code.trim().toUpperCase(),
         name: formData.name.trim(),
         ministry_id: formData.ministry_id || null,
@@ -68,7 +69,7 @@ export default function CostCentreManagementPage() {
       });
       setIsCreating(false);
     } else if (editingCC) {
-      db.updateCostCentre(editingCC.id, {
+      await db.updateCostCentre(editingCC.id, {
         code: formData.code.trim().toUpperCase(),
         name: formData.name.trim(),
         ministry_id: formData.ministry_id || null,
@@ -79,11 +80,16 @@ export default function CostCentreManagementPage() {
     }
 
     refresh();
+
+    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
-  const handleToggleStatus = (cc: CostCentre) => {
-    db.updateCostCentre(cc.id, { is_active: !cc.is_active });
+  const handleToggleStatus = async (cc: CostCentre) => {
+    try {
+    await db.updateCostCentre(cc.id, { is_active: !cc.is_active });
     refresh();
+
+    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
   return (

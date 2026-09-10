@@ -1,29 +1,17 @@
+import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { supabaseConfig } from "./config";
 
-export function createClient() {
-  const cookieStore = cookies();
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://nlcc-demo.supabase.co";
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "demo-anon-key";
-
+export async function createClient() {
+  const cookieStore = await cookies();
+  const { url, key } = supabaseConfig();
   return createServerClient(url, key, {
     cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
-      },
-      set(name: string, value: string, options: any) {
-        try {
-          cookieStore.set({ name, value, ...options });
-        } catch (error) {
-          // Handled for Server Components
-        }
-      },
-      remove(name: string, options: any) {
-        try {
-          cookieStore.set({ name, value: "", ...options });
-        } catch (error) {
-          // Handled for Server Components
-        }
+      getAll() { return cookieStore.getAll(); },
+      setAll(values) {
+        try { values.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); }
+        catch { /* Server Components rely on middleware to refresh session cookies. */ }
       },
     },
   });

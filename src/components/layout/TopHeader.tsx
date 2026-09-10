@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { 
-  Search, 
-  Menu, 
+import {
+  Search,
+  Menu,
   ChevronDown,
   LogOut,
   User,
@@ -18,13 +18,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { BrandLogo } from "@/components/BrandLogo";
 
 interface TopHeaderProps {
   onToggleMobileMenu?: () => void;
 }
 
 export function TopHeader({ onToggleMobileMenu }: TopHeaderProps) {
-  const { user, allUsers, switchUser, logout, hasRole } = useAuth();
+  const { user, logout, hasRole } = useAuth();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showAdminSwitcher, setShowAdminSwitcher] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -37,9 +38,9 @@ export function TopHeader({ onToggleMobileMenu }: TopHeaderProps) {
     router.push(`/claims?search=${encodeURIComponent(searchQuery.trim())}`);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setShowProfileMenu(false);
-    logout();
+    await logout();
     router.push("/login");
   };
 
@@ -66,7 +67,7 @@ export function TopHeader({ onToggleMobileMenu }: TopHeaderProps) {
   const isAdmin = hasRole("SYSTEM_ADMIN");
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 w-full items-center justify-between border-b border-zinc-200/80 bg-white/90 px-4 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/90 sm:px-6">
+    <header className="sticky top-0 z-40 flex shrink-0 h-14 w-full items-center justify-between border-b border-zinc-200/80 bg-white/90 px-4 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/90 sm:px-6">
       <div className="flex items-center gap-3">
         <button
           onClick={onToggleMobileMenu}
@@ -77,9 +78,7 @@ export function TopHeader({ onToggleMobileMenu }: TopHeaderProps) {
         </button>
 
         <Link href="/dashboard" className="flex items-center gap-2 lg:hidden">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-900 text-white font-bold text-xs">
-            NL
-          </div>
+          <BrandLogo className="w-12" />
           <span className="font-semibold text-zinc-900 text-xs tracking-tight dark:text-zinc-100">NLCC</span>
         </Link>
 
@@ -88,12 +87,12 @@ export function TopHeader({ onToggleMobileMenu }: TopHeaderProps) {
           <Search className="absolute left-2.5 w-3.5 h-3.5 text-zinc-400" />
           <input
             type="text"
+            aria-label="Search claims"
             placeholder="Search claims, vouchers..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-8 w-full rounded-lg border border-zinc-200 bg-zinc-50/70 pl-8 pr-10 text-xs text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-100 dark:focus:ring-zinc-100 transition-all"
           />
-          <kbd className="absolute right-2 text-[10px] font-mono text-zinc-400 pointer-events-none hidden sm:inline">⌘K</kbd>
         </form>
       </div>
 
@@ -108,6 +107,7 @@ export function TopHeader({ onToggleMobileMenu }: TopHeaderProps) {
             onClick={() => setShowProfileMenu(!showProfileMenu)}
             className="flex items-center gap-2.5 p-1 pl-1.5 pr-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-colors focus:outline-none"
             aria-expanded={showProfileMenu}
+            aria-label="Account menu"
             aria-haspopup="true"
           >
             <div className="h-7 w-7 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center font-semibold text-xs shrink-0 overflow-hidden ring-1 ring-zinc-200 dark:ring-zinc-800">
@@ -132,8 +132,8 @@ export function TopHeader({ onToggleMobileMenu }: TopHeaderProps) {
                 <p className="text-[11px] text-zinc-400 truncate">{user?.email}</p>
                 <div className="mt-1.5 flex flex-wrap gap-1">
                   {user?.roles?.map((role) => (
-                    <span 
-                      key={role} 
+                    <span
+                      key={role}
                       className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
                     >
                       {roleLabelMap[role] || role}
@@ -171,47 +171,6 @@ export function TopHeader({ onToggleMobileMenu }: TopHeaderProps) {
                   <span>Notifications</span>
                 </Link>
               </div>
-
-              {/* Admin Account Switcher Option */}
-              {isAdmin && (
-                <div className="border-t border-zinc-100 dark:border-zinc-800 pt-1 px-1">
-                  <button
-                    onClick={() => setShowAdminSwitcher(!showAdminSwitcher)}
-                    className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-zinc-700 hover:bg-zinc-100 rounded-lg dark:text-zinc-300 dark:hover:bg-zinc-800 transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <ArrowRightLeft className="w-3.5 h-3.5 text-zinc-400" />
-                      <span>Switch Account View</span>
-                    </div>
-                    <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform ${showAdminSwitcher ? "rotate-180" : ""}`} />
-                  </button>
-
-                  {showAdminSwitcher && (
-                    <div className="mt-1 mb-1 p-1 bg-zinc-50 dark:bg-zinc-950/60 rounded-lg space-y-0.5 border border-zinc-100 dark:border-zinc-800/80 max-h-40 overflow-y-auto">
-                      {allUsers.map((u) => {
-                        const isCurrent = u.id === user?.id;
-                        return (
-                          <button
-                            key={u.id}
-                            onClick={() => {
-                              switchUser(u.id);
-                              setShowProfileMenu(false);
-                            }}
-                            className={`w-full flex items-center justify-between px-2 py-1 text-left rounded-md text-xs transition-colors ${
-                              isCurrent
-                                ? "bg-zinc-200/80 text-zinc-900 font-semibold dark:bg-zinc-800 dark:text-zinc-100"
-                                : "text-zinc-600 hover:bg-zinc-200/40 dark:text-zinc-400 dark:hover:bg-zinc-800/40"
-                            }`}
-                          >
-                            <span className="truncate pr-1">{u.full_name}</span>
-                            {isCurrent && <Check className="w-3 h-3 text-zinc-900 dark:text-zinc-100 shrink-0" />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Sign Out Action */}
               <div className="border-t border-zinc-100 dark:border-zinc-800 pt-1 px-1">

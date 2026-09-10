@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { PrintClaimView } from "@/components/claims/PrintClaimView";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { Claim } from "@/lib/types/database";
 
 export default function PrintPage() {

@@ -1,7 +1,7 @@
 import { createBrowserClient } from "@supabase/ssr";
+import { supabaseConfig } from "./config";
 
 export function createClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://nlcc-demo.supabase.co";
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "demo-anon-key";
+  const { url, key } = supabaseConfig();
   return createBrowserClient(url, key);
 }

@@ -2,16 +2,16 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { 
-  CheckSquare, 
-  Search, 
-  ArrowRight, 
+import {
+  CheckSquare,
+  Search,
+  ArrowRight,
   Inbox
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { Claim } from "@/lib/types/database";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 
@@ -39,7 +39,7 @@ export default function ApprovalsInboxPage() {
     return false;
   });
 
-  const reviewedHistory = claims.filter(c => 
+  const reviewedHistory = claims.filter(c =>
     (c.approval_actions || []).some(a => a.actor_id === user?.id && a.action !== "SUBMIT")
   );
 

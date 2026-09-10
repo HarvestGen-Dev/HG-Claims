@@ -2,29 +2,29 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { 
-  Wallet, 
-  BarChart3, 
-  Layers, 
+import {
+  Wallet,
+  BarChart3,
+  Layers,
   Download
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { Claim } from "@/lib/types/database";
 import { formatCurrency } from "@/lib/utils/formatters";
 import { generateClaimsCsv, downloadCsv } from "@/lib/utils/export-csv";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  ResponsiveContainer, 
-  PieChart, 
-  Pie, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
   Cell,
   CartesianGrid
 } from "recharts";
@@ -142,7 +142,7 @@ export default function FinanceDashboardPage() {
                     <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#f4f4f5" />
                     <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#71717a' }} interval={0} axisLine={{ stroke: '#e4e4e7' }} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: '#71717a' }} axisLine={{ stroke: '#e4e4e7' }} tickLine={false} />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(val: any) => [`RM ${Number(val).toFixed(2)}`, "Total Spend"]}
                       contentStyle={{ borderRadius: '8px', fontSize: '11px', border: '1px solid #e4e4e7', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
                     />
@@ -179,7 +179,7 @@ export default function FinanceDashboardPage() {
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip 
+                    <Tooltip
                       formatter={(val: any) => [`RM ${Number(val).toFixed(2)}`, "Amount"]}
                       contentStyle={{ borderRadius: '8px', fontSize: '11px', border: '1px solid #e4e4e7', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
                     />

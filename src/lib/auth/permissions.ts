@@ -1,7 +1,7 @@
 import { Profile, Claim, RoleCode } from "@/lib/types/database";
 
 export function userHasRole(user: Profile | null | undefined, role: RoleCode): boolean {
-  if (!user || !user.roles) return false;
+  if (!user || user.status !== "ACTIVE" || !user.roles) return false;
   if (user.roles.includes("SYSTEM_ADMIN")) return true;
   return user.roles.includes(role);
 }
@@ -20,7 +20,7 @@ export function canUserApproveClaim(user: Profile | null | undefined, claim: Cla
   if (user.roles?.includes("SYSTEM_ADMIN")) return true;
 
   // Rule 4: Match assigned user or role
-  if (currentStep.assigned_user_id === user.id) return true;
+  if (currentStep.assigned_user_id) return currentStep.assigned_user_id === user.id;
 
   if (currentStep.approver_role === "MINISTRY_LEADER") {
     return !!(user.roles?.includes("MINISTRY_LEADER") || user.roles?.includes("SYSTEM_ADMIN"));
@@ -49,10 +49,12 @@ export function canUserEditClaim(user: Profile | null | undefined, claim: Claim 
 export function canUserRecordPayment(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
   if (!user || !claim) return false;
   if (claim.status !== "APPROVED_FOR_PAYMENT") return false;
+  if (claim.claimant_id === user.id) return false;
   return userHasRole(user, "FINANCE_OFFICER") || userHasRole(user, "SYSTEM_ADMIN");
 }
 
 export function canUserVerifyClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
   if (!user || !claim) return false;
+  if (claim.claimant_id === user.id || claim.status !== "PENDING_FINANCE_REVIEW") return false;
   return userHasRole(user, "FINANCE_OFFICER") || userHasRole(user, "SYSTEM_ADMIN");
 }

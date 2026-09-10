@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ClaimDetailView } from "@/components/claims/ClaimDetailView";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { Claim } from "@/lib/types/database";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";

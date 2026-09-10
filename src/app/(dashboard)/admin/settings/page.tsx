@@ -6,17 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { useAuth } from "@/lib/auth/context";
-import { 
-  Settings, 
-  CheckCircle2, 
-  Hash, 
-  Building2, 
-  Bell, 
-  FileText, 
-  Sliders, 
-  ShieldCheck, 
+import {
+  Settings,
+  CheckCircle2,
+  Hash,
+  Building2,
+  Bell,
+  FileText,
+  Sliders,
+  ShieldCheck,
   HelpCircle,
   CreditCard
 } from "lucide-react";
@@ -86,21 +86,22 @@ export default function SystemSettingsPage() {
   const [saved, setSaved] = useState(false);
 
   const togglePaymentMethod = (code: string) => {
-    setPaymentMethods(paymentMethods.map((pm: any) => 
+    setPaymentMethods(paymentMethods.map((pm: any) =>
       pm.code === code ? { ...pm, enabled: !pm.enabled } : pm
     ));
   };
 
-  const handleSaveAll = () => {
+  const handleSaveAll = async () => {
+    try {
     // 1. Update Claim Numbering
-    db.updateSetting("claim_numbering", {
+    await db.updateSetting("claim_numbering", {
       prefix,
       year_format: "YYYY",
       digits: Number(digits),
     }, user?.id);
 
     // 2. Update Organization Profile
-    db.updateSetting("organization_profile", {
+    await db.updateSetting("organization_profile", {
       name: orgName,
       registration_no: regNo,
       address,
@@ -110,7 +111,7 @@ export default function SystemSettingsPage() {
     }, user?.id);
 
     // 3. Update Claim Form Format & Rules
-    db.updateSetting("claim_form_config", {
+    await db.updateSetting("claim_form_config", {
       declaration_text: declarationText,
       allow_claimant_change_ministry: allowMinistryChange,
       require_vendor_name: requireVendor,
@@ -123,7 +124,7 @@ export default function SystemSettingsPage() {
     }, user?.id);
 
     // 4. Update Notifications
-    db.updateSetting("notification_settings", {
+    await db.updateSetting("notification_settings", {
       email_enabled: notifEmail,
       in_app_enabled: notifInApp,
       notify_on_submit: true,
@@ -133,6 +134,8 @@ export default function SystemSettingsPage() {
 
     setSaved(true);
     setTimeout(() => setSaved(false), 4000);
+
+    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
   return (
@@ -224,7 +227,7 @@ export default function SystemSettingsPage() {
                 />
                 <div>
                   <strong className="text-slate-800 block">Allow Claimant to Change Ministry</strong>
-                  <span className="text-[11px] text-slate-500">If unchecked, claims are locked to the user's assigned default ministry.</span>
+                  <span className="text-[11px] text-slate-500">If unchecked, claims are locked to the user&apos;s assigned default ministry.</span>
                 </div>
               </label>
 

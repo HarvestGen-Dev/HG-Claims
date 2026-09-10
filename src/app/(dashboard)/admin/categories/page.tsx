@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { ExpenseCategory } from "@/lib/types/database";
 import { Tag, Plus, Edit } from "lucide-react";
 
@@ -50,14 +50,15 @@ export default function CategoryManagementPage() {
     setError("");
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    try {
     if (!formData.name.trim() || !formData.code.trim()) {
       setError("Category name and code are required.");
       return;
     }
 
     if (isCreating) {
-      db.createCategory({
+      await db.createCategory({
         code: formData.code.trim().toUpperCase(),
         name: formData.name.trim(),
         description: formData.description.trim(),
@@ -66,7 +67,7 @@ export default function CategoryManagementPage() {
       });
       setIsCreating(false);
     } else if (editingCat) {
-      db.updateCategory(editingCat.id, {
+      await db.updateCategory(editingCat.id, {
         code: formData.code.trim().toUpperCase(),
         name: formData.name.trim(),
         description: formData.description.trim(),
@@ -77,11 +78,16 @@ export default function CategoryManagementPage() {
     }
 
     refresh();
+
+    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
-  const handleToggleStatus = (c: ExpenseCategory) => {
-    db.updateCategory(c.id, { is_active: !c.is_active });
+  const handleToggleStatus = async (c: ExpenseCategory) => {
+    try {
+    await db.updateCategory(c.id, { is_active: !c.is_active });
     refresh();
+
+    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
   return (

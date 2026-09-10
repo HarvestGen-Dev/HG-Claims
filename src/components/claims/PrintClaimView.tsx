@@ -6,6 +6,7 @@ import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils/formatte
 import { Printer, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { BrandLogo } from "@/components/BrandLogo";
 
 interface PrintClaimViewProps {
   claim: Claim;
@@ -34,11 +35,9 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
       {/* Printable Sheet */}
       <div className="max-w-4xl mx-auto bg-white border border-slate-300 p-8 rounded-lg shadow-sm print:border-none print:shadow-none print:p-0">
         {/* Church Official Header */}
-        <div className="flex justify-between items-start border-b-2 border-slate-900 pb-4 mb-6">
+        <div className="flex flex-wrap justify-between items-start gap-4 border-b-2 border-slate-900 pb-4 mb-6">
           <div>
-            <h1 className="text-2xl font-black tracking-tight text-slate-950">NEWLIFE COMMUNITY CHURCH</h1>
-            <p className="text-xs text-slate-600 font-medium">Jalan Universiti, 46200 Petaling Jaya, Selangor, Malaysia</p>
-            <p className="text-xs text-slate-500">Registration No: PPM-003-10-14051998 • finance@newlife.org.my</p>
+            <BrandLogo className="w-32" priority />
           </div>
           <div className="text-right">
             <h2 className="text-lg font-black uppercase tracking-wider text-emerald-800">EXPENSE REIMBURSEMENT VOUCHER</h2>
@@ -123,7 +122,7 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
         <div className="border border-slate-300 rounded p-4 mb-6 bg-slate-50 text-xs">
           <p className="font-bold text-slate-900 mb-1">Claimant Declaration:</p>
           <p className="text-slate-700 italic mb-2">
-            "I confirm that these expenses were incurred for legitimate church ministry purposes, have not previously been claimed, and are supported by the documents provided."
+            &quot;I confirm that these expenses were incurred for legitimate church ministry purposes, have not previously been claimed, and are supported by the documents provided.&quot;
           </p>
           <p className="text-slate-500">
             Digitally Signed by: <strong>{claim.claimant?.full_name}</strong> on {formatDateTime(claim.declaration_timestamp || claim.submitted_at)}

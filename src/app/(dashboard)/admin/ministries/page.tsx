@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { Ministry, Profile } from "@/lib/types/database";
 import { Building2, Plus, Edit, CheckCircle2, UserCheck } from "lucide-react";
 
@@ -54,14 +54,15 @@ export default function MinistryManagementPage() {
     setError("");
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    try {
     if (!formData.name.trim() || !formData.code.trim()) {
       setError("Ministry name and code are required.");
       return;
     }
 
     if (isCreating) {
-      db.createMinistry({
+      await db.createMinistry({
         code: formData.code.trim().toUpperCase(),
         name: formData.name.trim(),
         description: formData.description.trim(),
@@ -70,7 +71,7 @@ export default function MinistryManagementPage() {
       });
       setIsCreating(false);
     } else if (editingMin) {
-      db.updateMinistry(editingMin.id, {
+      await db.updateMinistry(editingMin.id, {
         code: formData.code.trim().toUpperCase(),
         name: formData.name.trim(),
         description: formData.description.trim(),
@@ -81,11 +82,16 @@ export default function MinistryManagementPage() {
     }
 
     refresh();
+
+    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
-  const handleToggleStatus = (m: Ministry) => {
-    db.updateMinistry(m.id, { is_active: !m.is_active });
+  const handleToggleStatus = async (m: Ministry) => {
+    try {
+    await db.updateMinistry(m.id, { is_active: !m.is_active });
     refresh();
+
+    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
   return (

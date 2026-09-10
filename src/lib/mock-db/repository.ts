@@ -1,32 +1,32 @@
-import { 
-  Claim, 
-  ClaimExpense, 
-  ClaimAttachment, 
-  ClaimWorkflow, 
-  ClaimWorkflowStep, 
-  ApprovalAction, 
-  Profile, 
-  Ministry, 
-  ExpenseCategory, 
-  CostCentre, 
-  ApprovalRule, 
-  Notification, 
-  AuditLog, 
+import {
+  Claim,
+  ClaimExpense,
+  ClaimAttachment,
+  ClaimWorkflow,
+  ClaimWorkflowStep,
+  ApprovalAction,
+  Profile,
+  Ministry,
+  ExpenseCategory,
+  CostCentre,
+  ApprovalRule,
+  Notification,
+  AuditLog,
   SystemSetting,
   Payment,
   FinanceReview,
   ClaimStatus,
   RoleCode
 } from "@/lib/types/database";
-import { 
-  INITIAL_PROFILES, 
-  INITIAL_MINISTRIES, 
-  INITIAL_CATEGORIES, 
-  INITIAL_COST_CENTRES, 
-  INITIAL_APPROVAL_RULES, 
-  INITIAL_CLAIMS, 
-  INITIAL_NOTIFICATIONS, 
-  INITIAL_SYSTEM_SETTINGS 
+import {
+  INITIAL_PROFILES,
+  INITIAL_MINISTRIES,
+  INITIAL_CATEGORIES,
+  INITIAL_COST_CENTRES,
+  INITIAL_APPROVAL_RULES,
+  INITIAL_CLAIMS,
+  INITIAL_NOTIFICATIONS,
+  INITIAL_SYSTEM_SETTINGS
 } from "./seed-data";
 import { calculateTotalAmount } from "@/lib/utils/calculations";
 import { formatClaimNumber } from "@/lib/utils/claim-number";
@@ -59,7 +59,39 @@ class DatabaseRepository {
     this.notifications = JSON.parse(JSON.stringify(INITIAL_NOTIFICATIONS));
     this.systemSettings = JSON.parse(JSON.stringify(INITIAL_SYSTEM_SETTINGS));
     this.auditLogs = [];
+    if (typeof window !== "undefined") {
+      const stored = window.localStorage.getItem("nlcc_workspace_v1");
+      if (stored) {
+        try {
+          const data = JSON.parse(stored);
+          const collections = ["profiles", "ministries", "categories", "costCentres", "approvalRules", "claims", "notifications", "systemSettings", "auditLogs"];
+          if (data.version === 1 && collections.every(key => Array.isArray(data[key])) && Number.isInteger(data.runningSequence)) {
+            this.profiles = data.profiles;
+            this.ministries = data.ministries;
+            this.categories = data.categories;
+            this.costCentres = data.costCentres;
+            this.approvalRules = data.approvalRules;
+            this.claims = data.claims;
+            this.notifications = data.notifications;
+            this.systemSettings = data.systemSettings;
+            this.auditLogs = data.auditLogs;
+            this.runningSequence = data.runningSequence;
+          }
+        } catch { console.warn("Saved demo data could not be read."); }
+      }
+    }
     this.isInitialized = true;
+  }
+
+  private persist() {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("nlcc_workspace_v1", JSON.stringify({
+      version: 1,
+      profiles: this.profiles, ministries: this.ministries, categories: this.categories,
+      costCentres: this.costCentres, approvalRules: this.approvalRules, claims: this.claims,
+      notifications: this.notifications, systemSettings: this.systemSettings,
+      auditLogs: this.auditLogs, runningSequence: this.runningSequence,
+    }));
   }
 
   // --- Profiles & Auth ---
@@ -79,6 +111,7 @@ class DatabaseRepository {
     const idx = this.profiles.findIndex(p => p.id === id);
     if (idx === -1) throw new Error(`Profile ${id} not found`);
     this.profiles[idx] = { ...this.profiles[idx], ...updates, updated_at: new Date().toISOString() };
+    this.persist();
     return this.profiles[idx];
   }
 
@@ -476,7 +509,7 @@ class DatabaseRepository {
       }
       if (filters.search) {
         const q = filters.search.toLowerCase();
-        result = result.filter(c => 
+        result = result.filter(c =>
           (c.claim_number && c.claim_number.toLowerCase().includes(q)) ||
           c.programme_event.toLowerCase().includes(q) ||
           c.purpose.toLowerCase().includes(q) ||
@@ -612,8 +645,15 @@ class DatabaseRepository {
           internal_reference: params.internal_reference,
           total_amount,
           expenses: updatedExpenses,
+          attachments: (params.attachments || []).map((attachment, index) => ({
+            ...attachment,
+            id: (attachment as ClaimAttachment).id || `att-${Date.now()}-${index}`,
+            claim_id: existing.id,
+            created_at: now,
+          })),
           updated_at: now,
         };
+        this.persist();
         return this.enrichClaim(this.claims[idx]);
       }
     }
@@ -659,6 +699,7 @@ class DatabaseRepository {
     };
 
     this.claims.unshift(newClaim);
+    this.persist();
     return this.enrichClaim(newClaim);
   }
 
@@ -779,6 +820,7 @@ class DatabaseRepository {
       after_data: { claim_number: claim.claim_number, total_amount, status: claim.status },
     });
 
+    this.persist();
     return this.enrichClaim(claim);
   }
 
@@ -894,6 +936,7 @@ class DatabaseRepository {
       after_data: { status: nextStatus, comment },
     });
 
+    this.persist();
     return this.enrichClaim(claim);
   }
 
@@ -957,6 +1000,7 @@ class DatabaseRepository {
       after_data: { status: "RETURNED_FOR_CLARIFICATION", reason },
     });
 
+    this.persist();
     return this.enrichClaim(claim);
   }
 
@@ -1020,6 +1064,7 @@ class DatabaseRepository {
       after_data: { status: "REJECTED", reason },
     });
 
+    this.persist();
     return this.enrichClaim(claim);
   }
 
@@ -1115,6 +1160,7 @@ class DatabaseRepository {
       after_data: { total_amount, response: params.response_comment },
     });
 
+    this.persist();
     return this.enrichClaim(claim);
   }
 
@@ -1158,6 +1204,7 @@ class DatabaseRepository {
       after_data: { verified: true, notes },
     });
 
+    this.persist();
     return this.enrichClaim(claim);
   }
 
@@ -1229,6 +1276,7 @@ class DatabaseRepository {
       after_data: { payment_ref: params.payment_reference, amount: params.amount, date: params.payment_date },
     });
 
+    this.persist();
     return this.enrichClaim(claim);
   }
 
@@ -1269,6 +1317,7 @@ class DatabaseRepository {
       },
     });
 
+    this.persist();
     return this.enrichClaim(claim);
   }
 
@@ -1318,6 +1367,7 @@ class DatabaseRepository {
       }
     }
 
+    this.persist();
     return this.enrichClaim(claim);
   }
 
@@ -1331,12 +1381,14 @@ class DatabaseRepository {
   public markNotificationAsRead(id: string): void {
     const notif = this.notifications.find(n => n.id === id);
     if (notif) notif.is_read = true;
+    this.persist();
   }
 
   public markAllNotificationsAsRead(userId: string): void {
     this.notifications.forEach(n => {
       if (n.user_id === userId) n.is_read = true;
     });
+    this.persist();
   }
 
   public createNotification(n: Omit<Notification, "id" | "created_at" | "is_read">): Notification {
@@ -1347,6 +1399,7 @@ class DatabaseRepository {
       created_at: new Date().toISOString(),
     };
     this.notifications.unshift(newN);
+    this.persist();
     return newN;
   }
 
@@ -1383,6 +1436,7 @@ class DatabaseRepository {
       created_at: new Date().toISOString(),
     };
     this.auditLogs.unshift(log);
+    this.persist();
     return log;
   }
 

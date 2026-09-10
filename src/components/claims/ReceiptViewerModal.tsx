@@ -1,77 +1,48 @@
 "use client";
-
-import React from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ClaimAttachment } from "@/lib/types/database";
 import { formatFileSize } from "@/lib/utils/formatters";
-import { FileText, Download, ExternalLink } from "lucide-react";
+import { getReceipt } from "@/lib/data/receipts";
+import { Download, FileText } from "lucide-react";
 
-interface ReceiptViewerModalProps {
-  attachment: ClaimAttachment | null;
-  onClose: () => void;
-}
-
-export function ReceiptViewerModal({ attachment, onClose }: ReceiptViewerModalProps) {
+export function ReceiptViewerModal({ attachment, onClose }: { attachment: ClaimAttachment | null; onClose: () => void }) {
+  const [source, setSource] = useState<{ path: string; url: string } | null>(null);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (!attachment) return;
+    let cancelled = false;
+    let objectUrl: string | undefined;
+    setSource(null);
+    setLoading(true);
+    async function load() {
+      try {
+        const file = await getReceipt(attachment!.storage_path);
+        const url = file ? (objectUrl = URL.createObjectURL(file)) : attachment!.signed_url || "";
+        if (cancelled && objectUrl) URL.revokeObjectURL(objectUrl);
+        if (!cancelled) setSource({ path: attachment!.storage_path, url });
+      } catch {
+        if (!cancelled) setSource({ path: attachment!.storage_path, url: attachment!.signed_url || "" });
+      } finally { if (!cancelled) setLoading(false); }
+    }
+    void load();
+    return () => { cancelled = true; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [attachment]);
   if (!attachment) return null;
-
-  const isImage = attachment.mime_type.startsWith("image/") || attachment.original_filename.match(/\.(jpg|jpeg|png|webp|gif)$/i);
-  const isPdf = attachment.mime_type.includes("pdf") || attachment.original_filename.endsWith(".pdf");
-
-  return (
-    <Dialog open={!!attachment} onOpenChange={(open) => !open && onClose()}>
-      <DialogHeader>
-        <DialogTitle className="text-base flex items-center justify-between pr-6 truncate">
-          <span className="truncate">{attachment.original_filename}</span>
-          <span className="text-xs font-normal text-slate-500 shrink-0 ml-2">
-            ({formatFileSize(attachment.file_size)})
-          </span>
-        </DialogTitle>
-      </DialogHeader>
-
-      <div className="mt-2 max-h-[70vh] overflow-y-auto flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
-        {isImage ? (
-          <img
-            src={attachment.signed_url || "https://images.unsplash.com/photo-1554224154-26032ffc0d07?w=800&auto=format&fit=crop"}
-            alt={attachment.original_filename}
-            className="max-h-[60vh] max-w-full rounded-lg object-contain shadow-sm"
-          />
-        ) : isPdf ? (
-          <div className="w-full h-96 flex flex-col items-center justify-center text-center p-6 space-y-3">
-            <div className="h-16 w-16 rounded-2xl bg-red-100 text-red-700 flex items-center justify-center shadow-inner">
-              <FileText className="w-8 h-8" />
-            </div>
-            <div>
-              <p className="font-semibold text-slate-900 dark:text-slate-100">{attachment.original_filename}</p>
-              <p className="text-xs text-slate-500">PDF Document • {formatFileSize(attachment.file_size)}</p>
-            </div>
-            <a
-              href={attachment.signed_url || "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-700 text-white text-xs font-medium hover:bg-emerald-800"
-            >
-              <ExternalLink className="w-4 h-4" />
-              Open PDF in New Window
-            </a>
-          </div>
-        ) : (
-          <div className="py-12 text-center space-y-3">
-            <FileText className="w-12 h-12 text-slate-400 mx-auto" />
-            <p className="font-semibold text-sm">{attachment.original_filename}</p>
-            <p className="text-xs text-slate-500">{attachment.mime_type}</p>
-          </div>
-        )}
-      </div>
-
-      <div className="mt-4 flex justify-between items-center text-xs text-slate-500">
-        <span>Uploaded securely to private storage</span>
-        <button
-          onClick={onClose}
-          className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 font-medium"
-        >
-          Close Preview
-        </button>
-      </div>
-    </Dialog>
-  );
+  const url = source?.path === attachment.storage_path ? source.url : "";
+  const isImage = attachment.mime_type.startsWith("image/");
+  return <Dialog open={!!attachment} onOpenChange={open => !open && onClose()}>
+    <DialogHeader><DialogTitle className="break-words">{attachment.original_filename}</DialogTitle>
+      <p className="text-sm text-zinc-500">{formatFileSize(attachment.file_size)}</p>
+    </DialogHeader>
+    <div className="min-h-40 flex items-center justify-center bg-zinc-50 p-4 border rounded-md">
+      {loading ? <p role="status">Loading receipt...</p> : !url ? <p role="alert" className="text-sm text-zinc-600">This file is unavailable. Ask the claimant to attach it again.</p> : isImage ?
+        <img src={url} alt={attachment.original_filename} className="max-h-[55dvh] max-w-full object-contain" onError={() => setSource(null)} /> :
+        <FileText className="h-12 w-12 text-zinc-400" />}
+    </div>
+    <div className="flex items-center justify-between gap-3 mt-4">
+      <p className="text-xs text-zinc-500">Private receipt</p>
+      {url && <a href={url} download={attachment.original_filename} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-emerald-700 font-medium"><Download className="h-4 w-4" />Open file</a>}
+    </div>
+  </Dialog>;
 }

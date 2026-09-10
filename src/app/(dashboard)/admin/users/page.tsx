@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { Profile, RoleCode } from "@/lib/types/database";
 import { UserCheck, Plus, CheckCircle2, ShieldAlert, Edit, CreditCard } from "lucide-react";
 import { MALAYSIAN_BANKS, BANK_CATEGORIES } from "@/lib/constants/banks";
@@ -15,6 +15,23 @@ export default function UserManagementPage() {
   const [profiles, setProfiles] = useState<Profile[]>(db.getProfiles());
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<RoleCode[]>([]);
+  const [inviting, setInviting] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteError, setInviteError] = useState("");
+  const [inviteSent, setInviteSent] = useState(false);
+  const handleInvite = async (event: React.FormEvent) => {
+    event.preventDefault(); setInviteBusy(true); setInviteError("");
+    try {
+      const response = await fetch("/api/users/invite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail, full_name: inviteName }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      await db.refresh(); setProfiles(db.getProfiles()); setInviting(false); setInviteSent(true);
+      setInviteEmail(""); setInviteName("");
+    } catch (error) { setInviteError(error instanceof Error ? error.message : "Invitation failed."); }
+    finally { setInviteBusy(false); }
+  };
 
   const availableRoles: { code: RoleCode; label: string }[] = [
     { code: "CLAIMANT", label: "Claimant" },
@@ -38,9 +55,10 @@ export default function UserManagementPage() {
     }
   };
 
-  const handleSaveUser = () => {
+  const handleSaveUser = async () => {
+    try {
     if (!editingUser) return;
-    const updated = db.updateProfile(editingUser.id, {
+    const updated = await db.updateProfile(editingUser.id, {
       full_name: editingUser.full_name,
       email: editingUser.email,
       phone: editingUser.phone,
@@ -51,12 +69,17 @@ export default function UserManagementPage() {
     });
     setProfiles(db.getProfiles());
     setEditingUser(null);
+
+    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
-  const handleToggleStatus = (u: Profile) => {
+  const handleToggleStatus = async (u: Profile) => {
+    try {
     const newStatus = u.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
-    db.updateProfile(u.id, { status: newStatus });
+    await db.updateProfile(u.id, { status: newStatus });
     setProfiles(db.getProfiles());
+
+    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
   return (
@@ -72,7 +95,20 @@ export default function UserManagementPage() {
               Manage church staff, pastoral team, and volunteer access roles and status.
             </p>
           </div>
+          <Button onClick={() => { setInviting(true); setInviteSent(false); }} className="gap-2"><Plus className="h-4 w-4" />Invite user</Button>
         </div>
+        {inviteSent && <p role="status" className="text-sm text-emerald-700">Invitation sent. Assign the user&apos;s ministry and roles below.</p>}
+        <Dialog open={inviting} onOpenChange={setInviting}>
+          <DialogTitle>Invite user</DialogTitle>
+          <form onSubmit={handleInvite} className="space-y-4 mt-4">
+            <label htmlFor="invite-name" className="block text-sm">Full name</label>
+            <Input id="invite-name" value={inviteName} onChange={event => setInviteName(event.target.value)} required maxLength={150} />
+            <label htmlFor="invite-email" className="block text-sm">Email address</label>
+            <Input id="invite-email" type="email" value={inviteEmail} onChange={event => setInviteEmail(event.target.value)} required />
+            {inviteError && <p role="alert" className="text-sm text-red-700">{inviteError}</p>}
+            <Button type="submit" disabled={inviteBusy}>{inviteBusy ? "Sending..." : "Send invitation"}</Button>
+          </form>
+        </Dialog>
 
         <Card>
           <CardContent className="p-0">
@@ -158,7 +194,7 @@ export default function UserManagementPage() {
               <label className="font-semibold text-slate-700">Email Address</label>
               <Input
                 value={editingUser.email}
-                onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                readOnly
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">

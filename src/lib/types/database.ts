@@ -1,13 +1,13 @@
 export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
 
-export type RoleCode = 
-  | 'CLAIMANT' 
-  | 'MINISTRY_LEADER' 
-  | 'FINANCE_OFFICER' 
-  | 'FINAL_APPROVER' 
+export type RoleCode =
+  | 'CLAIMANT'
+  | 'MINISTRY_LEADER'
+  | 'FINANCE_OFFICER'
+  | 'FINAL_APPROVER'
   | 'SYSTEM_ADMIN';
 
-export type ClaimStatus = 
+export type ClaimStatus =
   | 'DRAFT'
   | 'SUBMITTED'
   | 'PENDING_MINISTRY_APPROVAL'
@@ -20,34 +20,34 @@ export type ClaimStatus =
   | 'PAID'
   | 'CANCELLED';
 
-export type WorkflowStepStatus = 
-  | 'PENDING' 
-  | 'IN_PROGRESS' 
-  | 'COMPLETED' 
-  | 'SKIPPED' 
-  | 'REJECTED' 
+export type WorkflowStepStatus =
+  | 'PENDING'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'SKIPPED'
+  | 'REJECTED'
   | 'RETURNED';
 
-export type ApprovalActionType = 
-  | 'SUBMIT' 
-  | 'APPROVE' 
-  | 'RETURN_FOR_CLARIFICATION' 
-  | 'REJECT' 
-  | 'ADMIN_OVERRIDE' 
-  | 'RESUBMIT' 
-  | 'VERIFY' 
-  | 'PAY' 
+export type ApprovalActionType =
+  | 'SUBMIT'
+  | 'APPROVE'
+  | 'RETURN_FOR_CLARIFICATION'
+  | 'REJECT'
+  | 'ADMIN_OVERRIDE'
+  | 'RESUBMIT'
+  | 'VERIFY'
+  | 'PAY'
   | 'CANCEL';
 
-export type PaymentMethodType = 
-  | 'PERSONAL_REIMBURSEMENT' 
-  | 'CHURCH_CARD' 
-  | 'DIRECT_VENDOR_PAYMENT' 
+export type PaymentMethodType =
+  | 'PERSONAL_REIMBURSEMENT'
+  | 'CHURCH_CARD'
+  | 'DIRECT_VENDOR_PAYMENT'
   | 'OTHER';
 
-export type CommentVisibility = 
-  | 'PUBLIC_WORKFLOW' 
-  | 'FINANCE_INTERNAL' 
+export type CommentVisibility =
+  | 'PUBLIC_WORKFLOW'
+  | 'FINANCE_INTERNAL'
   | 'ADMIN_ONLY';
 
 export interface Profile {
@@ -230,6 +230,7 @@ export interface Payment {
 }
 
 export interface Claim {
+  version?: number;
   id: string;
   claim_number?: string | null;
   claimant_id: string;
@@ -258,7 +259,7 @@ export interface Claim {
   resubmitted_at?: string | null;
   created_at: string;
   updated_at: string;
-  
+
   // Relations
   expenses?: ClaimExpense[];
   attachments?: ClaimAttachment[];

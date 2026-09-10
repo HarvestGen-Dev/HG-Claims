@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { ApprovalRule, Ministry, ExpenseCategory } from "@/lib/types/database";
 import { GitBranch, Plus, ShieldCheck, CheckCircle2, Edit, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils/formatters";
@@ -41,10 +41,13 @@ export default function WorkflowConfigurationPage() {
 
   const refresh = () => setRules(db.getApprovalRules());
 
-  const handleSaveThreshold = () => {
-    db.updateSetting("approval_thresholds", { final_approval_threshold: Number(threshold), currency: "MYR" });
+  const handleSaveThreshold = async () => {
+    try {
+    await db.updateSetting("approval_thresholds", { final_approval_threshold: Number(threshold), currency: "MYR" });
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
+
+    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
   const handleOpenCreate = () => {
@@ -81,7 +84,8 @@ export default function WorkflowConfigurationPage() {
     setError("");
   };
 
-  const handleSaveRule = () => {
+  const handleSaveRule = async () => {
+    try {
     if (!formData.name.trim()) {
       setError("Rule name is required.");
       return;
@@ -101,21 +105,26 @@ export default function WorkflowConfigurationPage() {
     };
 
     if (isCreating) {
-      db.createApprovalRule(payload);
+      await db.createApprovalRule(payload);
       setIsCreating(false);
     } else if (editingRule) {
-      db.updateApprovalRule(editingRule.id, payload);
+      await db.updateApprovalRule(editingRule.id, payload);
       setEditingRule(null);
     }
 
     refresh();
+
+    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
-  const handleDeleteRule = (id: string) => {
+  const handleDeleteRule = async (id: string) => {
+    try {
     if (confirm("Are you sure you want to remove this approval rule?")) {
-      db.deleteApprovalRule(id);
+      await db.deleteApprovalRule(id);
       refresh();
     }
+
+    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
   return (

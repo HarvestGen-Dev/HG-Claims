@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { 
-  Plus, 
-  FileText, 
-  Clock, 
-  RotateCcw, 
-  CheckCircle2, 
-  Banknote, 
+import {
+  Plus,
+  FileText,
+  Clock,
+  RotateCcw,
+  CheckCircle2,
+  Banknote,
   ArrowUpRight,
   Search,
   AlertCircle
@@ -17,8 +17,9 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ClaimStatusBadge } from "@/components/claims/ClaimStatusBadge";
+import { MobileClaimList } from "@/components/claims/MobileClaimList";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { Claim } from "@/lib/types/database";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 
@@ -35,7 +36,7 @@ export default function DashboardPage() {
   // Status counts for claimant
   const myClaims = claims.filter(c => c.claimant_id === user?.id);
   const draftCount = myClaims.filter(c => c.status === "DRAFT").length;
-  const pendingCount = myClaims.filter(c => 
+  const pendingCount = myClaims.filter(c =>
     c.status.startsWith("PENDING_") || c.status === "SUBMITTED"
   ).length;
   const returnedCount = myClaims.filter(c => c.status === "RETURNED_FOR_CLARIFICATION").length;
@@ -106,7 +107,7 @@ export default function DashboardPage() {
         )}
 
         {/* Summary Stat Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="claim-summary grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <Link href="/claims?status=DRAFT" className="group">
             <div className="p-3.5 rounded-xl border border-zinc-200/80 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/80 transition-all shadow-2xs">
               <div className="flex items-center justify-between text-zinc-400 mb-1.5">
@@ -118,7 +119,7 @@ export default function DashboardPage() {
             </div>
           </Link>
 
-          <Link href="/claims?status=PENDING_MINISTRY_APPROVAL" className="group">
+          <Link href="/claims?status=IN_REVIEW" className="group">
             <div className="p-3.5 rounded-xl border border-zinc-200/80 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/80 transition-all shadow-2xs">
               <div className="flex items-center justify-between text-zinc-400 mb-1.5">
                 <span className="text-[11px] font-medium tracking-wide text-zinc-500">In Review</span>
@@ -140,7 +141,7 @@ export default function DashboardPage() {
             </div>
           </Link>
 
-          <Link href="/claims?status=APPROVED_FOR_PAYMENT" className="group">
+          <Link href="/claims?status=APPROVED" className="group">
             <div className="p-3.5 rounded-xl border border-zinc-200/80 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/80 transition-all shadow-2xs">
               <div className="flex items-center justify-between text-zinc-400 mb-1.5">
                 <span className="text-[11px] font-medium tracking-wide text-zinc-500">Approved</span>
@@ -208,7 +209,7 @@ export default function DashboardPage() {
                 </Link>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <><MobileClaimList claims={filteredRecent} /><div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-zinc-50/50 border-b border-zinc-100 dark:bg-zinc-900/50 dark:border-zinc-800 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
@@ -252,7 +253,7 @@ export default function DashboardPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </div></>
             )}
           </div>
         </div>

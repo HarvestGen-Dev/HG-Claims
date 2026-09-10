@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { AuditLog } from "@/lib/types/database";
 import { formatDateTime } from "@/lib/utils/formatters";
 import { History, Search, ShieldCheck } from "lucide-react";

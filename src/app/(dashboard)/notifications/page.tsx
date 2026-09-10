@@ -6,7 +6,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { Notification } from "@/lib/types/database";
 import { formatDateTime } from "@/lib/utils/formatters";
 import { Bell, CheckCheck, Clock, ArrowRight } from "lucide-react";
@@ -24,10 +24,13 @@ export default function NotificationsPage() {
     loadNotifs();
   }, [user]);
 
-  const handleMarkAll = () => {
+  const handleMarkAll = async () => {
+    try {
     if (!user) return;
-    db.markAllNotificationsAsRead(user.id);
+    await db.markAllNotificationsAsRead(user.id);
     loadNotifs();
+
+    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
   return (

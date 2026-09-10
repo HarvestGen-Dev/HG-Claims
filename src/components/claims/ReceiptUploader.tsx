@@ -5,6 +5,7 @@ import { UploadCloud, File, FileText, Image as ImageIcon, Trash2, Eye } from "lu
 import { ClaimAttachment } from "@/lib/types/database";
 import { formatFileSize } from "@/lib/utils/formatters";
 import { ReceiptViewerModal } from "./ReceiptViewerModal";
+import { saveReceipt } from "@/lib/data/receipts";
 
 export interface AttachmentDraft {
   id?: string;
@@ -22,6 +23,8 @@ interface ReceiptUploaderProps {
   onChange: (attachments: AttachmentDraft[]) => void;
   userId: string;
   disabled?: boolean;
+  maxFileSizeMb?: number;
+  maxAttachments?: number;
 }
 
 export function ReceiptUploader({
@@ -29,10 +32,15 @@ export function ReceiptUploader({
   onChange,
   userId,
   disabled = false,
+  maxFileSizeMb = 10,
+  maxAttachments = 15,
 }: ReceiptUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [previewItem, setPreviewItem] = useState<ClaimAttachment | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const uploadLock = useRef(false);
 
   const allowedTypes = [
     "application/pdf",
@@ -45,40 +53,56 @@ export function ReceiptUploader({
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   ];
 
-  const handleFiles = (files: FileList | null) => {
-    if (!files || files.length === 0 || disabled) return;
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0 || disabled || uploadLock.current) return;
+    uploadLock.current = true;
+    setUploading(true);
 
     const newAttachments: AttachmentDraft[] = [...attachments];
+    const errors: string[] = [];
 
-    Array.from(files).forEach((file) => {
+    for (const file of Array.from(files)) {
       // 10MB limit
-      if (file.size > 10 * 1024 * 1024) {
-        alert(`File ${file.name} exceeds maximum 10MB limit.`);
-        return;
+      if (newAttachments.length >= maxAttachments) {
+        errors.push(`A maximum of ${maxAttachments} attachments is allowed.`);
+        continue;
+      }
+      if (file.size > maxFileSizeMb * 1024 * 1024) {
+        errors.push(`${file.name} exceeds the ${maxFileSizeMb} MB limit.`);
+        continue;
       }
 
       // Check mime
       const isAllowed = allowedTypes.includes(file.type) || file.name.match(/\.(pdf|jpg|jpeg|png|xlsx|xls|docx|doc)$/i);
       if (!isAllowed) {
-        alert(`File ${file.name} format is not supported. Please upload PDF, JPG, PNG, Excel or Word documents.`);
-        return;
+        errors.push(`${file.name}: use PDF, JPG, PNG, Excel or Word.`);
+        continue;
       }
 
-      const objectUrl = URL.createObjectURL(file);
+      const storagePath = `${userId}/${crypto.randomUUID()}/${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+      try {
+        await saveReceipt(storagePath, file);
+      } catch {
+        errors.push(`${file.name} could not be uploaded. Check the connection, file type, and size, then try again.`);
+        continue;
+      }
 
       newAttachments.push({
         id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         original_filename: file.name,
         file_size: file.size,
         mime_type: file.type || "application/octet-stream",
-        storage_path: `receipts/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`,
+        storage_path: storagePath,
         file_category: "RECEIPT",
         uploaded_by: userId,
-        signed_url: objectUrl,
       });
-    });
+    }
 
     onChange(newAttachments);
+    setError(Array.from(new Set(errors)).join(" "));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    uploadLock.current = false;
+    setUploading(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -105,12 +129,17 @@ export function ReceiptUploader({
           Receipts & Invoices ({attachments.length})
         </h3>
         <p className="text-[11px] text-zinc-400">
-          Upload clear scans/photos of official receipts (PDF, JPG, PNG up to 10MB).
+          {attachments.length} of {maxAttachments} files &middot; Up to {maxFileSizeMb} MB each
         </p>
       </div>
 
       {!disabled && (
         <div
+          role="button"
+          aria-busy={uploading}
+          tabIndex={0}
+          aria-label="Upload receipts"
+          onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); fileInputRef.current?.click(); } }}
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
@@ -135,15 +164,17 @@ export function ReceiptUploader({
             </div>
             <div className="text-left">
               <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">
-                Click to upload receipts, or drag and drop files
+                {uploading ? "Saving receipts..." : "Add receipts"}
               </p>
               <p className="text-[10px] text-zinc-400">
-                PNG, JPG, PDF, Excel up to 10MB per receipt
+                PNG, JPG, PDF, Excel or Word
               </p>
             </div>
           </div>
         </div>
       )}
+
+      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
 
       {/* Attachment List */}
       {attachments.length > 0 && (

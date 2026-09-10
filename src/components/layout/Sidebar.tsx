@@ -3,29 +3,30 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Plus, 
-  CheckSquare, 
-  Wallet, 
-  BarChart3, 
-  Settings, 
-  Users, 
-  Layers, 
-  Tag, 
-  PieChart, 
-  GitBranch, 
-  History, 
-  Bell, 
+import {
+  LayoutDashboard,
+  FileText,
+  Plus,
+  CheckSquare,
+  Wallet,
+  BarChart3,
+  Settings,
+  Users,
+  Layers,
+  Tag,
+  PieChart,
+  GitBranch,
+  History,
+  Bell,
   UserCircle,
   Building2,
   ShieldCheck,
   CreditCard
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { cn } from "@/lib/utils/cn";
+import { BrandLogo } from "@/components/BrandLogo";
 
 interface SidebarProps {
   onNavigate?: () => void;
@@ -41,7 +42,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
     if (!user) return;
     const updateBadges = () => {
       const all = db.getClaims(user);
-      
+
       const pendingApprovals = all.filter(c => {
         if (c.claimant_id === user.id) return false;
         const currentStep = c.workflow_steps?.find(s => s.status === "IN_PROGRESS");
@@ -53,7 +54,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       }).length;
       setApprovalsCount(pendingApprovals);
 
-      const pendingFinance = all.filter(c => 
+      const pendingFinance = all.filter(c =>
         c.status === "PENDING_FINANCE_REVIEW" || c.status === "APPROVED_FOR_PAYMENT"
       ).length;
       setFinanceCount(pendingFinance);
@@ -74,9 +75,10 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       <Link
         key={href}
         href={href}
+        aria-current={isActive ? "page" : undefined}
         onClick={onNavigate}
         className={cn(
-          "flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all group",
+          "flex min-h-10 items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors group",
           isActive
             ? "bg-zinc-900 text-white font-medium shadow-2xs dark:bg-zinc-100 dark:text-zinc-900"
             : "text-zinc-600 hover:bg-zinc-100/80 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/80 dark:hover:text-zinc-100"
@@ -92,8 +94,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           <span
             className={cn(
               "px-1.5 py-0.2 text-[10px] font-semibold tabular-nums rounded-md shrink-0",
-              isActive 
-                ? "bg-white/20 text-white dark:bg-zinc-900/20 dark:text-zinc-900" 
+              isActive
+                ? "bg-white/20 text-white dark:bg-zinc-900/20 dark:text-zinc-900"
                 : "bg-rose-500 text-white"
             )}
           >
@@ -107,24 +109,17 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   return (
     <aside className="flex flex-col h-full bg-white dark:bg-zinc-950 border-r border-zinc-200/80 dark:border-zinc-800/80 p-3 select-none">
       {/* Brand Header */}
-      <div className="flex items-center gap-2.5 px-2 py-2.5 mb-3">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-bold text-xs tracking-tight shrink-0 shadow-2xs">
-          NL
-        </div>
-        <div className="min-w-0">
-          <h1 className="font-semibold text-zinc-900 text-xs tracking-tight dark:text-zinc-100 truncate">
-            NewLife Church
-          </h1>
-          <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">
-            Expense Portal
-          </p>
-        </div>
+      <div className="px-2 py-2.5 mb-3">
+        <Link href="/dashboard" onClick={onNavigate} aria-label="New Life Community Church dashboard" className="block w-fit">
+          <BrandLogo className="w-28" priority />
+        </Link>
+        <p className="mt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">Expense Portal</p>
       </div>
 
       {/* Primary Action */}
       <div className="px-1 mb-3">
-        <Link 
-          href="/claims/new" 
+        <Link
+          href="/claims/new"
           onClick={onNavigate}
           className="flex items-center justify-center gap-1.5 w-full py-1.5 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-2xs transition-colors"
         >
@@ -141,7 +136,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             Workspace
           </div>
           {navItem("/dashboard", "Dashboard", <LayoutDashboard className="w-4 h-4" />, undefined, true)}
-          {navItem("/claims", "My Claims", <FileText className="w-4 h-4" />)}
+          {navItem("/claims", "My Claims", <FileText className="w-4 h-4" />, undefined, true)}
         </div>
 
         {/* Approver Inbox */}

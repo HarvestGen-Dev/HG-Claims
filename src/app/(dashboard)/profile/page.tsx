@@ -6,12 +6,12 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { Check } from "lucide-react";
 import { MALAYSIAN_BANKS, BANK_CATEGORIES } from "@/lib/constants/banks";
 
 export default function ProfilePage() {
-  const { user, switchUser } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [bankName, setBankName] = useState(user?.bank_name || "Maybank");
   const [accountNum, setAccountNum] = useState(user?.bank_account_number || "");
   const [phone, setPhone] = useState(user?.phone || "");
@@ -25,16 +25,19 @@ export default function ProfilePage() {
     }
   }, [user]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    try {
     if (!user) return;
-    db.updateProfile(user.id, {
+    await db.updateProfile(user.id, {
       bank_name: bankName,
       bank_account_number: accountNum,
       phone,
     });
-    switchUser(user.id);
+    await refreshUser();
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+
+    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
   return (

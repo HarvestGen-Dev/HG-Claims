@@ -3,10 +3,10 @@
 import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { 
-  Search, 
-  Banknote, 
-  ShieldCheck, 
+import {
+  Search,
+  Banknote,
+  ShieldCheck,
   Download
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { ClaimStatusBadge } from "@/components/claims/ClaimStatusBadge";
 import { PaymentModal } from "@/components/claims/PaymentModal";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/mock-db/repository";
+import { db } from "@/lib/data/repository";
 import { Claim } from "@/lib/types/database";
 import { formatCurrency } from "@/lib/utils/formatters";
 import { generateClaimsCsv, downloadCsv } from "@/lib/utils/export-csv";
@@ -67,7 +67,7 @@ function FinanceClaimsContent() {
     if (!user || !paymentClaim) return;
     try {
       setLoadingAction(true);
-      db.recordPayment({
+      await db.recordPayment({
         ...paymentData,
         claim_id: paymentClaim.id,
         processor: user,
