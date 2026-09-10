@@ -169,10 +169,10 @@ export function ExpenseItemsEditor({
       const updated = [...expenses];
       updated[index] = { ...updated[index], attachment: newAttachment };
       onChange(updated);
-    } catch {
+    } catch (err: any) {
       setUploadErrors((prev) => ({
         ...prev,
-        [index]: `${file.name} upload failed. Please try again.`,
+        [index]: `${file.name} upload failed: ${err?.message || "Please check connection or file size."}`,
       }));
     } finally {
       setUploadingIdx(null);

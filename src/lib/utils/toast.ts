@@ -35,21 +35,22 @@ export const showToast = {
     emitToast({ type: "warning", title, message, duration });
   },
   flashSuccess: (message: string, title = "Success") => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && window.sessionStorage) {
       try {
-        sessionStorage.setItem("nlcc_flash_toast", JSON.stringify({ type: "success", title, message }));
+        window.sessionStorage.setItem("nlcc_flash_toast", JSON.stringify({ type: "success", title, message }));
       } catch {
         emitToast({ type: "success", title, message });
       }
     }
   },
   flashInfo: (message: string, title = "Notice") => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && window.sessionStorage) {
       try {
-        sessionStorage.setItem("nlcc_flash_toast", JSON.stringify({ type: "info", title, message }));
+        window.sessionStorage.setItem("nlcc_flash_toast", JSON.stringify({ type: "info", title, message }));
       } catch {
         emitToast({ type: "info", title, message });
       }
     }
   },
 };
+

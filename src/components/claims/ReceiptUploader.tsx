@@ -82,10 +82,11 @@ export function ReceiptUploader({
       const storagePath = `${userId}/${crypto.randomUUID()}/${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
       try {
         await saveReceipt(storagePath, file);
-      } catch {
-        errors.push(`${file.name} could not be uploaded. Check the connection, file type, and size, then try again.`);
+      } catch (err: any) {
+        errors.push(`${file.name}: ${err?.message || "Upload failed. Check connection and size."}`);
         continue;
       }
+
 
       newAttachments.push({
         id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
