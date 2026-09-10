@@ -29,23 +29,27 @@ function resolveMimeType(path: string, originalType?: string): string {
   }
 }
 
-export async function saveReceipt(path: string, file: Blob): Promise<void> {
+export async function saveReceipt(path: string, file: Blob): Promise<string> {
   const contentType = resolveMimeType(path, file.type);
-  localBlobCache.set(path, file);
+  let uploadPath = path;
 
   try {
     const client = createClient();
     // Resolve logged in user id for RLS alignment
     const { data: { user } } = await client.auth.getUser();
 
-    let uploadPath = path;
     if (user?.id && !path.startsWith(user.id)) {
       const parts = path.split("/");
       if (parts.length >= 2) {
         parts[0] = user.id;
         uploadPath = parts.join("/");
+      } else {
+        uploadPath = `${user.id}/${path}`;
       }
     }
+
+    localBlobCache.set(uploadPath, file);
+    localBlobCache.set(path, file);
 
     const { error } = await client.storage.from("receipts").upload(uploadPath, file, {
       contentType,
@@ -65,6 +69,8 @@ export async function saveReceipt(path: string, file: Blob): Promise<void> {
       throw err;
     }
   }
+
+  return uploadPath;
 }
 
 export async function getReceipt(path: string): Promise<Blob> {

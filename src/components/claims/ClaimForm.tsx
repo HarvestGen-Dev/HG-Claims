@@ -214,6 +214,8 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
       if (e.attachment) {
         atts.push({
           ...e.attachment,
+          temp_id: e.temp_id,
+          expense_temp_id: e.temp_id,
           expense_id: e.id || e.temp_id || null,
         });
       }
@@ -248,6 +250,14 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           amount: typeof e.amount === "string" ? parseFloat(e.amount) || 0 : e.amount || 0,
           notes: e.notes || undefined,
           sort_order: idx + 1,
+          attachment: e.attachment
+            ? {
+                ...e.attachment,
+                temp_id: e.temp_id,
+                expense_temp_id: e.temp_id,
+                expense_id: e.id || e.temp_id || null,
+              }
+            : undefined,
         })),
         attachments: gatherAttachments(),
       };
@@ -311,6 +321,14 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           amount: typeof e.amount === "string" ? parseFloat(e.amount) : e.amount,
           notes: e.notes || undefined,
           sort_order: idx + 1,
+          attachment: e.attachment
+            ? {
+                ...e.attachment,
+                temp_id: e.temp_id,
+                expense_temp_id: e.temp_id,
+                expense_id: e.id || e.temp_id || null,
+              }
+            : undefined,
         })),
         attachments: gatherAttachments(),
       };

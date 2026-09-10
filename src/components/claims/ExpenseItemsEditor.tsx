@@ -152,7 +152,7 @@ export function ExpenseItemsEditor({
 
     const storagePath = `${userId}/${crypto.randomUUID()}/${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
     try {
-      await saveReceipt(storagePath, file);
+      const uploadedPath = await saveReceipt(storagePath, file);
       const currentItem = expenses[index];
       const targetExpenseId = currentItem.id || currentItem.temp_id || `temp-${index}`;
       const newAttachment: AttachmentDraft = {
@@ -161,7 +161,7 @@ export function ExpenseItemsEditor({
         original_filename: file.name,
         file_size: file.size,
         mime_type: file.type || "application/octet-stream",
-        storage_path: storagePath,
+        storage_path: uploadedPath || storagePath,
         file_category: "RECEIPT",
         uploaded_by: userId,
       };

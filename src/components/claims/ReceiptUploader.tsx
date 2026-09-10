@@ -80,20 +80,21 @@ export function ReceiptUploader({
       }
 
       const storagePath = `${userId}/${crypto.randomUUID()}/${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+      let finalStoragePath = storagePath;
       try {
-        await saveReceipt(storagePath, file);
+        const uploadedPath = await saveReceipt(storagePath, file);
+        if (uploadedPath) finalStoragePath = uploadedPath;
       } catch (err: any) {
         errors.push(`${file.name}: ${err?.message || "Upload failed. Check connection and size."}`);
         continue;
       }
-
 
       newAttachments.push({
         id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         original_filename: file.name,
         file_size: file.size,
         mime_type: file.type || "application/octet-stream",
-        storage_path: storagePath,
+        storage_path: finalStoragePath,
         file_category: "RECEIPT",
         uploaded_by: userId,
       });
