@@ -13,6 +13,7 @@ import { showToast } from "@/lib/utils/toast";
 import { calculateTotalAmount } from "@/lib/utils/calculations";
 import { formatCurrency, formatFileSize } from "@/lib/utils/formatters";
 import { formatClaimNumber } from "@/lib/utils/claim-number";
+import { generateClaimsCsv } from "@/lib/utils/export-csv";
 
 describe("Comprehensive NLCC System & Workflow Test Suite", () => {
   const admin: Profile = {
@@ -372,6 +373,103 @@ describe("Comprehensive NLCC System & Workflow Test Suite", () => {
       const check2 = db.validateSignupInvitation(raw_token);
       expect(check2.valid).toBe(false);
       expect(check2.reason).toContain("maximum usage limit");
+    });
+  });
+
+  describe("7. Bank Name and Bank Account Number Recording & CSV Export", () => {
+    it("should persist bank_name and bank_account_number on draft and submission", () => {
+      const draft = db.saveClaimDraft({
+        submitted_by_user_id: leader.id,
+        claimant_name: "Deacon Marcus",
+        claimant_email: "marcus@example.com",
+        claimant_phone: "+60 12-777 8888",
+        bank_name: "Malayan Banking Berhad (Maybank)",
+        bank_account_number: "514099887766",
+        ministry_id: "m-worship-02",
+        claim_date: "2026-09-11",
+        purpose: "Sound equipment cables",
+        expenses: [
+          {
+            temp_id: "e-bank-1",
+            expense_date: "2026-09-11",
+            expense_category_id: "cat-equip-05",
+            cost_centre_id: "cc-worship-01",
+            description: "XLR Audio Cables",
+            amount: 80.00,
+            sort_order: 1,
+          },
+        ],
+        attachments: [
+          {
+            temp_id: "e-bank-1",
+            original_filename: "receipt.jpg",
+            storage_path: "receipts/cables.jpg",
+            file_size: 12000,
+            mime_type: "image/jpeg",
+            file_category: "RECEIPT",
+            uploaded_by: leader.id,
+          },
+        ],
+      });
+
+      expect(draft.bank_name).toBe("Malayan Banking Berhad (Maybank)");
+      expect(draft.bank_account_number).toBe("514099887766");
+
+      const submitted = db.submitClaim({
+        id: draft.id,
+        submitted_by_user_id: leader.id,
+        claimant_name: "Deacon Marcus",
+        claimant_email: "marcus@example.com",
+        claimant_phone: "+60 12-777 8888",
+        bank_name: "Malayan Banking Berhad (Maybank)",
+        bank_account_number: "514099887766",
+        ministry_id: "m-worship-02",
+        claim_date: "2026-09-11",
+        purpose: "Sound equipment cables",
+        declaration_accepted: true,
+        expenses: [
+          {
+            temp_id: "e-bank-1",
+            expense_date: "2026-09-11",
+            expense_category_id: "cat-equip-05",
+            cost_centre_id: "cc-worship-01",
+            description: "XLR Audio Cables",
+            amount: 80.00,
+            sort_order: 1,
+          },
+        ],
+        attachments: [
+          {
+            temp_id: "e-bank-1",
+            original_filename: "receipt.jpg",
+            storage_path: "receipts/cables.jpg",
+            file_size: 12000,
+            mime_type: "image/jpeg",
+            file_category: "RECEIPT",
+            uploaded_by: leader.id,
+          },
+        ],
+      });
+
+      expect(submitted.bank_name).toBe("Malayan Banking Berhad (Maybank)");
+      expect(submitted.bank_account_number).toBe("514099887766");
+    });
+
+    it("should export Claimant Bank and Bank Account Number in CSV", () => {
+      const csv = generateClaimsCsv(db.getClaims());
+      expect(csv).toContain("Claimant Bank");
+      expect(csv).toContain("Bank Account Number");
+      expect(csv).toContain("514012345678");
+    });
+
+    it("should update user profile default bank details", () => {
+      const updatedProfile = db.updateProfile("u-sarah-02", {
+        bank_name: "Public Bank Berhad",
+        bank_account_number: "4820129384",
+      });
+
+      expect(updatedProfile.bank_name).toBe("Public Bank Berhad");
+      expect(updatedProfile.bank_account_number).toBe("4820129384");
     });
   });
 });

@@ -55,6 +55,8 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
             <p className="mb-1"><span className="text-slate-500 inline-block w-28">Claimant Name:</span> <strong>{claimantName}</strong></p>
             <p className="mb-1"><span className="text-slate-500 inline-block w-28">Email:</span> {claim.claimant_email || claim.claimant?.email || "-"}</p>
             <p className="mb-1"><span className="text-slate-500 inline-block w-28">Phone:</span> {claim.claimant_phone || claim.claimant?.phone || "-"}</p>
+            <p className="mb-1"><span className="text-slate-500 inline-block w-28">Bank Name:</span> <strong>{claim.bank_name || "-"}</strong></p>
+            <p className="mb-1"><span className="text-slate-500 inline-block w-28">Bank Account:</span> <strong className="font-mono">{claim.bank_account_number || "-"}</strong></p>
             <p><span className="text-slate-500 inline-block w-28">Submitted By:</span> <strong>{submitterName}</strong></p>
           </div>
           <div>

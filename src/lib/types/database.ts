@@ -158,6 +158,7 @@ export interface ClaimExpense {
   created_at: string;
   updated_at: string;
   attachments?: ClaimAttachment[];
+  attachment?: ClaimAttachment | null;
 }
 
 export interface ClaimAttachment {
@@ -267,6 +268,8 @@ export interface Claim {
   claimant_name: string;
   claimant_email?: string | null;
   claimant_phone?: string | null;
+  bank_name?: string | null;
+  bank_account_number?: string | null;
   /** @deprecated Historical field - use submitted_by_user_id and claimant_name */
   claimant_id?: string | null;
   /** @deprecated Historical field - use claimant_name snapshot */

@@ -16,6 +16,8 @@ interface AdminCorrectionModalProps {
     cost_centre_id?: string;
     purpose?: string;
     internal_reference?: string;
+    bank_name?: string;
+    bank_account_number?: string;
     reason: string;
   }) => Promise<void> | void;
   onCancel: () => void;
@@ -32,6 +34,8 @@ export function AdminCorrectionModal({
 }: AdminCorrectionModalProps) {
   const [internalRef, setInternalRef] = useState(claim?.internal_reference || "");
   const [purpose, setPurpose] = useState(claim?.purpose || "");
+  const [bankName, setBankName] = useState(claim?.bank_name || "");
+  const [bankAccountNumber, setBankAccountNumber] = useState(claim?.bank_account_number || "");
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
 
@@ -46,6 +50,8 @@ export function AdminCorrectionModal({
     await onConfirm({
       purpose: purpose.trim() || undefined,
       internal_reference: internalRef.trim() || undefined,
+      bank_name: bankName.trim() || undefined,
+      bank_account_number: bankAccountNumber.trim() || undefined,
       reason: reason.trim(),
     });
   };
@@ -88,6 +94,32 @@ export function AdminCorrectionModal({
             value={purpose}
             onChange={(e) => setPurpose(e.target.value)}
           />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <label className="font-semibold text-zinc-700 dark:text-zinc-300">
+              Claimant Bank Name
+            </label>
+            <Input
+              type="text"
+              placeholder="e.g. Maybank"
+              value={bankName}
+              onChange={(e) => setBankName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="font-semibold text-zinc-700 dark:text-zinc-300">
+              Claimant Bank Account Number
+            </label>
+            <Input
+              type="text"
+              placeholder="e.g. 514012345678"
+              value={bankAccountNumber}
+              onChange={(e) => setBankAccountNumber(e.target.value)}
+              className="font-mono"
+            />
+          </div>
         </div>
 
         <div className="space-y-1">

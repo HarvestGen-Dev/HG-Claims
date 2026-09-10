@@ -586,6 +586,8 @@ class DatabaseRepository {
     claimant_name: string;
     claimant_email: string;
     claimant_phone: string;
+    bank_name?: string;
+    bank_account_number?: string;
     ministry_id: string;
     claim_date: string;
     purpose: string;
@@ -620,6 +622,8 @@ class DatabaseRepository {
           claimant_name: params.claimant_name,
           claimant_email: params.claimant_email,
           claimant_phone: params.claimant_phone,
+          bank_name: params.bank_name || existing.bank_name,
+          bank_account_number: params.bank_account_number || existing.bank_account_number,
           ministry_id: params.ministry_id,
           claim_date: params.claim_date,
           purpose: params.purpose,
@@ -664,6 +668,8 @@ class DatabaseRepository {
       claimant_name: params.claimant_name,
       claimant_email: params.claimant_email,
       claimant_phone: params.claimant_phone,
+      bank_name: params.bank_name,
+      bank_account_number: params.bank_account_number,
       ministry_id: params.ministry_id,
       claim_date: params.claim_date,
       purpose: params.purpose,
@@ -693,6 +699,8 @@ class DatabaseRepository {
     claimant_name: string;
     claimant_email: string;
     claimant_phone: string;
+    bank_name?: string;
+    bank_account_number?: string;
     ministry_id: string;
     claim_date: string;
     purpose: string;
@@ -783,6 +791,8 @@ class DatabaseRepository {
     claim.claimant_name = params.claimant_name;
     claim.claimant_email = params.claimant_email;
     claim.claimant_phone = params.claimant_phone;
+    claim.bank_name = params.bank_name || claim.bank_name;
+    claim.bank_account_number = params.bank_account_number || claim.bank_account_number;
     claim.ministry_id = params.ministry_id;
     claim.claim_date = params.claim_date;
     claim.purpose = params.purpose;
@@ -1269,6 +1279,8 @@ class DatabaseRepository {
     programme_event?: string;
     purpose?: string;
     internal_reference?: string;
+    bank_name?: string;
+    bank_account_number?: string;
     reason: string;
   }): Claim {
     const claim = this.claims.find(c => c.id === params.claim_id);
@@ -1278,11 +1290,15 @@ class DatabaseRepository {
       cost_centre_id: claim.cost_centre_id,
       purpose: claim.purpose,
       internal_reference: claim.internal_reference,
+      bank_name: claim.bank_name,
+      bank_account_number: claim.bank_account_number,
     };
 
     if (params.cost_centre_id) claim.cost_centre_id = params.cost_centre_id;
     if (params.purpose) claim.purpose = params.purpose;
     if (params.internal_reference !== undefined) claim.internal_reference = params.internal_reference;
+    if (params.bank_name !== undefined) claim.bank_name = params.bank_name;
+    if (params.bank_account_number !== undefined) claim.bank_account_number = params.bank_account_number;
     claim.updated_at = new Date().toISOString();
 
     this.logAudit({
@@ -1295,6 +1311,8 @@ class DatabaseRepository {
         cost_centre_id: params.cost_centre_id,
         purpose: params.purpose,
         internal_reference: params.internal_reference,
+        bank_name: params.bank_name,
+        bank_account_number: params.bank_account_number,
         reason: params.reason,
       },
     });

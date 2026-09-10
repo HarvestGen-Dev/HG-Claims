@@ -13,8 +13,10 @@ import {
   Lock,
   UserCheck,
   Building2,
-  Receipt
+  Receipt,
+  Landmark
 } from "lucide-react";
+import { MALAYSIAN_BANKS } from "@/lib/constants/banks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -63,6 +65,12 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   );
   const [claimantPhone, setClaimantPhone] = useState(
     initialClaim?.claimant_phone || initialClaim?.claimant?.phone || user?.phone || "+60 12-345 6789"
+  );
+  const [bankName, setBankName] = useState(
+    initialClaim?.bank_name || user?.bank_name || "Malayan Banking Berhad (Maybank)"
+  );
+  const [bankAccountNumber, setBankAccountNumber] = useState(
+    initialClaim?.bank_account_number || user?.bank_account_number || ""
   );
 
   // 02: Claim Details State
@@ -173,6 +181,8 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
       setClaimantName(user.full_name);
       setClaimantEmail(user.email);
       setClaimantPhone(user.phone || "+60 12-345 6789");
+      if (user.bank_name) setBankName(user.bank_name);
+      if (user.bank_account_number) setBankAccountNumber(user.bank_account_number);
       setDirty(true);
     }
   };
@@ -183,6 +193,8 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
       return "Please enter a valid claimant email address.";
     }
     if (!claimantPhone.trim()) return "Please enter the claimant phone number.";
+    if (!bankName.trim()) return "Please select or enter the claimant bank name for reimbursement.";
+    if (!bankAccountNumber.trim()) return "Please enter the claimant bank account number.";
     if (!ministryId) return "Please select a ministry / department.";
     if (!claimDate) return "Please select the claim date.";
     if (!purpose.trim()) return "Please provide the ministry purpose and justification.";
@@ -235,6 +247,8 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         claimant_name: claimantName.trim() || user?.full_name || "Unknown Claimant",
         claimant_email: claimantEmail.trim() || user?.email || "",
         claimant_phone: claimantPhone.trim() || user?.phone || "",
+        bank_name: bankName.trim() || undefined,
+        bank_account_number: bankAccountNumber.trim() || undefined,
         ministry_id: ministryId,
         claim_date: claimDate,
         purpose: purpose || "Draft expense claim",
@@ -305,6 +319,8 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         claimant_name: claimantName.trim(),
         claimant_email: claimantEmail.trim(),
         claimant_phone: claimantPhone.trim(),
+        bank_name: bankName.trim(),
+        bank_account_number: bankAccountNumber.trim(),
         ministry_id: ministryId,
         claim_date: claimDate,
         purpose: purpose.trim(),
@@ -509,6 +525,75 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                 className="h-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 font-mono"
                 required
               />
+            </div>
+          </div>
+
+          {/* Claimant Reimbursement Banking Details */}
+          <div className="pt-3 mt-1 border-t border-zinc-100 dark:border-zinc-800/80">
+            <div className="flex items-center gap-1.5 mb-2.5">
+              <Landmark className="w-3.5 h-3.5 text-emerald-700" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
+                Reimbursement Banking Details
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="space-y-1">
+                <label htmlFor="bankName" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                  Bank Name *
+                </label>
+                <div className="space-y-1.5">
+                  <select
+                    id="bankNameSelect"
+                    value={MALAYSIAN_BANKS.some((b) => b.name === bankName || b.shortName === bankName) ? bankName : "__OTHER__"}
+                    onChange={(e) => {
+                      if (e.target.value !== "__OTHER__") {
+                        setBankName(e.target.value);
+                      } else {
+                        setBankName("");
+                      }
+                      setDirty(true);
+                    }}
+                    className="flex h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                  >
+                    <option value="" disabled>Select Bank...</option>
+                    {MALAYSIAN_BANKS.map((bank) => (
+                      <option key={bank.id} value={bank.name}>
+                        {bank.name} ({bank.shortName})
+                      </option>
+                    ))}
+                    <option value="__OTHER__">Other / Custom Bank...</option>
+                  </select>
+                  {(!MALAYSIAN_BANKS.some((b) => b.name === bankName || b.shortName === bankName) || bankName === "") && (
+                    <Input
+                      type="text"
+                      id="bankName"
+                      placeholder="Enter bank name (e.g. Maybank, HSBC, Standard Chartered)"
+                      value={bankName}
+                      onChange={(e) => setBankName(e.target.value)}
+                      className="h-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
+                      required
+                    />
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="bankAccountNumber" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                  Bank Account Number *
+                </label>
+                <Input
+                  type="text"
+                  id="bankAccountNumber"
+                  placeholder="e.g. 514012345678"
+                  value={bankAccountNumber}
+                  onChange={(e) => setBankAccountNumber(e.target.value)}
+                  className="h-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 font-mono tracking-wider"
+                  required
+                />
+                <p className="text-[10px] text-zinc-400">
+                  Account number to disburse the approved reimbursement payment.
+                </p>
+              </div>
             </div>
           </div>
         </CardContent>

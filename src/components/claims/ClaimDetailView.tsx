@@ -399,6 +399,13 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                   <p className="font-semibold text-zinc-900 dark:text-zinc-100">{claimantName}</p>
                   <p className="text-[11px] text-zinc-500 font-mono">{claim.claimant_email || "-"}</p>
                   <p className="text-[11px] text-zinc-500 font-mono">{claim.claimant_phone || "-"}</p>
+                  {(claim.bank_name || claim.bank_account_number) && (
+                    <div className="mt-1.5 pt-1.5 border-t border-zinc-100 dark:border-zinc-800">
+                      <span className="text-[10px] text-zinc-400 block">Bank Account:</span>
+                      <p className="font-medium text-zinc-800 dark:text-zinc-200">{claim.bank_name || "Bank unspecified"}</p>
+                      <p className="font-mono text-emerald-700 dark:text-emerald-400 font-semibold">{claim.bank_account_number || "-"}</p>
+                    </div>
+                  )}
                 </div>
                 <div className="pt-1.5 border-t border-zinc-100 dark:border-zinc-800">
                   <p className="text-[10px] text-zinc-400">Submitted By (Ministry Head)</p>

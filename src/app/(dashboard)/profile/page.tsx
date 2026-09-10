@@ -7,17 +7,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth/context";
 import { db } from "@/lib/data/repository";
-import { Check, User } from "lucide-react";
+import { Check, User, Landmark } from "lucide-react";
 import { showToast } from "@/lib/utils/toast";
+import { MALAYSIAN_BANKS } from "@/lib/constants/banks";
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth();
   const [phone, setPhone] = useState(user?.phone || "");
+  const [bankName, setBankName] = useState(user?.bank_name || "");
+  const [bankAccountNumber, setBankAccountNumber] = useState(user?.bank_account_number || "");
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (user) {
       setPhone(user.phone || "");
+      setBankName(user.bank_name || "");
+      setBankAccountNumber(user.bank_account_number || "");
     }
   }, [user]);
 
@@ -26,6 +31,8 @@ export default function ProfilePage() {
       if (!user) return;
       await db.updateProfile(user.id, {
         phone,
+        bank_name: bankName.trim() || null,
+        bank_account_number: bankAccountNumber.trim() || null,
       });
       await refreshUser();
       setSaved(true);
@@ -36,7 +43,6 @@ export default function ProfilePage() {
     }
   };
 
-
   return (
     <AppLayout>
       <div className="space-y-4 max-w-2xl mx-auto pb-12">
@@ -46,7 +52,7 @@ export default function ProfilePage() {
             Profile Settings
           </h1>
           <p className="text-xs text-zinc-500">
-            Keep your contact details current for notifications and ministry communications.
+            Keep your contact details and default reimbursement banking information current.
           </p>
         </div>
 
@@ -82,6 +88,64 @@ export default function ProfilePage() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="h-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Default Banking Card */}
+        <Card className="border-zinc-200/80 shadow-2xs">
+          <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800">
+            <div className="flex items-center gap-1.5">
+              <Landmark className="w-4 h-4 text-emerald-700" />
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                Default Reimbursement Bank Account
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 space-y-3 text-xs">
+            <p className="text-[11px] text-zinc-500">
+              Used to automatically prefill your banking details when you click &quot;Fill with my details&quot; on expense claim forms.
+            </p>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Default Bank Name</label>
+              <select
+                value={MALAYSIAN_BANKS.some((b) => b.name === bankName || b.shortName === bankName) ? bankName : (bankName ? "__OTHER__" : "")}
+                onChange={(e) => {
+                  if (e.target.value !== "__OTHER__") {
+                    setBankName(e.target.value);
+                  } else {
+                    setBankName("");
+                  }
+                }}
+                className="flex h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+              >
+                <option value="">None / Select Bank...</option>
+                {MALAYSIAN_BANKS.map((bank) => (
+                  <option key={bank.id} value={bank.name}>
+                    {bank.name} ({bank.shortName})
+                  </option>
+                ))}
+                <option value="__OTHER__">Other Bank...</option>
+              </select>
+              {(!MALAYSIAN_BANKS.some((b) => b.name === bankName || b.shortName === bankName) && bankName !== "") && (
+                <Input
+                  value={bankName}
+                  onChange={(e) => setBankName(e.target.value)}
+                  placeholder="Enter custom bank name"
+                  className="h-8 text-xs mt-1.5 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
+                />
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Default Bank Account Number</label>
+              <Input
+                value={bankAccountNumber}
+                onChange={(e) => setBankAccountNumber(e.target.value)}
+                placeholder="e.g. 514012345678"
+                className="h-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 font-mono tracking-wider"
               />
             </div>
 

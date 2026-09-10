@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Banknote, Calendar, CreditCard, Hash, User } from "lucide-react";
+import { Banknote, Calendar, CreditCard, Hash, User, Copy, Check, Landmark } from "lucide-react";
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,7 @@ export function PaymentModal({
   const [paymentMethod, setPaymentMethod] = useState("BANK_TRANSFER");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
 
   if (!claim) return null;
 
@@ -60,6 +61,14 @@ export function PaymentModal({
   const claimantName = claim.claimant_name || claim.claimant?.full_name || "Payee";
   const submitterName = claim.submitted_by?.full_name || claim.claimant?.full_name || "Ministry Head";
 
+  const handleCopyAccount = () => {
+    if (claim.bank_account_number) {
+      navigator.clipboard.writeText(claim.bank_account_number);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={(val) => !val && onCancel()}>
       <DialogHeader>
@@ -78,14 +87,40 @@ export function PaymentModal({
 
       <div className="space-y-4 my-2">
         {/* Payee Snapshot Details Card */}
-        <div className="rounded-xl bg-zinc-50 p-3 text-xs border border-zinc-200 dark:bg-zinc-800/60 dark:border-zinc-700">
-          <span className="font-semibold text-zinc-900 dark:text-zinc-100 block mb-1">Payment Beneficiary:</span>
+        <div className="rounded-xl bg-zinc-50 p-3 text-xs border border-zinc-200 dark:bg-zinc-800/60 dark:border-zinc-700 space-y-2">
+          <span className="font-semibold text-zinc-900 dark:text-zinc-100 block mb-0.5">Payment Beneficiary:</span>
           <div className="grid grid-cols-2 gap-2 text-zinc-700 dark:text-zinc-300">
             <div>Claimant / Payee: <strong>{claimantName}</strong></div>
             <div>Submitted By: <strong>{submitterName}</strong></div>
             {claim.claimant_email && <div>Email: <span className="font-mono">{claim.claimant_email}</span></div>}
             {claim.claimant_phone && <div>Phone: <span className="font-mono">{claim.claimant_phone}</span></div>}
           </div>
+
+          {(claim.bank_name || claim.bank_account_number) && (
+            <div className="pt-2 mt-1 border-t border-zinc-200 dark:border-zinc-700 flex items-center justify-between bg-emerald-50/70 dark:bg-emerald-950/30 p-2.5 rounded-lg">
+              <div className="space-y-0.5">
+                <span className="text-[10px] uppercase font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
+                  <Landmark className="w-3 h-3" /> Reimbursement Bank Account
+                </span>
+                <p className="font-semibold text-zinc-900 dark:text-zinc-100">{claim.bank_name || "Bank unspecified"}</p>
+                <p className="font-mono text-emerald-900 dark:text-emerald-300 font-bold tracking-wider text-xs">
+                  {claim.bank_account_number || "-"}
+                </p>
+              </div>
+              {claim.bank_account_number && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1 border-emerald-300 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-700 dark:text-emerald-300"
+                  onClick={handleCopyAccount}
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copied ? "Copied" : "Copy"}</span>
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
