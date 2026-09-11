@@ -40,18 +40,19 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
       <div
-        className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity"
         onClick={() => onOpenChange(false)}
       />
-      <div ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative z-50 w-full max-w-lg max-h-[90dvh] overflow-y-auto rounded-lg bg-white p-6 shadow-xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+      <div ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative z-50 w-full max-w-lg max-h-[88dvh] overflow-y-auto rounded-xl bg-white p-4 sm:p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
         <button
           type="button"
           onClick={() => onOpenChange(false)}
-          className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none"
+          className="absolute right-3 top-3 sm:right-4 sm:top-4 p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors focus:outline-none min-h-[36px] min-w-[36px] flex items-center justify-center touch-manipulation"
+          aria-label="Close dialog"
         >
-          <X className="h-5 w-5 text-slate-500 hover:text-slate-700 dark:text-slate-400" />
+          <X className="h-5 w-5" />
           <span className="sr-only">Close</span>
         </button>
         <DialogTitleContext.Provider value={titleId}>{children}</DialogTitleContext.Provider>

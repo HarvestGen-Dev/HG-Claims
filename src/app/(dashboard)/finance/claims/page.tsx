@@ -12,6 +12,7 @@ import {
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { ClaimStatusBadge } from "@/components/claims/ClaimStatusBadge";
+import { MobileClaimList } from "@/components/claims/MobileClaimList";
 import { PaymentModal } from "@/components/claims/PaymentModal";
 import { useAuth } from "@/lib/auth/context";
 import { db } from "@/lib/data/repository";
@@ -168,78 +169,81 @@ function FinanceClaimsContent() {
             No claims match the selected finance criteria.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-zinc-50/50 border-b border-zinc-100 dark:bg-zinc-900/50 dark:border-zinc-800 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
-                  <th className="py-2.5 px-4">Claim #</th>
-                  <th className="py-2.5 px-4">Claimant</th>
-                  <th className="py-2.5 px-4">Submitter</th>
-                  <th className="py-2.5 px-4">Ministry</th>
-                  <th className="py-2.5 px-4">Purpose</th>
-                  <th className="py-2.5 px-4 text-right">Amount (RM)</th>
-                  <th className="py-2.5 px-4 text-center">Status</th>
-                  <th className="py-2.5 px-4 text-center">Receipts</th>
-                  <th className="py-2.5 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
-                {(filtered || []).map((c) => (
-                  <tr key={c.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-900/50 transition-colors">
-                    <td className="py-3 px-4 font-mono font-medium text-zinc-900 dark:text-zinc-100">
-                      <Link href={`/finance/claims/${c.id}`} className="hover:underline hover:text-emerald-700 dark:hover:text-emerald-400">
-                        {c.claim_number}
-                      </Link>
-                    </td>
-                    <td className="py-3 px-4 font-medium text-zinc-800 dark:text-zinc-200">
-                      <div>{c.claimant_name || c.claimant?.full_name || "-"}</div>
-                      {c.claimant_email && <div className="text-[10px] text-zinc-400">{c.claimant_email}</div>}
-                    </td>
-                    <td className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
-                      {c.submitted_by?.full_name || "-"}
-                    </td>
-                    <td className="py-3 px-4 text-zinc-600 dark:text-zinc-400">{c.ministry?.name}</td>
-                    <td className="py-3 px-4 max-w-xs">
-                      <span className="font-medium text-zinc-800 dark:text-zinc-200 block truncate">{c.purpose}</span>
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">
-                      {formatCurrency(c.total_amount)}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <ClaimStatusBadge status={c.status} />
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      {c.finance_review?.receipts_verified ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300">
-                          <ShieldCheck className="w-3 h-3" />
-                          Verified
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-zinc-400">Pending</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-right space-x-1.5">
-                      {c.status === "APPROVED_FOR_PAYMENT" && (
-                        <Button
-                          size="sm"
-                          onClick={() => setPaymentClaim(c)}
-                          className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1 shadow-2xs font-medium px-2.5"
-                        >
-                          <Banknote className="w-3 h-3" />
-                          <span>Pay</span>
-                        </Button>
-                      )}
-                      <Link href={`/finance/claims/${c.id}`}>
-                        <Button variant="ghost" size="sm" className="h-7 text-xs text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-2">
-                          Review
-                        </Button>
-                      </Link>
-                    </td>
+          <>
+            <MobileClaimList claims={filtered} baseHref="/finance/claims" showFinanceInfo={true} />
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-zinc-50/50 border-b border-zinc-100 dark:bg-zinc-900/50 dark:border-zinc-800 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
+                    <th className="py-2.5 px-4">Claim #</th>
+                    <th className="py-2.5 px-4">Claimant</th>
+                    <th className="py-2.5 px-4">Submitter</th>
+                    <th className="py-2.5 px-4">Ministry</th>
+                    <th className="py-2.5 px-4">Purpose</th>
+                    <th className="py-2.5 px-4 text-right">Amount (RM)</th>
+                    <th className="py-2.5 px-4 text-center">Status</th>
+                    <th className="py-2.5 px-4 text-center">Receipts</th>
+                    <th className="py-2.5 px-4 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+                  {(filtered || []).map((c) => (
+                    <tr key={c.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-900/50 transition-colors">
+                      <td className="py-3 px-4 font-mono font-medium text-zinc-900 dark:text-zinc-100">
+                        <Link href={`/finance/claims/${c.id}`} className="hover:underline hover:text-emerald-700 dark:hover:text-emerald-400">
+                          {c.claim_number}
+                        </Link>
+                      </td>
+                      <td className="py-3 px-4 font-medium text-zinc-800 dark:text-zinc-200">
+                        <div>{c.claimant_name || c.claimant?.full_name || "-"}</div>
+                        {c.claimant_email && <div className="text-[10px] text-zinc-400">{c.claimant_email}</div>}
+                      </td>
+                      <td className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
+                        {c.submitted_by?.full_name || "-"}
+                      </td>
+                      <td className="py-3 px-4 text-zinc-600 dark:text-zinc-400">{c.ministry?.name}</td>
+                      <td className="py-3 px-4 max-w-xs">
+                        <span className="font-medium text-zinc-800 dark:text-zinc-200 block truncate">{c.purpose}</span>
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                        {formatCurrency(c.total_amount)}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <ClaimStatusBadge status={c.status} />
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {c.finance_review?.receipts_verified ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+                            <ShieldCheck className="w-3 h-3" />
+                            Verified
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-zinc-400">Pending</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right space-x-1.5">
+                        {c.status === "APPROVED_FOR_PAYMENT" && (
+                          <Button
+                            size="sm"
+                            onClick={() => setPaymentClaim(c)}
+                            className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1 shadow-2xs font-medium px-2.5"
+                          >
+                            <Banknote className="w-3 h-3" />
+                            <span>Pay</span>
+                          </Button>
+                        )}
+                        <Link href={`/finance/claims/${c.id}`}>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-2">
+                            Review
+                          </Button>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

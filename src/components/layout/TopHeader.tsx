@@ -57,18 +57,18 @@ export function TopHeader({ onToggleMobileMenu }: TopHeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-40 flex shrink-0 h-14 w-full items-center justify-between border-b border-zinc-200/80 bg-white/90 px-4 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/90 sm:px-6">
-      <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-40 flex shrink-0 h-14 w-full items-center justify-between border-b border-zinc-200/80 bg-white/90 px-3 sm:px-6 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/90">
+      <div className="flex items-center gap-2 sm:gap-3">
         <button
           onClick={onToggleMobileMenu}
-          className="p-1.5 text-zinc-500 hover:text-zinc-900 rounded-lg lg:hidden hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+          className="p-2 -ml-1 text-zinc-600 hover:text-zinc-900 rounded-lg lg:hidden hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
           aria-label="Open Navigation"
         >
-          <Menu className="w-4 h-4" />
+          <Menu className="w-5 h-5" />
         </button>
 
-        <Link href="/dashboard" className="flex items-center gap-2 lg:hidden">
-          <BrandLogo className="w-12" />
+        <Link href="/dashboard" className="flex items-center gap-2 lg:hidden py-1">
+          <BrandLogo className="w-10 sm:w-12" />
           <span className="font-semibold text-zinc-900 text-xs tracking-tight dark:text-zinc-100">NLCC</span>
         </Link>
 
@@ -87,7 +87,7 @@ export function TopHeader({ onToggleMobileMenu }: TopHeaderProps) {
       </div>
 
       {/* Right controls: Notification Bell & User Profile Dropdown */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         {/* In-app Notification Bell */}
         <NotificationBell />
 
@@ -95,7 +95,7 @@ export function TopHeader({ onToggleMobileMenu }: TopHeaderProps) {
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className="flex items-center gap-2.5 p-1 pl-1.5 pr-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-colors focus:outline-none"
+            className="flex items-center gap-2 p-1 pl-1.5 pr-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-colors focus:outline-none min-h-[44px] touch-manipulation"
             aria-expanded={showProfileMenu}
             aria-label="Account menu"
             aria-haspopup="true"
@@ -115,7 +115,7 @@ export function TopHeader({ onToggleMobileMenu }: TopHeaderProps) {
           </button>
 
           {showProfileMenu && (
-            <div className="absolute right-0 mt-2 w-64 rounded-xl bg-white shadow-xl border border-zinc-200/80 py-1.5 z-50 dark:bg-zinc-900 dark:border-zinc-800 animate-in fade-in zoom-in-95 duration-100">
+            <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-1.5rem)] rounded-xl bg-white shadow-xl border border-zinc-200/80 py-1.5 z-50 dark:bg-zinc-900 dark:border-zinc-800 animate-in fade-in zoom-in-95 duration-100">
               {/* Profile Card Header */}
               <div className="px-3.5 py-2.5 border-b border-zinc-100 dark:border-zinc-800">
                 <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">{user?.full_name}</p>

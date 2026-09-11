@@ -108,11 +108,23 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   return (
     <aside className="flex flex-col h-full bg-white dark:bg-zinc-950 border-r border-zinc-200/80 dark:border-zinc-800/80 p-3 select-none">
       {/* Brand Header */}
-      <div className="px-2 py-2.5 mb-3">
-        <Link href="/dashboard" onClick={onNavigate} aria-label="New Life Community Church dashboard" className="block w-fit">
-          <BrandLogo className="w-28" priority />
-        </Link>
-        <p className="mt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">Expense Portal</p>
+      <div className="px-2 py-2.5 mb-3 flex items-start justify-between">
+        <div>
+          <Link href="/dashboard" onClick={onNavigate} aria-label="New Life Community Church dashboard" className="block w-fit">
+            <BrandLogo className="w-28" priority />
+          </Link>
+          <p className="mt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">Expense Portal</p>
+        </div>
+        {onNavigate && (
+          <button
+            type="button"
+            onClick={onNavigate}
+            className="p-1.5 -mr-1 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 lg:hidden"
+            aria-label="Close menu"
+          >
+            <span className="text-xl leading-none">&times;</span>
+          </button>
+        )}
       </div>
 
       {/* Primary Action - Only for Ministry Leaders and Admins */}

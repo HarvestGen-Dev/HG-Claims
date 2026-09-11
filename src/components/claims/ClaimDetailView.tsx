@@ -340,10 +340,10 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
       )}
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-zinc-200/80 dark:border-zinc-800 space-x-6 text-xs font-medium">
+      <div className="flex border-b border-zinc-200/80 dark:border-zinc-800 space-x-6 text-xs font-medium overflow-x-auto no-scrollbar whitespace-nowrap pb-px">
         <button
           onClick={() => setActiveTab("details")}
-          className={`pb-2.5 border-b-2 transition-colors ${
+          className={`pb-2.5 border-b-2 transition-colors shrink-0 ${
             activeTab === "details"
               ? "border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold"
               : "border-transparent text-zinc-400 hover:text-zinc-700"
@@ -353,7 +353,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
         </button>
         <button
           onClick={() => setActiveTab("workflow")}
-          className={`pb-2.5 border-b-2 transition-colors ${
+          className={`pb-2.5 border-b-2 transition-colors shrink-0 ${
             activeTab === "workflow"
               ? "border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold"
               : "border-transparent text-zinc-400 hover:text-zinc-700"
@@ -363,7 +363,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
         </button>
         <button
           onClick={() => setActiveTab("comments")}
-          className={`pb-2.5 border-b-2 transition-colors ${
+          className={`pb-2.5 border-b-2 transition-colors shrink-0 ${
             activeTab === "comments"
               ? "border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold"
               : "border-transparent text-zinc-400 hover:text-zinc-700"
@@ -374,7 +374,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
         {isFinanceUser && (
           <button
             onClick={() => setActiveTab("audit")}
-            className={`pb-2.5 border-b-2 transition-colors ${
+            className={`pb-2.5 border-b-2 transition-colors shrink-0 ${
               activeTab === "audit"
                 ? "border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold"
                 : "border-transparent text-zinc-400 hover:text-zinc-700"
@@ -488,7 +488,55 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
               </span>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              {/* Mobile Card List for Receipts */}
+              <div className="sm:hidden divide-y divide-zinc-200/80 dark:divide-zinc-800">
+                {(claim.expenses || []).map((exp, idx) => {
+                  const expAttachment = (claim.attachments || []).find((a) => a.expense_id === exp.id);
+                  return (
+                    <div key={exp.id || idx} className="p-3.5 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="h-5 w-5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center text-[10px] font-bold font-mono">
+                            {idx + 1}
+                          </span>
+                          <div>
+                            <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                              {exp.description}
+                            </p>
+                            <p className="text-[11px] text-zinc-500 font-mono">
+                              {formatDate(exp.expense_date)} &middot; {exp.expense_category?.name || "Expense"}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="font-mono font-bold text-sm text-zinc-900 dark:text-zinc-100 tabular-nums">
+                          RM {Number(exp.amount).toFixed(2)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] text-zinc-500 pt-1">
+                        <span>Cost Centre: <strong className="text-zinc-700 dark:text-zinc-300 font-mono">{exp.cost_centre?.code || "-"}</strong></span>
+                        {exp.vendor && <span>Merchant: <strong className="text-zinc-700 dark:text-zinc-300">{exp.vendor}</strong></span>}
+                      </div>
+
+                      {expAttachment && (
+                        <div className="pt-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewAttachment(expAttachment)}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-md"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>View Attached Receipt ({expAttachment.original_filename})</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-zinc-50/50 border-b border-zinc-100 dark:bg-zinc-900/50 dark:border-zinc-800 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">

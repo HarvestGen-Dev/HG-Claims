@@ -5,8 +5,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
 import { Sidebar } from "./Sidebar";
 import { TopHeader } from "./TopHeader";
+import { BottomNav } from "./BottomNav";
 import { NamePromptDialog } from "./NamePromptDialog";
-import { Dialog, DialogTitle } from "@/components/ui/dialog";
 
 
 
@@ -46,22 +46,30 @@ export function AppLayout({ children }: AppLayoutProps) {
       <div className="flex h-screen overflow-hidden">
         {/* Desktop Fixed Sidebar */}
         <div className="hidden lg:flex lg:w-64 lg:flex-col lg:inset-y-0 z-30">
-
           <Sidebar />
         </div>
 
         {/* Mobile Slide-over Drawer */}
-        <Dialog open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <DialogTitle>Navigation</DialogTitle>
-            <div className="h-[70dvh] pt-3">
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden flex">
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-zinc-950/60 backdrop-blur-xs transition-opacity duration-300"
+              onClick={() => setMobileMenuOpen(false)}
+              aria-hidden="true"
+            />
+
+            {/* Slide-out Panel */}
+            <div className="relative flex-1 flex flex-col max-w-[280px] w-full bg-white dark:bg-zinc-950 z-10 shadow-2xl animate-in slide-in-from-left duration-200">
               <Sidebar onNavigate={() => setMobileMenuOpen(false)} />
             </div>
-        </Dialog>
+          </div>
+        )}
 
         {/* Main Content Area */}
         <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
           <TopHeader onToggleMobileMenu={() => setMobileMenuOpen(true)} />
-          <main id="main-content" className="workspace-content flex-1 min-w-0 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+          <main id="main-content" className="workspace-content flex-1 min-w-0 p-3.5 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24 lg:pb-8">
             {(pathname.startsWith("/admin") && !hasRole("SYSTEM_ADMIN")) ||
              (pathname.startsWith("/finance") && !hasRole("FINANCE_OFFICER")) ||
              (pathname.startsWith("/approvals") && !hasRole("FINANCE_OFFICER") && !hasRole("SYSTEM_ADMIN"))
@@ -70,6 +78,9 @@ export function AppLayout({ children }: AppLayoutProps) {
           </main>
         </div>
       </div>
+
+      {/* Mobile Bottom Navigation (Hidden on Desktop) */}
+      <BottomNav />
 
       {/* In-app prompt for users without a valid real name */}
       <NamePromptDialog />

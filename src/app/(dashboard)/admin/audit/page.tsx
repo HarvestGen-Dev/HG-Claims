@@ -59,41 +59,75 @@ export default function AuditTrailPage() {
                 No audit entries recorded yet. Actions taken in the system will appear here.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                      <th className="py-3 px-4">Timestamp</th>
-                      <th className="py-3 px-4">Actor</th>
-                      <th className="py-3 px-4">Action</th>
-                      <th className="py-3 px-4">Entity</th>
-                      <th className="py-3 px-4">Audit Metadata</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filtered.map((l) => (
-                      <tr key={l.id} className="hover:bg-slate-50/70">
-                        <td className="py-3 px-4 text-slate-500 whitespace-nowrap">
+              <>
+                {/* Mobile Audit Logs Card List */}
+                <div className="sm:hidden divide-y divide-slate-100">
+                  {filtered.map((l) => (
+                    <div key={l.id} className="p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="font-mono font-bold text-xs text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            {l.action}
+                          </span>
+                          <p className="text-xs font-semibold text-slate-900 mt-1.5">
+                            {l.actor_name} <span className="text-[11px] text-slate-400 font-normal">({l.actor_email})</span>
+                          </p>
+                        </div>
+                        <span className="text-[11px] text-slate-500 font-mono whitespace-nowrap">
                           {formatDateTime(l.created_at)}
-                        </td>
-                        <td className="py-3 px-4">
-                          <strong className="text-slate-800 block">{l.actor_name}</strong>
-                          <span className="text-[10px] text-slate-400">{l.actor_email}</span>
-                        </td>
-                        <td className="py-3 px-4 font-mono font-bold text-emerald-800">
-                          {l.action}
-                        </td>
-                        <td className="py-3 px-4 font-mono text-[11px] text-slate-600">
-                          {l.entity_type} #{l.entity_id.slice(-8)}
-                        </td>
-                        <td className="py-3 px-4 text-slate-500 font-mono text-[10px] max-w-xs truncate">
-                          {l.after_data ? JSON.stringify(l.after_data) : "-"}
-                        </td>
+                        </span>
+                      </div>
+
+                      <div className="text-xs text-slate-600 font-mono flex items-center justify-between">
+                        <span>Target: {l.entity_type} #{l.entity_id.slice(-8)}</span>
+                      </div>
+
+                      {l.after_data && (
+                        <div className="p-2 rounded bg-slate-50 text-[10px] font-mono text-slate-600 break-all">
+                          {JSON.stringify(l.after_data)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                        <th className="py-3 px-4">Timestamp</th>
+                        <th className="py-3 px-4">Actor</th>
+                        <th className="py-3 px-4">Action</th>
+                        <th className="py-3 px-4">Entity</th>
+                        <th className="py-3 px-4">Audit Metadata</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filtered.map((l) => (
+                        <tr key={l.id} className="hover:bg-slate-50/70">
+                          <td className="py-3 px-4 text-slate-500 whitespace-nowrap">
+                            {formatDateTime(l.created_at)}
+                          </td>
+                          <td className="py-3 px-4">
+                            <strong className="text-slate-800 block">{l.actor_name}</strong>
+                            <span className="text-[10px] text-slate-400">{l.actor_email}</span>
+                          </td>
+                          <td className="py-3 px-4 font-mono font-bold text-emerald-800">
+                            {l.action}
+                          </td>
+                          <td className="py-3 px-4 font-mono text-[11px] text-slate-600">
+                            {l.entity_type} #{l.entity_id.slice(-8)}
+                          </td>
+                          <td className="py-3 px-4 text-slate-500 font-mono text-[10px] max-w-xs truncate">
+                            {l.after_data ? JSON.stringify(l.after_data) : "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

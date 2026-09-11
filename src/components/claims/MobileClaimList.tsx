@@ -1,40 +1,85 @@
+import React from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ShieldCheck, Clock } from "lucide-react";
 import { Claim } from "@/lib/types/database";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 import { ClaimStatusBadge } from "./ClaimStatusBadge";
 
-export function MobileClaimList({ claims }: { claims: Claim[] }) {
+interface MobileClaimListProps {
+  claims: Claim[];
+  baseHref?: string;
+  showStep?: boolean;
+  showFinanceInfo?: boolean;
+}
+
+export function MobileClaimList({
+  claims,
+  baseHref = "/claims",
+  showStep = false,
+  showFinanceInfo = false,
+}: MobileClaimListProps) {
+  if (!claims || claims.length === 0) return null;
+
   return (
-    <div className="sm:hidden divide-y divide-zinc-200 dark:divide-zinc-800">
-      {claims.map((claim) => (
-        <Link
-          key={claim.id}
-          href={`/claims/${claim.id}`}
-          className="block p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900 focus-visible:bg-zinc-50 transition-colors"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                {claim.claimant_name || claim.claimant?.full_name || "Unknown Claimant"}
-              </p>
-              <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-1 mt-0.5">
-                {claim.purpose}
-              </p>
+    <div className="sm:hidden divide-y divide-zinc-200/80 dark:divide-zinc-800">
+      {claims.map((claim) => {
+        const activeStep = claim.workflow_steps?.find((s) => s.status === "IN_PROGRESS");
+        const targetHref = `${baseHref}/${claim.id}`;
+
+        return (
+          <Link
+            key={claim.id}
+            href={targetHref}
+            className="block p-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100/70 transition-colors touch-manipulation"
+          >
+            <div className="flex items-start justify-between gap-2.5">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-mono text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                    {claim.claim_number || "DRAFT"}
+                  </span>
+                  <span className="text-[10px] text-zinc-400">&bull;</span>
+                  <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 truncate">
+                    {claim.claimant_name || claim.claimant?.full_name || "Unknown"}
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-1 mt-0.5">
+                  {claim.purpose}
+                </p>
+              </div>
+
+              <div className="text-right shrink-0">
+                <span className="text-sm font-mono font-bold text-zinc-900 dark:text-zinc-100 tabular-nums whitespace-nowrap block">
+                  {formatCurrency(claim.total_amount)}
+                </span>
+                <span className="text-[10px] text-zinc-400 font-mono">
+                  {claim.expenses?.length || 0} receipt{(claim.expenses?.length || 0) === 1 ? "" : "s"}
+                </span>
+              </div>
             </div>
-            <span className="text-sm font-mono font-bold text-zinc-900 dark:text-zinc-100 tabular-nums whitespace-nowrap">
-              {formatCurrency(claim.total_amount)}
-            </span>
-          </div>
-          <p className="text-[11px] text-zinc-500 font-mono mt-1.5">
-            {claim.claim_number || "Draft"} &middot; {formatDate(claim.claim_date)} &middot; {claim.ministry?.name}
-          </p>
-          <div className="flex items-center justify-between gap-3 mt-3">
-            <ClaimStatusBadge status={claim.status} />
-            <ChevronRight className="h-4 w-4 text-zinc-400" />
-          </div>
-        </Link>
-      ))}
+
+            <div className="flex items-center justify-between text-[11px] text-zinc-500 font-mono mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-850">
+              <span className="truncate max-w-[180px]">
+                {claim.ministry?.name || "Church"} &middot; {formatDate(claim.claim_date || claim.submitted_at || claim.created_at)}
+              </span>
+
+              {showStep && activeStep ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200/70 dark:bg-amber-950/30 dark:text-amber-300">
+                  <Clock className="w-2.5 h-2.5" />
+                  {activeStep.step_name}
+                </span>
+              ) : showFinanceInfo && claim.finance_review?.receipts_verified ? (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  <ShieldCheck className="w-3 h-3" />
+                  Verified
+                </span>
+              ) : (
+                <ClaimStatusBadge status={claim.status} />
+              )}
+            </div>
+          </Link>
+        );
+      })}
     </div>
   );
 }
