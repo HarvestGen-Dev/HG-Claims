@@ -208,7 +208,53 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ id: invId, success: true }, { headers });
     }
 
-    // 3. Action: complete_onboarding
+    // 3. Action: delete_invitation
+    if (body.action === "delete_invitation") {
+      const isAdmin = await checkIsAdmin();
+      if (!isAdmin) {
+        return NextResponse.json({ error: "Administrator access required." }, { status: 403, headers });
+      }
+
+      const invId = body.payload.id;
+      if (!invId) {
+        return NextResponse.json({ error: "Invitation ID is required." }, { status: 400, headers });
+      }
+
+      try {
+        const admin = createAdminClient();
+        await admin.from("signup_invitations").delete().eq("id", invId);
+      } catch {
+        try {
+          await client.from("signup_invitations").delete().eq("id", invId);
+        } catch {}
+      }
+
+      try {
+        db.deleteSignupInvitation(invId, user.id);
+      } catch {}
+
+      return NextResponse.json({ id: invId, success: true }, { headers });
+    }
+
+    // 4. Action: delete_claim
+    if (body.action === "delete_claim") {
+      const claimId = String(body.payload.id);
+      if (!claimId) {
+        return NextResponse.json({ error: "Claim ID is required." }, { status: 400, headers });
+      }
+
+      try {
+        await client.from("claims").delete().eq("id", claimId);
+      } catch {}
+
+      try {
+        db.deleteClaim(claimId, user.id);
+      } catch {}
+
+      return NextResponse.json({ id: claimId, success: true }, { headers });
+    }
+
+    // 5. Action: complete_onboarding
     if (body.action === "complete_onboarding") {
       const fullName = body.payload.full_name ? String(body.payload.full_name).trim() : "";
       if (!fullName) {
@@ -249,6 +295,29 @@ export async function POST(request: NextRequest) {
       } catch {}
 
       return NextResponse.json({ id: user.id, success: true }, { headers });
+    }
+
+    // Master Delete fallback handling for custom master records
+    if (body.action === "master_delete") {
+      const isAdmin = await checkIsAdmin();
+      if (!isAdmin) {
+        return NextResponse.json({ error: "Administrator access required." }, { status: 403, headers });
+      }
+      const { table, id } = body.payload as { table: string; id: string };
+      if (table === "ministries") {
+        try { await client.from("ministries").delete().eq("id", id); } catch {}
+        try { db.deleteMinistry(id); } catch {}
+      } else if (table === "expense_categories") {
+        try { await client.from("expense_categories").delete().eq("id", id); } catch {}
+        try { db.deleteCategory(id); } catch {}
+      } else if (table === "cost_centres") {
+        try { await client.from("cost_centres").delete().eq("id", id); } catch {}
+        try { db.deleteCostCentre(id); } catch {}
+      } else if (table === "approval_rules") {
+        try { await client.from("approval_rules").delete().eq("id", id); } catch {}
+        try { db.deleteApprovalRule(id); } catch {}
+      }
+      return NextResponse.json({ id, success: true }, { headers });
     }
 
     // All standard actions (claims, approvals, profile, settings, master data, etc.)

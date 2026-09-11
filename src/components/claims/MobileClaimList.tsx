@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { ShieldCheck, Clock } from "lucide-react";
+import { ShieldCheck, Clock, Trash2 } from "lucide-react";
 import { Claim } from "@/lib/types/database";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 import { ClaimStatusBadge } from "./ClaimStatusBadge";
@@ -10,6 +10,7 @@ interface MobileClaimListProps {
   baseHref?: string;
   showStep?: boolean;
   showFinanceInfo?: boolean;
+  onDelete?: (claim: Claim) => void;
 }
 
 export function MobileClaimList({
@@ -17,6 +18,7 @@ export function MobileClaimList({
   baseHref = "/claims",
   showStep = false,
   showFinanceInfo = false,
+  onDelete,
 }: MobileClaimListProps) {
   if (!claims || claims.length === 0) return null;
 
@@ -63,19 +65,36 @@ export function MobileClaimList({
                 {claim.ministry?.name || "Church"} &middot; {formatDate(claim.claim_date || claim.submitted_at || claim.created_at)}
               </span>
 
-              {showStep && activeStep ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200/70 dark:bg-amber-950/30 dark:text-amber-300">
-                  <Clock className="w-2.5 h-2.5" />
-                  {activeStep.step_name}
-                </span>
-              ) : showFinanceInfo && claim.finance_review?.receipts_verified ? (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300">
-                  <ShieldCheck className="w-3 h-3" />
-                  Verified
-                </span>
-              ) : (
-                <ClaimStatusBadge status={claim.status} />
-              )}
+              <div className="flex items-center gap-2">
+                {showStep && activeStep ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200/70 dark:bg-amber-950/30 dark:text-amber-300">
+                    <Clock className="w-2.5 h-2.5" />
+                    {activeStep.step_name}
+                  </span>
+                ) : showFinanceInfo && claim.finance_review?.receipts_verified ? (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    <ShieldCheck className="w-3 h-3" />
+                    Verified
+                  </span>
+                ) : (
+                  <ClaimStatusBadge status={claim.status} />
+                )}
+
+                {onDelete && (claim.status === "DRAFT" || claim.status === "CANCELLED") && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onDelete(claim);
+                    }}
+                    className="p-1 rounded text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                    title="Delete Draft"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
           </Link>
         );

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { db } from "@/lib/data/repository";
 import { CostCentre } from "@/lib/types/database";
-import { PieChart, Plus, Edit, GripVertical, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
+import { PieChart, Plus, Edit, GripVertical, ArrowUp, ArrowDown, Loader2, Trash2 } from "lucide-react";
 import { showToast } from "@/lib/utils/toast";
 
 export default function CostCentreManagementPage() {
@@ -17,8 +17,10 @@ export default function CostCentreManagementPage() {
   const ministries = db.getMinistries();
 
   const [editingCC, setEditingCC] = useState<CostCentre | null>(null);
+  const [deletingCC, setDeletingCC] = useState<CostCentre | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isReordering, setIsReordering] = useState(false);
 
   // Drag-and-drop state
@@ -110,6 +112,21 @@ export default function CostCentreManagementPage() {
       showToast.info(`Cost centre status changed to ${!cc.is_active ? "Active" : "Inactive"}.`, "Status Updated");
     } catch (error) {
       showToast.error(error instanceof Error ? error.message : "Unable to update status.", "Error");
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingCC) return;
+    try {
+      setIsDeleting(true);
+      await db.deleteCostCentre(deletingCC.id);
+      showToast.success(`Cost centre "${deletingCC.name}" deleted successfully.`, "Cost Centre Deleted");
+      setDeletingCC(null);
+      refresh();
+    } catch (error) {
+      showToast.error(error instanceof Error ? error.message : "Unable to delete cost centre.", "Delete Error");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -319,9 +336,19 @@ export default function CostCentreManagementPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleToggleStatus(cc)}
-                        className={`text-xs h-8 px-2.5 ${cc.is_active ? "text-red-600 hover:bg-red-50" : "text-emerald-600 hover:bg-emerald-50"}`}
+                        className={`text-xs h-8 px-2.5 ${cc.is_active ? "text-amber-600 hover:bg-amber-50" : "text-emerald-600 hover:bg-emerald-50"}`}
                       >
                         {cc.is_active ? "Deactivate" : "Activate"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeletingCC(cc)}
+                        className="text-xs h-8 px-2.5 text-red-600 hover:bg-red-50"
+                        title="Delete Cost Centre"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-1" />
+                        Delete
                       </Button>
                     </div>
                   </div>
@@ -418,7 +445,7 @@ export default function CostCentreManagementPage() {
                             {cc.is_active ? "ACTIVE" : "INACTIVE"}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 text-right space-x-2">
+                        <td className="py-3.5 px-4 text-right space-x-1.5">
                           <Button
                             variant="outline"
                             size="sm"
@@ -432,9 +459,18 @@ export default function CostCentreManagementPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleToggleStatus(cc)}
-                            className={`text-xs h-7 px-2.5 ${cc.is_active ? "text-red-600 hover:bg-red-50" : "text-emerald-600 hover:bg-emerald-50"}`}
+                            className={`text-xs h-7 px-2.5 ${cc.is_active ? "text-amber-600 hover:bg-amber-50" : "text-emerald-600 hover:bg-emerald-50"}`}
                           >
                             {cc.is_active ? "Deactivate" : "Activate"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeletingCC(cc)}
+                            className="text-xs h-7 px-2 text-red-600 hover:bg-red-50"
+                            title="Delete Cost Centre"
+                          >
+                            <Trash2 className="w-3 h-3" />
                           </Button>
                         </td>
                       </tr>
@@ -530,6 +566,36 @@ export default function CostCentreManagementPage() {
             </Button>
             <Button onClick={handleSave} loading={isSaving} disabled={isSaving} className="bg-emerald-700 hover:bg-emerald-800 text-white">
               {isSaving ? "Saving..." : isCreating ? "Create Cost Centre" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </Dialog>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deletingCC && (
+        <Dialog open={true} onOpenChange={() => !isDeleting && setDeletingCC(null)}>
+          <DialogHeader>
+            <DialogTitle>Delete Budget Cost Centre</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 my-2 text-xs">
+            <p className="text-slate-600">
+              Are you sure you want to delete the cost centre <strong className="text-slate-900">{deletingCC.name} ({deletingCC.code})</strong>?
+            </p>
+            <p className="text-slate-500">
+              This will remove the cost centre and prevent new claims from charging expenses to it.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingCC(null)} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmDelete}
+              loading={isDeleting}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeleting ? "Deleting..." : "Delete Cost Centre"}
             </Button>
           </DialogFooter>
         </Dialog>

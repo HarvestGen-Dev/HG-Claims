@@ -9,18 +9,18 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { db } from "@/lib/data/repository";
 import { Ministry, Profile } from "@/lib/types/database";
-import { Building2, Plus, Edit, CheckCircle2, UserCheck } from "lucide-react";
+import { Building2, Plus, Edit, CheckCircle2, UserCheck, Trash2 } from "lucide-react";
 import { showToast } from "@/lib/utils/toast";
-
-
 
 export default function MinistryManagementPage() {
   const [ministries, setMinistries] = useState<Ministry[]>(db.getMinistries());
   const profiles = db.getProfiles();
 
   const [editingMin, setEditingMin] = useState<Ministry | null>(null);
+  const [deletingMin, setDeletingMin] = useState<Ministry | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState({
     code: "",
     name: "",
@@ -106,6 +106,21 @@ export default function MinistryManagementPage() {
     }
   };
 
+  const handleConfirmDelete = async () => {
+    if (!deletingMin) return;
+    try {
+      setIsDeleting(true);
+      await db.deleteMinistry(deletingMin.id);
+      showToast.success(`Ministry "${deletingMin.name}" deleted successfully.`, "Ministry Deleted");
+      setDeletingMin(null);
+      refresh();
+    } catch (error) {
+      showToast.error(error instanceof Error ? error.message : "Unable to delete ministry.", "Delete Error");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -164,12 +179,12 @@ export default function MinistryManagementPage() {
                     <p className="text-xs text-slate-600">{m.description}</p>
                   )}
 
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                  <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleOpenEdit(m)}
-                      className="text-xs h-8 px-3"
+                      className="text-xs h-8 px-2.5"
                     >
                       <Edit className="w-3 h-3 mr-1" />
                       Edit
@@ -178,9 +193,19 @@ export default function MinistryManagementPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleToggleStatus(m)}
-                      className={`text-xs h-8 px-3 ${m.is_active ? "text-red-600 hover:bg-red-50" : "text-emerald-600 hover:bg-emerald-50"}`}
+                      className={`text-xs h-8 px-2.5 ${m.is_active ? "text-amber-600 hover:bg-amber-50" : "text-emerald-600 hover:bg-emerald-50"}`}
                     >
                       {m.is_active ? "Deactivate" : "Activate"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeletingMin(m)}
+                      className="text-xs h-8 px-2.5 text-red-600 hover:bg-red-50"
+                      title="Delete Ministry"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-1" />
+                      Delete
                     </Button>
                   </div>
                 </div>
@@ -223,7 +248,7 @@ export default function MinistryManagementPage() {
                           {m.is_active ? "ACTIVE" : "INACTIVE"}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-right space-x-2">
+                      <td className="py-3.5 px-4 text-right space-x-1.5">
                         <Button
                           variant="outline"
                           size="sm"
@@ -237,9 +262,18 @@ export default function MinistryManagementPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleToggleStatus(m)}
-                          className={`text-xs h-7 px-2.5 ${m.is_active ? "text-red-600 hover:bg-red-50" : "text-emerald-600 hover:bg-emerald-50"}`}
+                          className={`text-xs h-7 px-2.5 ${m.is_active ? "text-amber-600 hover:bg-amber-50" : "text-emerald-600 hover:bg-emerald-50"}`}
                         >
                           {m.is_active ? "Deactivate" : "Activate"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDeletingMin(m)}
+                          className="text-xs h-7 px-2 text-red-600 hover:bg-red-50"
+                          title="Delete Ministry"
+                        >
+                          <Trash2 className="w-3 h-3" />
                         </Button>
                       </td>
                     </tr>
@@ -322,6 +356,36 @@ export default function MinistryManagementPage() {
             </Button>
             <Button onClick={handleSave} loading={isSaving} disabled={isSaving} className="bg-emerald-700 hover:bg-emerald-800 text-white">
               {isSaving ? "Saving..." : isCreating ? "Create Ministry" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </Dialog>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deletingMin && (
+        <Dialog open={true} onOpenChange={() => !isDeleting && setDeletingMin(null)}>
+          <DialogHeader>
+            <DialogTitle>Delete Ministry</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 my-2 text-xs">
+            <p className="text-slate-600">
+              Are you sure you want to delete the ministry <strong className="text-slate-900">{deletingMin.name} ({deletingMin.code})</strong>?
+            </p>
+            <p className="text-slate-500">
+              This will remove the ministry from the system and prevent future claims under this ministry.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingMin(null)} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmDelete}
+              loading={isDeleting}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeleting ? "Deleting..." : "Delete Ministry"}
             </Button>
           </DialogFooter>
         </Dialog>

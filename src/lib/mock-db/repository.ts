@@ -177,13 +177,13 @@ class DatabaseRepository {
   public deleteMinistry(id: string): boolean {
     const idx = this.ministries.findIndex(m => m.id === id);
     if (idx === -1) return false;
-    // Soft-deactivate to prevent breaking historical claims
-    this.ministries[idx].is_active = false;
-    this.ministries[idx].updated_at = new Date().toISOString();
+    const removed = this.ministries.splice(idx, 1)[0];
+    this.persist();
     this.logAudit({
-      action: "DEACTIVATE_MINISTRY",
+      action: "DELETE_MINISTRY",
       entity_type: "MINISTRY",
       entity_id: id,
+      before_data: removed,
     });
     return true;
   }
@@ -238,12 +238,13 @@ class DatabaseRepository {
   public deleteCategory(id: string): boolean {
     const idx = this.categories.findIndex(c => c.id === id);
     if (idx === -1) return false;
-    this.categories[idx].is_active = false;
-    this.categories[idx].updated_at = new Date().toISOString();
+    const removed = this.categories.splice(idx, 1)[0];
+    this.persist();
     this.logAudit({
-      action: "DEACTIVATE_CATEGORY",
+      action: "DELETE_CATEGORY",
       entity_type: "CATEGORY",
       entity_id: id,
+      before_data: removed,
     });
     return true;
   }
@@ -304,12 +305,13 @@ class DatabaseRepository {
   public deleteCostCentre(id: string): boolean {
     const idx = this.costCentres.findIndex(cc => cc.id === id);
     if (idx === -1) return false;
-    this.costCentres[idx].is_active = false;
-    this.costCentres[idx].updated_at = new Date().toISOString();
+    const removed = this.costCentres.splice(idx, 1)[0];
+    this.persist();
     this.logAudit({
-      action: "DEACTIVATE_COST_CENTRE",
+      action: "DELETE_COST_CENTRE",
       entity_type: "COST_CENTRE",
       entity_id: id,
+      before_data: removed,
     });
     return true;
   }
@@ -1631,6 +1633,36 @@ class DatabaseRepository {
       action: "REVOKE_SIGNUP_INVITATION",
       entity_type: "SIGNUP_INVITATION",
       entity_id: id,
+    });
+    this.persist();
+    return true;
+  }
+
+  public deleteSignupInvitation(id: string, actorId?: string): boolean {
+    const idx = this.signupInvitations.findIndex(i => i.id === id);
+    if (idx === -1) return false;
+    const removed = this.signupInvitations.splice(idx, 1)[0];
+    this.logAudit({
+      actor_id: actorId,
+      action: "DELETE_SIGNUP_INVITATION",
+      entity_type: "SIGNUP_INVITATION",
+      entity_id: id,
+      before_data: removed,
+    });
+    this.persist();
+    return true;
+  }
+
+  public deleteClaim(id: string, actorId?: string): boolean {
+    const idx = this.claims.findIndex(c => c.id === id);
+    if (idx === -1) return false;
+    const removed = this.claims.splice(idx, 1)[0];
+    this.logAudit({
+      actor_id: actorId,
+      action: "DELETE_CLAIM",
+      entity_type: "CLAIM",
+      entity_id: id,
+      before_data: removed,
     });
     this.persist();
     return true;

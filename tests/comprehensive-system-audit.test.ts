@@ -111,12 +111,12 @@ describe("Comprehensive NLCC System & Workflow Test Suite", () => {
       });
       expect(updatedCat.name).toBe("Audio Visual & Tech Equipment");
 
-      // 3. Soft-deactivate
+      // 3. Delete category
       const deleted = db.deleteCategory(newCat.id);
       expect(deleted).toBe(true);
 
       const found = db.getCategories().find(c => c.id === newCat.id);
-      expect(found?.is_active).toBe(false);
+      expect(found).toBeUndefined();
 
       // 4. Verify audit trail
       const logs = db.getAuditLogs().filter(l => l.entity_id === newCat.id);

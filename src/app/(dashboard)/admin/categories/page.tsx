@@ -9,14 +9,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { db } from "@/lib/data/repository";
 import { ExpenseCategory } from "@/lib/types/database";
-import { Tag, Plus, Edit, GripVertical, ArrowUp, ArrowDown, CheckCircle2, Loader2 } from "lucide-react";
+import { Tag, Plus, Edit, GripVertical, ArrowUp, ArrowDown, CheckCircle2, Loader2, Trash2 } from "lucide-react";
 import { showToast } from "@/lib/utils/toast";
 
 export default function CategoryManagementPage() {
   const [categories, setCategories] = useState<ExpenseCategory[]>(db.getCategories());
   const [editingCat, setEditingCat] = useState<ExpenseCategory | null>(null);
+  const [deletingCat, setDeletingCat] = useState<ExpenseCategory | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isReordering, setIsReordering] = useState(false);
 
   // Drag-and-drop state
@@ -103,6 +105,21 @@ export default function CategoryManagementPage() {
       showToast.info(`Category status changed to ${!c.is_active ? "Active" : "Inactive"}.`, "Status Updated");
     } catch (error) {
       showToast.error(error instanceof Error ? error.message : "Unable to update status.", "Error");
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingCat) return;
+    try {
+      setIsDeleting(true);
+      await db.deleteCategory(deletingCat.id);
+      showToast.success(`Category "${deletingCat.name}" deleted successfully.`, "Category Deleted");
+      setDeletingCat(null);
+      refresh();
+    } catch (error) {
+      showToast.error(error instanceof Error ? error.message : "Unable to delete category.", "Delete Error");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -309,9 +326,19 @@ export default function CategoryManagementPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleToggleStatus(c)}
-                        className={`text-xs h-8 px-2.5 ${c.is_active ? "text-red-600 hover:bg-red-50" : "text-emerald-600 hover:bg-emerald-50"}`}
+                        className={`text-xs h-8 px-2.5 ${c.is_active ? "text-amber-600 hover:bg-amber-50" : "text-emerald-600 hover:bg-emerald-50"}`}
                       >
                         {c.is_active ? "Deactivate" : "Activate"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeletingCat(c)}
+                        className="text-xs h-8 px-2.5 text-red-600 hover:bg-red-50"
+                        title="Delete Category"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-1" />
+                        Delete
                       </Button>
                     </div>
                   </div>
@@ -415,7 +442,7 @@ export default function CategoryManagementPage() {
                         </td>
 
                         {/* Actions */}
-                        <td className="py-3.5 px-4 text-right space-x-2">
+                        <td className="py-3.5 px-4 text-right space-x-1.5">
                           <Button
                             variant="outline"
                             size="sm"
@@ -429,9 +456,18 @@ export default function CategoryManagementPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleToggleStatus(c)}
-                            className={`text-xs h-7 px-2.5 ${c.is_active ? "text-red-600 hover:bg-red-50" : "text-emerald-600 hover:bg-emerald-50"}`}
+                            className={`text-xs h-7 px-2.5 ${c.is_active ? "text-amber-600 hover:bg-amber-50" : "text-emerald-600 hover:bg-emerald-50"}`}
                           >
                             {c.is_active ? "Deactivate" : "Activate"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeletingCat(c)}
+                            className="text-xs h-7 px-2 text-red-600 hover:bg-red-50"
+                            title="Delete Category"
+                          >
+                            <Trash2 className="w-3 h-3" />
                           </Button>
                         </td>
                       </tr>
@@ -510,6 +546,36 @@ export default function CategoryManagementPage() {
             </Button>
             <Button onClick={handleSave} loading={isSaving} disabled={isSaving} className="bg-emerald-700 hover:bg-emerald-800 text-white">
               {isSaving ? "Saving..." : isCreating ? "Create Category" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </Dialog>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deletingCat && (
+        <Dialog open={true} onOpenChange={() => !isDeleting && setDeletingCat(null)}>
+          <DialogHeader>
+            <DialogTitle>Delete Expense Category</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 my-2 text-xs">
+            <p className="text-slate-600">
+              Are you sure you want to delete the expense category <strong className="text-slate-900">{deletingCat.name} ({deletingCat.code})</strong>?
+            </p>
+            <p className="text-slate-500">
+              This will remove the category from the list and prevent new claims from selecting it.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingCat(null)} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmDelete}
+              loading={isDeleting}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeleting ? "Deleting..." : "Delete Category"}
             </Button>
           </DialogFooter>
         </Dialog>

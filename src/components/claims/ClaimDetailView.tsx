@@ -17,11 +17,13 @@ import {
   Building2,
   Clock,
   AlertCircle,
-  UserCheck
+  UserCheck,
+  Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ClaimStatusBadge } from "./ClaimStatusBadge";
 import { ClaimTimeline } from "./ClaimTimeline";
 import { ClaimComments } from "./ClaimComments";
@@ -56,12 +58,26 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<ClaimAttachment | null>(null);
 
   const [loadingAction, setLoadingAction] = useState(false);
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
 
   const costCentres = db.getCostCentres();
+
+  const handleDeleteClaim = async () => {
+    if (!user) return;
+    try {
+      setLoadingAction(true);
+      await db.deleteClaim(claim.id);
+      showToast.success("Claim has been deleted.", "Claim Deleted");
+      router.push("/claims");
+    } catch (err: any) {
+      showToast.error(err.message || "Failed to delete claim", "Delete Error");
+      setLoadingAction(false);
+    }
+  };
 
   const handleApprove = async () => {
     if (!user) return;
@@ -226,6 +242,20 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                 <span>{claim.status === "RETURNED_FOR_CLARIFICATION" ? "Fix & Resubmit" : "Edit Draft"}</span>
               </Button>
             </Link>
+          )}
+
+          {/* Delete Draft/Cancelled Claim */}
+          {(claim.status === "DRAFT" || claim.status === "CANCELLED") && (isSubmitter || hasRole("SYSTEM_ADMIN")) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDeleteModal(true)}
+              disabled={loadingAction}
+              className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 gap-1.5"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete {claim.status === "DRAFT" ? "Draft" : "Claim"}</span>
+            </Button>
           )}
 
           {/* Approver Controls */}
@@ -756,6 +786,36 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
         attachment={previewAttachment}
         onClose={() => setPreviewAttachment(null)}
       />
+
+      {/* Delete Claim Confirmation Modal */}
+      <Dialog open={showDeleteModal} onOpenChange={(open) => !open && !loadingAction && setShowDeleteModal(false)}>
+        <DialogHeader>
+          <DialogTitle className="text-red-700 flex items-center gap-2">
+            <Trash2 className="w-5 h-5 text-red-600" />
+            Delete {claim.status === "DRAFT" ? "Draft" : "Claim"}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 my-2 text-sm text-slate-600">
+          <p>
+            Are you sure you want to permanently delete {claim.claim_number ? <strong className="font-mono text-slate-900">{claim.claim_number}</strong> : "this draft"}?
+          </p>
+          <p className="text-xs text-red-600 bg-red-50 p-2.5 rounded border border-red-200">
+            This action cannot be undone. All expense items, receipts, and history attached to this claim will be permanently removed.
+          </p>
+        </div>
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={() => setShowDeleteModal(false)} disabled={loadingAction}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteClaim}
+            loading={loadingAction}
+            className="bg-red-600 hover:bg-red-700 text-white"
+          >
+            Delete Permanently
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </div>
   );
 }

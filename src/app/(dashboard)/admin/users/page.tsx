@@ -22,7 +22,8 @@ import {
   Clock,
   Ban,
   Users,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from "lucide-react";
 import { showToast } from "@/lib/utils/toast";
 
@@ -40,6 +41,8 @@ export default function UserManagementPage() {
 
   // Create invitation modal state
   const [creatingInvite, setCreatingInvite] = useState(false);
+  const [deletingInvite, setDeletingInvite] = useState<SignupInvitation | null>(null);
+  const [isDeletingInvite, setIsDeletingInvite] = useState(false);
   const [inviteRole, setInviteRole] = useState<RoleCode>("MINISTRY_LEADER");
   const [inviteMinistryId, setInviteMinistryId] = useState<string>("");
   const [inviteUsageType, setInviteUsageType] = useState<"single" | "multi">("single");
@@ -174,6 +177,24 @@ export default function UserManagementPage() {
       } catch (err: any) {
         showToast.error(err instanceof Error ? err.message : "Failed to revoke invitation.", "Revoke Error");
       }
+    }
+  };
+
+  const handleConfirmDeleteInvite = async () => {
+    if (!deletingInvite) return;
+    try {
+      setIsDeletingInvite(true);
+      await db.deleteSignupInvitation(deletingInvite.id);
+      try {
+        await db.refresh();
+      } catch {}
+      setInvitations(db.getSignupInvitations());
+      showToast.success("Invitation link deleted successfully.", "Invitation Deleted");
+      setDeletingInvite(null);
+    } catch (err: any) {
+      showToast.error(err instanceof Error ? err.message : "Failed to delete invitation.", "Delete Error");
+    } finally {
+      setIsDeletingInvite(false);
     }
   };
 
@@ -484,8 +505,8 @@ export default function UserManagementPage() {
                           <span>Expires: {new Date(inv.expires_at).toLocaleDateString()}</span>
                         </div>
 
-                        {isActive && (
-                          <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                        <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                          {isActive && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -495,17 +516,28 @@ export default function UserManagementPage() {
                               <Copy className="w-3.5 h-3.5 mr-1" />
                               Copy Link
                             </Button>
+                          )}
+                          {isActive && (
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleRevokeInvite(inv.id)}
-                              className="text-xs h-8 text-red-600 hover:bg-red-50"
+                              className="text-xs h-8 text-amber-600 hover:bg-amber-50"
                             >
                               <Ban className="w-3.5 h-3.5 mr-1" />
                               Revoke
                             </Button>
-                          </div>
-                        )}
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeletingInvite(inv)}
+                            className="text-xs h-8 text-red-600 hover:bg-red-50 ml-auto"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 mr-1" />
+                            Delete
+                          </Button>
+                        </div>
                       </div>
                     );
                   })
@@ -599,14 +631,14 @@ export default function UserManagementPage() {
                                 <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px]">Expired</Badge>
                               )}
                             </td>
-                            <td className="py-3.5 px-4 text-right space-x-2">
+                            <td className="py-3.5 px-4 text-right space-x-1.5">
                               {isActive && (
                                 <>
                                   <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={() => handleCopyLink(fullUrl)}
-                                    className="text-xs h-7 px-2.5"
+                                    className="text-xs h-7 px-2"
                                   >
                                     <Copy className="w-3 h-3 mr-1" />
                                     Copy Link
@@ -615,13 +647,22 @@ export default function UserManagementPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleRevokeInvite(inv.id)}
-                                    className="text-xs h-7 px-2.5 text-red-600 hover:bg-red-50"
+                                    className="text-xs h-7 px-2 text-amber-600 hover:bg-amber-50"
                                   >
                                     <Ban className="w-3 h-3 mr-1" />
                                     Revoke
                                   </Button>
                                 </>
                               )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setDeletingInvite(inv)}
+                                className="text-xs h-7 px-2 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                title="Delete Invitation"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
                             </td>
                           </tr>
                         );
@@ -856,6 +897,36 @@ export default function UserManagementPage() {
           </DialogFooter>
         </Dialog>
       )}
+
+      {/* Delete Invitation Confirmation Dialog */}
+      <Dialog open={!!deletingInvite} onOpenChange={(open) => !open && !isDeletingInvite && setDeletingInvite(null)}>
+        <DialogHeader>
+          <DialogTitle className="text-red-700 flex items-center gap-2">
+            <Trash2 className="w-5 h-5 text-red-600" />
+            Delete Invitation Link
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 my-2 text-sm text-slate-600">
+          <p>
+            Are you sure you want to permanently delete this invitation link for <strong className="text-slate-900">{deletingInvite?.role_code.replace(/_/g, " ")}</strong>?
+          </p>
+          <p className="text-xs text-amber-700 bg-amber-50 p-2.5 rounded border border-amber-200">
+            Anyone who attempts to use this link in the future will no longer be able to sign up with it.
+          </p>
+        </div>
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={() => setDeletingInvite(null)} disabled={isDeletingInvite}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmDeleteInvite}
+            loading={isDeletingInvite}
+            className="bg-red-600 hover:bg-red-700 text-white"
+          >
+            Delete Link
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </AppLayout>
   );
 }
