@@ -65,7 +65,7 @@ class Repository {
   getSignupInvitations() {
     return (this.data?.signupInvitations || []).map(inv => ({
       ...inv,
-      ministry: inv.ministry_id ? this.getMinistries().find(m => m.id === inv.ministry_id) : null,
+      ministry: inv.ministry || (inv.ministry_id ? this.getMinistries().find(m => m.id === inv.ministry_id) : null),
       creator: this.getProfileById(inv.created_by),
     }));
   }
