@@ -153,11 +153,11 @@ export default function FinanceDashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Spend by Expense Category */}
+          {/* Spend by Cost Centre */}
           <Card className="lg:col-span-5 border-zinc-200/80 shadow-2xs">
             <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800 flex flex-row items-center justify-between">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                Category Distribution
+                Cost Centre Distribution
               </CardTitle>
               <span className="text-[10px] text-zinc-400">By total spend</span>
             </CardHeader>
@@ -166,7 +166,7 @@ export default function FinanceDashboardPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={stats?.byCategory || []}
+                      data={stats?.byCostCentre || []}
                       dataKey="total"
                       nameKey="name"
                       cx="50%"
@@ -175,7 +175,7 @@ export default function FinanceDashboardPage() {
                       outerRadius={76}
                       paddingAngle={3}
                     >
-                      {(stats?.byCategory || []).map((_: any, index: number) => (
+                      {(stats?.byCostCentre || []).map((_: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
