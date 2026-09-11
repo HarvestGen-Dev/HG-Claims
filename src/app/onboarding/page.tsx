@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BrandLogo } from "@/components/BrandLogo";
 import { showToast } from "@/lib/utils/toast";
+import { isRealFullName } from "@/lib/auth/permissions";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -22,9 +23,9 @@ export default function OnboardingPage() {
     if (!isLoading) {
       if (!user) {
         router.replace("/login");
-      } else if (user.onboarding_completed_at) {
+      } else if (user.onboarding_completed_at && isRealFullName(user.full_name, user.email)) {
         router.replace("/dashboard");
-      } else if (user.full_name) {
+      } else if (user.full_name && isRealFullName(user.full_name, user.email)) {
         setFullName(user.full_name);
       }
     }
@@ -32,8 +33,14 @@ export default function OnboardingPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!fullName.trim()) {
+    const trimmed = fullName.trim();
+    if (!trimmed) {
       setError("Please enter your full name.");
+      return;
+    }
+
+    if (!isRealFullName(trimmed, user?.email)) {
+      setError("Please enter your actual full name rather than your email username.");
       return;
     }
 

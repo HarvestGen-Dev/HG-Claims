@@ -71,12 +71,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Onboarding route enforcement
   useEffect(() => {
     if (isLoading || !user) return;
-    const isPublic = ["/", "/login", "/signup", "/forgot-password", "/reset-password"].includes(pathname);
     const onboarded = isOnboardingCompleted(user);
-
-    if (!onboarded && pathname !== "/onboarding" && !isPublic) {
-      window.location.assign("/onboarding");
-    } else if (onboarded && pathname === "/onboarding") {
+    if (onboarded && pathname === "/onboarding") {
       window.location.assign("/dashboard");
     }
   }, [user, pathname, isLoading]);

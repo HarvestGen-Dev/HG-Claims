@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
 import { Sidebar } from "./Sidebar";
 import { TopHeader } from "./TopHeader";
+import { NamePromptDialog } from "./NamePromptDialog";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
 
 
@@ -69,6 +70,9 @@ export function AppLayout({ children }: AppLayoutProps) {
           </main>
         </div>
       </div>
+
+      {/* In-app prompt for users without a valid real name */}
+      <NamePromptDialog />
     </div>
   );
 }

@@ -74,8 +74,18 @@ export function canUserViewClaim(user: Profile | null | undefined, claim: Claim 
   return false;
 }
 
+export function isRealFullName(name?: string | null, email?: string | null): boolean {
+  if (!name || typeof name !== "string") return false;
+  const trimmed = name.trim();
+  if (trimmed.length === 0) return false;
+  if (!email || typeof email !== "string") return true;
+  const alias = email.split("@")[0]?.trim().toLowerCase();
+  if (trimmed.toLowerCase() === alias) return false;
+  return true;
+}
+
 export function isOnboardingCompleted(user: Profile | null | undefined): boolean {
   if (!user) return false;
-  return !!user.onboarding_completed_at && typeof user.full_name === "string" && user.full_name.trim().length > 0;
+  return !!user.onboarding_completed_at && isRealFullName(user.full_name, user.email);
 }
 

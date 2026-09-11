@@ -6,7 +6,8 @@ import {
   canUserApproveClaim,
   canUserRecordPayment,
   canUserManageSystem,
-  isOnboardingCompleted
+  isOnboardingCompleted,
+  isRealFullName,
 } from "@/lib/auth/permissions";
 import { generateSecureToken, hashToken } from "@/lib/utils/token";
 import { Profile, RoleCode } from "@/lib/types/database";
@@ -149,7 +150,7 @@ describe("Simplified Role Model & Signup Invitations", () => {
   });
 
   describe("4. First-Login Onboarding Lifecycle", () => {
-    it("should correctly identify onboarding completion state", () => {
+    it("should correctly identify onboarding completion state and reject email alias as name", () => {
       const notOnboarded: Profile = {
         id: "u-1",
         email: "u1@example.com",
@@ -162,11 +163,21 @@ describe("Simplified Role Model & Signup Invitations", () => {
       expect(isOnboardingCompleted(notOnboarded)).toBe(false);
       expect(isOnboardingCompleted(null)).toBe(false);
 
+      // Email alias as full_name is invalid
+      const aliasName: Profile = {
+        ...notOnboarded,
+        full_name: "u1",
+        onboarding_completed_at: "2026-09-10T12:00:00Z",
+      };
+      expect(isRealFullName(aliasName.full_name, aliasName.email)).toBe(false);
+      expect(isOnboardingCompleted(aliasName)).toBe(false);
+
       const onboarded: Profile = {
         ...notOnboarded,
         full_name: "Sarah Tan",
         onboarding_completed_at: "2026-09-10T12:00:00Z",
       };
+      expect(isRealFullName(onboarded.full_name, onboarded.email)).toBe(true);
       expect(isOnboardingCompleted(onboarded)).toBe(true);
     });
 
