@@ -534,7 +534,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                               {exp.description}
                             </p>
                             <p className="text-[11px] text-zinc-500 font-mono">
-                              {formatDate(exp.expense_date)} &middot; {exp.expense_category?.name || "Expense"}
+                              {formatDate(exp.expense_date)}
                             </p>
                           </div>
                         </div>
@@ -572,7 +572,6 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                     <tr className="bg-zinc-50/50 border-b border-zinc-100 dark:bg-zinc-900/50 dark:border-zinc-800 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
                       <th className="py-2 px-4 w-8">#</th>
                       <th className="py-2 px-4 w-24">Date</th>
-                      <th className="py-2 px-4 w-32">Category</th>
                       <th className="py-2 px-4 w-36">Cost Centre</th>
                       <th className="py-2 px-4">Description</th>
                       <th className="py-2 px-4 w-28">Merchant</th>
@@ -587,9 +586,6 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                         <tr key={exp.id || idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/40">
                           <td className="py-2.5 px-4 text-zinc-400 font-mono text-[11px]">{idx + 1}</td>
                           <td className="py-2.5 px-4 text-zinc-500 font-mono text-[11px]">{formatDate(exp.expense_date)}</td>
-                          <td className="py-2.5 px-4 font-medium text-zinc-800 dark:text-zinc-200">
-                            {exp.expense_category?.name || "Other"}
-                          </td>
                           <td className="py-2.5 px-4 font-mono text-[11px] text-zinc-600 dark:text-zinc-400">
                             {exp.cost_centre?.code || "-"}
                           </td>

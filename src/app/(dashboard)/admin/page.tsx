@@ -6,7 +6,6 @@ import {
   ShieldCheck, 
   Users, 
   Building2, 
-  Tag, 
   PieChart, 
   GitBranch, 
   History, 
@@ -29,12 +28,6 @@ export default function AdminOverviewPage() {
       desc: "Configure church ministries and assign department leaders who approve claims.",
       icon: <Building2 className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />,
       href: "/admin/ministries",
-    },
-    {
-      title: "Expense Categories",
-      desc: "Maintain tax and expense categories (Transportation, Hospitality, Supplies).",
-      icon: <Tag className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />,
-      href: "/admin/categories",
     },
     {
       title: "Budget Cost Centres",

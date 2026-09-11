@@ -14,7 +14,7 @@ import { showToast } from "@/lib/utils/toast";
 
 export default function CostCentreManagementPage() {
   const [costCentres, setCostCentres] = useState<CostCentre[]>(db.getCostCentres());
-  const ministries = db.getMinistries();
+  const [ministries, setMinistries] = useState(db.getMinistries());
 
   const [editingCC, setEditingCC] = useState<CostCentre | null>(null);
   const [deletingCC, setDeletingCC] = useState<CostCentre | null>(null);
@@ -37,7 +37,18 @@ export default function CostCentreManagementPage() {
   });
   const [error, setError] = useState("");
 
-  const refresh = () => setCostCentres(db.getCostCentres());
+  const refresh = () => {
+    setCostCentres(db.getCostCentres());
+    setMinistries(db.getMinistries());
+  };
+
+  React.useEffect(() => {
+    const unsub = db.subscribe(() => {
+      setCostCentres(db.getCostCentres());
+      setMinistries(db.getMinistries());
+    });
+    return unsub;
+  }, []);
 
   const handleOpenCreate = () => {
     setFormData({

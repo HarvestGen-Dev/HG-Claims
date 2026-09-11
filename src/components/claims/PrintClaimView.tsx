@@ -85,7 +85,6 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
               <tr className="bg-slate-100 border-b border-slate-300 font-bold">
                 <th className="p-2 border-r border-slate-300 w-8 text-center">#</th>
                 <th className="p-2 border-r border-slate-300 w-24">Date</th>
-                <th className="p-2 border-r border-slate-300 w-32">Category</th>
                 <th className="p-2 border-r border-slate-300 w-36">Cost Centre</th>
                 <th className="p-2 border-r border-slate-300">Description & Vendor</th>
                 <th className="p-2 w-28 text-right">Amount (RM)</th>
@@ -96,7 +95,6 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
                 <tr key={exp.id || i} className="border-b border-slate-200">
                   <td className="p-2 border-r border-slate-300 text-center text-slate-500">{i + 1}</td>
                   <td className="p-2 border-r border-slate-300">{formatDate(exp.expense_date)}</td>
-                  <td className="p-2 border-r border-slate-300 font-medium">{exp.expense_category?.name}</td>
                   <td className="p-2 border-r border-slate-300 font-mono text-[11px] text-slate-600">
                     {exp.cost_centre?.code || "-"}
                   </td>
@@ -110,7 +108,7 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
             </tbody>
             <tfoot>
               <tr className="bg-slate-100 font-black text-xs border-t-2 border-slate-400">
-                <td colSpan={5} className="p-2 text-right uppercase tracking-wider">TOTAL CLAIM AMOUNT:</td>
+                <td colSpan={4} className="p-2 text-right uppercase tracking-wider">TOTAL CLAIM AMOUNT:</td>
                 <td className="p-2 text-right text-emerald-900 text-sm font-black">{formatCurrency(claim.total_amount)}</td>
               </tr>
             </tfoot>

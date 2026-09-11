@@ -4,7 +4,7 @@ export const expenseItemSchema = z.object({
   id: z.string().optional(),
   temp_id: z.string().optional(),
   expense_date: z.string().min(1, "Receipt date is required"),
-  expense_category_id: z.string().min(1, "Please select an expense category"),
+  expense_category_id: z.string().optional().nullable(),
   vendor: z.string().optional().nullable(),
   description: z.string().min(3, "Description must be at least 3 characters"),
   cost_centre_id: z.string().min(1, "Please select a cost centre"),

@@ -36,6 +36,10 @@ function ClaimsContent() {
   useEffect(() => {
     if (!user) return;
     setClaims(db.getClaims(user).filter(claim => claim.submitted_by_user_id === user.id || claim.claimant_id === user.id));
+    const unsub = db.subscribe(() => {
+      setClaims(db.getClaims(user).filter(claim => claim.submitted_by_user_id === user.id || claim.claimant_id === user.id));
+    });
+    return unsub;
   }, [user]);
 
   const handleConfirmDelete = async () => {

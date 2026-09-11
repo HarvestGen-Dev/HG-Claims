@@ -76,6 +76,11 @@ export async function POST(request: NextRequest) {
     // Helper to check admin role
     const checkIsAdmin = async (): Promise<boolean> => {
       try {
+        const { data: snap } = await client.rpc("nlcc_snapshot");
+        const profile = snap?.profiles?.find((p: any) => p.id === user.id);
+        if (profile?.roles?.includes("SYSTEM_ADMIN")) return true;
+      } catch {}
+      try {
         const { data: roleRows } = await client
           .from("user_roles")
           .select("roles!inner(code)")
@@ -85,9 +90,18 @@ export async function POST(request: NextRequest) {
         }
       } catch {}
       try {
-        const { data: snap } = await client.rpc("nlcc_snapshot");
-        const profile = snap?.profiles?.find((p: any) => p.id === user.id);
-        if (profile?.roles?.includes("SYSTEM_ADMIN")) return true;
+        const admin = createAdminClient();
+        const { data: roleRows } = await admin
+          .from("user_roles")
+          .select("roles!inner(code)")
+          .eq("user_id", user.id);
+        if (roleRows && roleRows.some((r: any) => r.roles?.code === "SYSTEM_ADMIN")) {
+          return true;
+        }
+      } catch {}
+      try {
+        const p = db.getProfileById(user.id);
+        if (p?.roles?.includes("SYSTEM_ADMIN")) return true;
       } catch {}
       return false;
     };
@@ -193,9 +207,14 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Invitation ID is required." }, { status: 400, headers });
       }
 
+      let adminClient: any = null;
       try {
-        const admin = createAdminClient();
-        await admin
+        adminClient = createAdminClient();
+      } catch {}
+      const targetClient = adminClient || client;
+
+      try {
+        await targetClient
           .from("signup_invitations")
           .update({ is_active: false })
           .eq("id", invId);
@@ -220,13 +239,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Invitation ID is required." }, { status: 400, headers });
       }
 
+      let adminClient: any = null;
       try {
-        const admin = createAdminClient();
-        await admin.from("signup_invitations").delete().eq("id", invId);
-      } catch {
-        try {
-          await client.from("signup_invitations").delete().eq("id", invId);
-        } catch {}
+        adminClient = createAdminClient();
+      } catch {}
+      const targetClient = adminClient || client;
+
+      try {
+        await targetClient.from("signup_invitations").delete().eq("id", invId);
+      } catch (e) {
+        console.error("Error deleting signup invitation:", e);
       }
 
       try {
@@ -243,9 +265,59 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Claim ID is required." }, { status: 400, headers });
       }
 
+      const isAdmin = await checkIsAdmin();
+
+      let adminClient: any = null;
       try {
-        await client.from("claims").delete().eq("id", claimId);
+        adminClient = createAdminClient();
       } catch {}
+      const targetClient = adminClient || client;
+
+      let canDelete = isAdmin;
+      if (!canDelete) {
+        try {
+          const { data: claimRow } = await targetClient
+            .from("claims")
+            .select("claimant_id, submitted_by_user_id, status")
+            .eq("id", claimId)
+            .single();
+          if (claimRow) {
+            const isOwner = claimRow.claimant_id === user.id || claimRow.submitted_by_user_id === user.id;
+            const isDraftOrCancelled = ["DRAFT", "CANCELLED"].includes(claimRow.status);
+            if (isOwner && isDraftOrCancelled) {
+              canDelete = true;
+            }
+          }
+        } catch {
+          const localClaim = db.getClaimById(claimId);
+          if (localClaim) {
+            const isOwner = localClaim.claimant_id === user.id || localClaim.submitted_by_user_id === user.id;
+            const isDraftOrCancelled = ["DRAFT", "CANCELLED"].includes(localClaim.status);
+            if (isOwner && isDraftOrCancelled) {
+              canDelete = true;
+            }
+          }
+        }
+      }
+
+      if (!canDelete) {
+        return NextResponse.json({ error: "Only draft or cancelled claims can be deleted by their owner or an administrator." }, { status: 403, headers });
+      }
+
+      try {
+        // Cascade delete child rows to satisfy foreign key constraints
+        await targetClient.from("claim_attachments").delete().eq("claim_id", claimId);
+        await targetClient.from("claim_expenses").delete().eq("claim_id", claimId);
+        await targetClient.from("approval_actions").delete().eq("claim_id", claimId);
+        await targetClient.from("claim_workflow_steps").delete().eq("claim_id", claimId);
+        await targetClient.from("claim_workflows").delete().eq("claim_id", claimId);
+        await targetClient.from("claim_comments").delete().eq("claim_id", claimId);
+        await targetClient.from("finance_reviews").delete().eq("claim_id", claimId);
+        await targetClient.from("payments").delete().eq("claim_id", claimId);
+        await targetClient.from("claims").delete().eq("id", claimId);
+      } catch (e) {
+        console.error("Error deleting claim from Supabase:", e);
+      }
 
       try {
         db.deleteClaim(claimId, user.id);
@@ -304,17 +376,44 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Administrator access required." }, { status: 403, headers });
       }
       const { table, id } = body.payload as { table: string; id: string };
+
+      let adminClient: any = null;
+      try {
+        adminClient = createAdminClient();
+      } catch {}
+      const targetClient = adminClient || client;
+
       if (table === "ministries") {
-        try { await client.from("ministries").delete().eq("id", id); } catch {}
+        try {
+          await targetClient.from("cost_centres").update({ ministry_id: null }).eq("ministry_id", id);
+          await targetClient.from("profiles").update({ ministry_id: null }).eq("ministry_id", id);
+          await targetClient.from("signup_invitations").update({ ministry_id: null }).eq("ministry_id", id);
+          await targetClient.from("approval_rules").delete().eq("ministry_id", id);
+          const { error: delErr } = await targetClient.from("ministries").delete().eq("id", id);
+          if (delErr) {
+            await targetClient.from("ministries").update({ is_active: false }).eq("id", id);
+          }
+        } catch {}
         try { db.deleteMinistry(id); } catch {}
       } else if (table === "expense_categories") {
-        try { await client.from("expense_categories").delete().eq("id", id); } catch {}
+        try {
+          await targetClient.from("approval_rules").delete().eq("expense_category_id", id);
+          const { error: delErr } = await targetClient.from("expense_categories").delete().eq("id", id);
+          if (delErr) {
+            await targetClient.from("expense_categories").update({ is_active: false }).eq("id", id);
+          }
+        } catch {}
         try { db.deleteCategory(id); } catch {}
       } else if (table === "cost_centres") {
-        try { await client.from("cost_centres").delete().eq("id", id); } catch {}
+        try {
+          const { error: delErr } = await targetClient.from("cost_centres").delete().eq("id", id);
+          if (delErr) {
+            await targetClient.from("cost_centres").update({ is_active: false }).eq("id", id);
+          }
+        } catch {}
         try { db.deleteCostCentre(id); } catch {}
       } else if (table === "approval_rules") {
-        try { await client.from("approval_rules").delete().eq("id", id); } catch {}
+        try { await targetClient.from("approval_rules").delete().eq("id", id); } catch {}
         try { db.deleteApprovalRule(id); } catch {}
       }
       return NextResponse.json({ id, success: true }, { headers });

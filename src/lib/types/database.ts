@@ -146,7 +146,7 @@ export interface ClaimExpense {
   id: string;
   claim_id: string;
   expense_date: string;
-  expense_category_id: string;
+  expense_category_id?: string | null;
   expense_category?: ExpenseCategory | null;
   vendor?: string | null;
   description: string;

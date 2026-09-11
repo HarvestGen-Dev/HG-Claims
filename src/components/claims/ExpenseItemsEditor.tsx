@@ -4,7 +4,7 @@ import React, { useState, useRef } from "react";
 import { Plus, Trash2, Copy, UploadCloud, FileText, Image as ImageIcon, File, Eye, X, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ExpenseCategory, CostCentre, ClaimAttachment } from "@/lib/types/database";
+import { CostCentre, ClaimAttachment } from "@/lib/types/database";
 import { formatCurrency, formatFileSize } from "@/lib/utils/formatters";
 import { ReceiptViewerModal } from "./ReceiptViewerModal";
 import { saveReceipt } from "@/lib/data/receipts";
@@ -25,7 +25,7 @@ export interface ExpenseItemDraft {
   id?: string;
   temp_id?: string;
   expense_date: string;
-  expense_category_id: string;
+  expense_category_id?: string | null;
   cost_centre_id: string;
   vendor?: string;
   description: string;
@@ -37,7 +37,7 @@ export interface ExpenseItemDraft {
 
 interface ExpenseItemsEditorProps {
   expenses: ExpenseItemDraft[];
-  categories: ExpenseCategory[];
+  categories?: any[];
   costCentres: CostCentre[];
   ministryId?: string;
   userId: string;
@@ -48,7 +48,7 @@ interface ExpenseItemsEditorProps {
 
 export function ExpenseItemsEditor({
   expenses,
-  categories,
+  categories: _categories,
   costCentres,
   ministryId,
   userId,
@@ -72,7 +72,7 @@ export function ExpenseItemsEditor({
     const newItem: ExpenseItemDraft = {
       temp_id: crypto.randomUUID(),
       expense_date: today,
-      expense_category_id: categories[0]?.id || "",
+      expense_category_id: undefined,
       cost_centre_id: defaultCostCentre,
       vendor: "",
       description: "",
@@ -292,30 +292,8 @@ export function ExpenseItemsEditor({
                 />
               </div>
 
-              {/* Expense Category */}
-              <div className="md:col-span-3 space-y-1">
-                <label htmlFor={`receipt-${idx}-category`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-                  Expense Category *
-                </label>
-                <select
-                  id={`receipt-${idx}-category`}
-                  value={item.expense_category_id}
-                  disabled={disabled}
-                  onChange={(e) => updateField(idx, "expense_category_id", e.target.value)}
-                  className="flex h-8 w-full rounded-lg border border-zinc-200 bg-zinc-50/50 px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
-                  required
-                >
-                  <option value="" disabled>Select Category</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               {/* Cost Centre (Per Receipt) */}
-              <div className="md:col-span-3 space-y-1">
+              <div className="md:col-span-5 space-y-1">
                 <label htmlFor={`receipt-${idx}-cost-centre`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                   Cost Centre *
                 </label>
@@ -337,7 +315,7 @@ export function ExpenseItemsEditor({
               </div>
 
               {/* Amount (RM) */}
-              <div className="md:col-span-3 space-y-1">
+              <div className="md:col-span-4 space-y-1">
                 <label htmlFor={`receipt-${idx}-amount`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                   Amount (RM) *
                 </label>

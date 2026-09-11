@@ -1,5 +1,5 @@
 import { Claim } from "@/lib/types/database";
-import { formatCurrency, formatDate } from "./formatters";
+import { formatDate } from "./formatters";
 
 export function generateClaimsCsv(claims: Claim[]): string {
   const headers = [
@@ -14,7 +14,6 @@ export function generateClaimsCsv(claims: Claim[]): string {
     "Bank Account Number",
     "Ministry",
     "Receipt Date",
-    "Expense Category",
     "Cost Centre Code",
     "Cost Centre Name",
     "Vendor",
@@ -26,8 +25,8 @@ export function generateClaimsCsv(claims: Claim[]): string {
   ];
 
   const escapeCsv = (str: string | number | null | undefined): string => {
-    if (str === null || str === undefined) return '""';
-    const s = String(str).replace(/"/g, '""');
+    if (str === null || str === undefined) return `""`;
+    const s = String(str).replace(/"/g, `""`);
     return `"${s}"`;
   };
 
@@ -53,7 +52,6 @@ export function generateClaimsCsv(claims: Claim[]): string {
         claim.bank_account_number || "",
         claim.ministry?.name || "",
         exp ? formatDate(exp.expense_date, "yyyy-MM-dd") : "",
-        exp?.expense_category?.name || "",
         exp?.cost_centre?.code || claim.cost_centre?.code || "",
         exp?.cost_centre?.name || claim.cost_centre?.name || "",
         exp?.vendor || "",

@@ -80,6 +80,10 @@ class Repository {
     return result;
   }
   async deleteSignupInvitation(id: string) {
+    if (this.data?.signupInvitations) {
+      this.data.signupInvitations = this.data.signupInvitations.filter(i => i.id !== id);
+      this.listeners.forEach(l => l());
+    }
     const result = await this.command("delete_invitation", { id });
     try { await this.refresh(); } catch {}
     return result;
@@ -112,7 +116,15 @@ class Repository {
   getClaimById(id: string): Claim | null { return this.getClaims().find(c => c.id === id) || null; }
   async saveClaimDraft(payload: Record<string, unknown>): Promise<Claim> { const result = await this.command("save_draft", payload); return this.getClaimById(result.id)!; }
   async submitClaim(payload: Record<string, unknown>): Promise<Claim> { const result = await this.command("submit_claim", payload); return this.getClaimById(result.id)!; }
-  async deleteClaim(id: string) { const result = await this.command("delete_claim", { id }); try { await this.refresh(); } catch {} return result; }
+  async deleteClaim(id: string) {
+    if (this.data?.claims) {
+      this.data.claims = this.data.claims.filter(c => c.id !== id);
+      this.listeners.forEach(l => l());
+    }
+    const result = await this.command("delete_claim", { id });
+    try { await this.refresh(); } catch {}
+    return result;
+  }
   private async claimCommand(action: string, id: string, data: Record<string, unknown>) {
     const result = await this.command(action, { ...data, claim_id: id, version: this.getClaimById(id)?.version });
     return this.getClaimById(result.id)!;
@@ -130,31 +142,63 @@ class Repository {
   markAllNotificationsAsRead(_userId: string) { return this.command("read_notifications", {}); }
   createMinistry(data: Partial<Ministry>) { return this.command("master_save", { table: "ministries", data }); }
   updateMinistry(id: string, data: Partial<Ministry>) { return this.command("master_save", { table: "ministries", id, data }); }
-  deleteMinistry(id: string) { return this.command("master_delete", { table: "ministries", id }); }
+  async deleteMinistry(id: string) {
+    if (this.data?.ministries) {
+      this.data.ministries = this.data.ministries.filter(m => m.id !== id);
+      this.listeners.forEach(l => l());
+    }
+    const result = await this.command("master_delete", { table: "ministries", id });
+    try { await this.refresh(); } catch {}
+    return result;
+  }
   createCategory(data: Partial<ExpenseCategory>) { return this.command("master_save", { table: "expense_categories", data }); }
   updateCategory(id: string, data: Partial<ExpenseCategory>) { return this.command("master_save", { table: "expense_categories", id, data }); }
-  deleteCategory(id: string) { return this.command("master_delete", { table: "expense_categories", id }); }
+  async deleteCategory(id: string) {
+    if (this.data?.categories) {
+      this.data.categories = this.data.categories.filter(c => c.id !== id);
+      this.listeners.forEach(l => l());
+    }
+    const result = await this.command("master_delete", { table: "expense_categories", id });
+    try { await this.refresh(); } catch {}
+    return result;
+  }
   createCostCentre(data: Partial<CostCentre>) { return this.command("master_save", { table: "cost_centres", data }); }
   updateCostCentre(id: string, data: Partial<CostCentre>) { return this.command("master_save", { table: "cost_centres", id, data }); }
-  deleteCostCentre(id: string) { return this.command("master_delete", { table: "cost_centres", id }); }
+  async deleteCostCentre(id: string) {
+    if (this.data?.costCentres) {
+      this.data.costCentres = this.data.costCentres.filter(cc => cc.id !== id);
+      this.listeners.forEach(l => l());
+    }
+    const result = await this.command("master_delete", { table: "cost_centres", id });
+    try { await this.refresh(); } catch {}
+    return result;
+  }
   createApprovalRule(data: Partial<ApprovalRule>) { return this.command("master_save", { table: "approval_rules", data }); }
   updateApprovalRule(id: string, data: Partial<ApprovalRule>) { return this.command("master_save", { table: "approval_rules", id, data }); }
-  deleteApprovalRule(id: string) { return this.command("master_delete", { table: "approval_rules", id }); }
+  async deleteApprovalRule(id: string) {
+    if (this.data?.approvalRules) {
+      this.data.approvalRules = this.data.approvalRules.filter(r => r.id !== id);
+      this.listeners.forEach(l => l());
+    }
+    const result = await this.command("master_delete", { table: "approval_rules", id });
+    try { await this.refresh(); } catch {}
+    return result;
+  }
   getFinanceStats() {
     const claims = this.getClaims().filter(c => !["DRAFT","CANCELLED"].includes(c.status));
     const paid = claims.filter(c => c.status === "PAID");
     const ministries = new Map<string, { name: string; total: number; count: number }>();
-    const categories = new Map<string, { name: string; total: number }>();
+    const costCentres = new Map<string, { name: string; total: number }>();
     claims.forEach(c => {
       const ministry = ministries.get(c.ministry_id) || { name: c.ministry?.name || "General", total: 0, count: 0 };
       ministry.total += Number(c.total_amount); ministry.count++; ministries.set(c.ministry_id, ministry);
-      c.expenses?.forEach(e => { const category = categories.get(e.expense_category_id) || { name: e.expense_category?.name || "Other", total: 0 }; category.total += Number(e.amount); categories.set(e.expense_category_id, category); });
+      c.expenses?.forEach(e => { const cc = costCentres.get(e.cost_centre_id) || { name: e.cost_centre ? `${e.cost_centre.code} - ${e.cost_centre.name}` : "General", total: 0 }; cc.total += Number(e.amount); costCentres.set(e.cost_centre_id, cc); });
     });
     return { totalClaims: claims.length, awaitingReview: claims.filter(c => c.status === "PENDING_FINANCE_REVIEW").length,
       awaitingPayment: claims.filter(c => c.status === "APPROVED_FOR_PAYMENT").length, paidCount: paid.length,
       totalPaidAmount: paid.reduce((sum,c) => sum + Number(c.total_amount),0),
       totalPendingAmount: claims.filter(c => !["PAID","REJECTED"].includes(c.status)).reduce((sum,c) => sum + Number(c.total_amount),0),
-      byMinistry: Array.from(ministries.values()), byCategory: Array.from(categories.values()) };
+      byMinistry: Array.from(ministries.values()), byCostCentre: Array.from(costCentres.values()), byCategory: [] };
   }
 }
 export const db = new Repository();

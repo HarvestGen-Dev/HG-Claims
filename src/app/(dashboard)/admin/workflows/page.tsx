@@ -8,7 +8,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { db } from "@/lib/data/repository";
-import { ApprovalRule, Ministry, ExpenseCategory } from "@/lib/types/database";
+import { ApprovalRule, Ministry } from "@/lib/types/database";
 import { GitBranch, Plus, ShieldCheck, CheckCircle2, Edit, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils/formatters";
 import { showToast } from "@/lib/utils/toast";
@@ -24,7 +24,6 @@ export default function WorkflowConfigurationPage() {
   const [isSavingRule, setIsSavingRule] = useState(false);
 
   const ministries = db.getMinistries();
-  const categories = db.getCategories();
   const profiles = db.getProfiles();
 
   const [editingRule, setEditingRule] = useState<ApprovalRule | null>(null);
@@ -33,7 +32,6 @@ export default function WorkflowConfigurationPage() {
     name: "",
     description: "",
     ministry_id: "",
-    expense_category_id: "",
     min_amount: 0,
     max_amount: "",
     sequence: 1,
@@ -64,7 +62,6 @@ export default function WorkflowConfigurationPage() {
       name: "",
       description: "",
       ministry_id: "",
-      expense_category_id: "",
       min_amount: 0,
       max_amount: "",
       sequence: rules.length + 1,
@@ -82,7 +79,6 @@ export default function WorkflowConfigurationPage() {
       name: r.name,
       description: r.description || "",
       ministry_id: r.ministry_id || "",
-      expense_category_id: r.expense_category_id || "",
       min_amount: r.min_amount,
       max_amount: r.max_amount !== null && r.max_amount !== undefined ? String(r.max_amount) : "",
       sequence: r.sequence,
@@ -105,7 +101,6 @@ export default function WorkflowConfigurationPage() {
         name: formData.name.trim(),
         description: formData.description.trim(),
         ministry_id: formData.ministry_id || null,
-        expense_category_id: formData.expense_category_id || null,
         min_amount: Number(formData.min_amount) || 0,
         max_amount: formData.max_amount ? Number(formData.max_amount) : null,
         sequence: Number(formData.sequence) || 1,

@@ -13,7 +13,6 @@ import {
   Settings,
   Users,
   Layers,
-  Tag,
   PieChart,
   GitBranch,
   History,
@@ -183,7 +182,6 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             {navItem("/admin", "Overview", <ShieldCheck className="w-4 h-4" />, undefined, true)}
             {navItem("/admin/users", "Users & Roles", <Users className="w-4 h-4" />)}
             {navItem("/admin/ministries", "Ministries", <Building2 className="w-4 h-4" />)}
-            {navItem("/admin/categories", "Categories", <Tag className="w-4 h-4" />)}
             {navItem("/admin/cost-centres", "Cost Centres", <PieChart className="w-4 h-4" />)}
             {navItem("/admin/workflows", "Workflows", <GitBranch className="w-4 h-4" />)}
             {navItem("/admin/audit", "Audit Trail", <History className="w-4 h-4" />)}

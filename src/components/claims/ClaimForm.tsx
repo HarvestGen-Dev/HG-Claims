@@ -25,7 +25,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { ExpenseItemsEditor, ExpenseItemDraft } from "./ExpenseItemsEditor";
 import { useAuth } from "@/lib/auth/context";
 import { db } from "@/lib/data/repository";
-import { Claim, Ministry, ExpenseCategory, CostCentre } from "@/lib/types/database";
+import { Claim, Ministry, CostCentre } from "@/lib/types/database";
 import { Dialog, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/utils/formatters";
 import { showToast } from "@/lib/utils/toast";
@@ -41,7 +41,6 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   const { user } = useAuth();
 
   const ministries = db.getMinistries();
-  const categories = db.getCategories();
   const costCentres = db.getCostCentres();
   const formConfig = db.getSetting("claim_form_config") || {
     declaration_text: "I confirm that these expenses were incurred for legitimate church ministry purposes in accordance with New Life Community Church financial policies, have not previously been claimed or reimbursed from any other source, and are supported by the authentic receipts and documents provided.",
@@ -93,7 +92,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
             id: e.id,
             temp_id: crypto.randomUUID(),
             expense_date: e.expense_date,
-            expense_category_id: e.expense_category_id,
+            expense_category_id: e.expense_category_id || undefined,
             cost_centre_id: e.cost_centre_id || initialClaim.cost_centre_id || defaultCostCentre,
             vendor: e.vendor || "",
             description: e.description,
@@ -119,7 +118,6 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           {
             temp_id: crypto.randomUUID(),
             expense_date: today,
-            expense_category_id: categories[0]?.id || "",
             cost_centre_id: defaultCostCentre,
             vendor: "",
             description: "",
@@ -204,7 +202,6 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
     for (let i = 0; i < expenses.length; i++) {
       const e = expenses[i];
       if (!e.expense_date) return `Receipt #${i + 1}: Date is required.`;
-      if (!e.expense_category_id) return `Receipt #${i + 1}: Category is required.`;
       if (!e.cost_centre_id) return `Receipt #${i + 1}: Cost centre is required.`;
       if (!e.description.trim()) return `Receipt #${i + 1}: Item description is required.`;
       const amt = typeof e.amount === "string" ? parseFloat(e.amount) : e.amount;
@@ -703,7 +700,6 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         <CardContent className="p-4">
           <ExpenseItemsEditor
             expenses={expenses}
-            categories={categories}
             costCentres={costCentres}
             ministryId={ministryId}
             userId={user?.id || "u-sarah-02"}

@@ -14,7 +14,7 @@ import { showToast } from "@/lib/utils/toast";
 
 export default function MinistryManagementPage() {
   const [ministries, setMinistries] = useState<Ministry[]>(db.getMinistries());
-  const profiles = db.getProfiles();
+  const [profiles, setProfiles] = useState<Profile[]>(db.getProfiles());
 
   const [editingMin, setEditingMin] = useState<Ministry | null>(null);
   const [deletingMin, setDeletingMin] = useState<Ministry | null>(null);
@@ -32,7 +32,16 @@ export default function MinistryManagementPage() {
 
   const refresh = () => {
     setMinistries(db.getMinistries());
+    setProfiles(db.getProfiles());
   };
+
+  React.useEffect(() => {
+    const unsub = db.subscribe(() => {
+      setMinistries(db.getMinistries());
+      setProfiles(db.getProfiles());
+    });
+    return unsub;
+  }, []);
 
   const handleOpenCreate = () => {
     setFormData({

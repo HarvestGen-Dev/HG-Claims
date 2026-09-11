@@ -29,12 +29,12 @@ export default function FinancialReportsPage() {
   const { user } = useAuth();
   const [claims, setClaims] = useState<Claim[]>([]);
   const [selectedMinistry, setSelectedMinistry] = useState("ALL");
-  const [selectedCategory, setSelectedCategory] = useState("ALL");
+  const [selectedCostCentre, setSelectedCostCentre] = useState("ALL");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
   const ministries = db.getMinistries();
-  const categories = db.getCategories();
+  const costCentres = db.getCostCentres();
 
   useEffect(() => {
     if (!user) return;
@@ -45,9 +45,9 @@ export default function FinancialReportsPage() {
     if (selectedMinistry !== "ALL" && c.ministry_id !== selectedMinistry) return false;
     if (startDate && c.claim_date < startDate) return false;
     if (endDate && c.claim_date > endDate) return false;
-    if (selectedCategory !== "ALL") {
-      const hasCategory = (c.expenses || []).some(e => e.expense_category_id === selectedCategory);
-      if (!hasCategory) return false;
+    if (selectedCostCentre !== "ALL") {
+      const hasCostCentre = (c.expenses || []).some(e => e.cost_centre_id === selectedCostCentre);
+      if (!hasCostCentre) return false;
     }
     return true;
   });
@@ -65,16 +65,16 @@ export default function FinancialReportsPage() {
   });
   const ministryChartData = Object.entries(ministryDataMap).map(([name, total]) => ({ name, total }));
 
-  // Aggregate Spend by Category
-  const categoryDataMap: Record<string, number> = {};
+  // Aggregate Spend by Cost Centre
+  const costCentreDataMap: Record<string, number> = {};
   filtered.forEach(c => {
     (c.expenses || []).forEach(e => {
-      const cat = categories.find(cat => cat.id === e.expense_category_id);
-      const name = cat?.name || "General";
-      categoryDataMap[name] = (categoryDataMap[name] || 0) + Number(e.amount);
+      const cc = costCentres.find(item => item.id === e.cost_centre_id);
+      const name = cc ? `${cc.code} - ${cc.name}` : "General";
+      costCentreDataMap[name] = (costCentreDataMap[name] || 0) + Number(e.amount);
     });
   });
-  const categoryChartData = Object.entries(categoryDataMap).map(([name, total]) => ({ name, total }));
+  const costCentreChartData = Object.entries(costCentreDataMap).map(([name, total]) => ({ name, total }));
 
   const COLORS = ["#18181b", "#047857", "#2563eb", "#d97706", "#7c3aed", "#e11d48", "#71717a", "#059669"];
 
@@ -124,15 +124,15 @@ export default function FinancialReportsPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">Category</label>
+            <label className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">Cost Centre</label>
             <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              value={selectedCostCentre}
+              onChange={(e) => setSelectedCostCentre(e.target.value)}
               className="h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
             >
-              <option value="ALL">All Categories</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+              <option value="ALL">All Cost Centres</option>
+              {costCentres.map((cc) => (
+                <option key={cc.id} value={cc.id}>{cc.code} - {cc.name}</option>
               ))}
             </select>
           </div>
@@ -198,9 +198,9 @@ export default function FinancialReportsPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={ministryChartData} margin={{ top: 10, right: 10, left: -15, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#f4f4f5" />
-                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#71717a' }} interval={0} angle={-25} textAnchor="end" axisLine={{ stroke: '#e4e4e7' }} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: '#71717a' }} axisLine={{ stroke: '#e4e4e7' }} tickLine={false} />
-                    <Tooltip formatter={(val: any) => [`RM ${Number(val).toFixed(2)}`, "Total"]} contentStyle={{ borderRadius: '8px', fontSize: '11px', border: '1px solid #e4e4e7' }} />
+                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#71717a" }} interval={0} angle={-25} textAnchor="end" axisLine={{ stroke: "#e4e4e7" }} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: "#71717a" }} axisLine={{ stroke: "#e4e4e7" }} tickLine={false} />
+                    <Tooltip formatter={(val: any) => [`RM ${Number(val).toFixed(2)}`, "Total"]} contentStyle={{ borderRadius: "8px", fontSize: "11px", border: "1px solid #e4e4e7" }} />
                     <Bar dataKey="total" fill="#18181b" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -211,7 +211,7 @@ export default function FinancialReportsPage() {
           <Card className="lg:col-span-5 border-zinc-200/80 shadow-2xs">
             <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                Category Distribution
+                Cost Centre Distribution
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4">
@@ -219,7 +219,7 @@ export default function FinancialReportsPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={categoryChartData}
+                      data={costCentreChartData}
                       dataKey="total"
                       nameKey="name"
                       cx="50%"
@@ -228,11 +228,11 @@ export default function FinancialReportsPage() {
                       innerRadius={45}
                       paddingAngle={3}
                     >
-                      {categoryChartData.map((_, idx) => (
+                      {costCentreChartData.map((_, idx) => (
                         <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(val: any) => [`RM ${Number(val).toFixed(2)}`, "Spend"]} contentStyle={{ borderRadius: '8px', fontSize: '11px', border: '1px solid #e4e4e7' }} />
+                    <Tooltip formatter={(val: any) => [`RM ${Number(val).toFixed(2)}`, "Spend"]} contentStyle={{ borderRadius: "8px", fontSize: "11px", border: "1px solid #e4e4e7" }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
