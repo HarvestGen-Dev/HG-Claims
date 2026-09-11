@@ -250,10 +250,12 @@ class DatabaseRepository {
 
   // --- Cost Centres CRUD ---
   public getCostCentres(): CostCentre[] {
-    return this.costCentres.map(cc => ({
-      ...cc,
-      ministry: this.ministries.find(m => m.id === cc.ministry_id)
-    }));
+    return [...this.costCentres]
+      .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+      .map(cc => ({
+        ...cc,
+        ministry: this.ministries.find(m => m.id === cc.ministry_id)
+      }));
   }
 
   public createCostCentre(data: Partial<CostCentre>): CostCentre {
@@ -264,6 +266,7 @@ class DatabaseRepository {
       name: data.name || "New Cost Centre",
       ministry_id: data.ministry_id || null,
       description: data.description || "",
+      display_order: data.display_order || this.costCentres.length + 1,
       is_active: data.is_active !== undefined ? data.is_active : true,
       created_at: now,
       updated_at: now,

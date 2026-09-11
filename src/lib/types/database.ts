@@ -136,6 +136,7 @@ export interface CostCentre {
   ministry_id?: string | null;
   ministry?: Ministry | null;
   description?: string | null;
+  display_order?: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;

@@ -352,7 +352,6 @@ export default function UserManagementPage() {
                             <div className="font-bold text-slate-900">
                               {u.full_name || <span className="italic text-slate-400">Uncompleted Setup</span>}
                             </div>
-                            <div className="text-[11px] text-slate-400">{u.id}</div>
                           </td>
                           <td className="py-3.5 px-4 text-slate-600">
                             <div>{u.email}</div>

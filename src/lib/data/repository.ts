@@ -56,7 +56,7 @@ class Repository {
   getProfileById(id?: string | null) { if (!id) return undefined; return (this.data?.profiles || []).find(profile => profile.id === id); }
   getMinistries() { return (this.data?.ministries || []).map(m => ({ ...m, leader: m.leader_id ? this.getProfileById(m.leader_id) : null })); }
   getCategories() { return [...(this.data?.categories || [])].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)); }
-  getCostCentres() { return (this.data?.costCentres || []).map(c => ({ ...c, ministry: this.getMinistries().find(m => m.id === c.ministry_id) })); }
+  getCostCentres() { return [...(this.data?.costCentres || [])].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)).map(c => ({ ...c, ministry: this.getMinistries().find(m => m.id === c.ministry_id) })); }
   getApprovalRules() { return (this.data?.approvalRules || []).map(r => ({ ...r, ministry: this.getMinistries().find(m => m.id === r.ministry_id), expense_category: this.getCategories().find(c => c.id === r.expense_category_id), approver_user: this.getProfiles().find(p => p.id === r.approver_user_id) })); }
   getSetting(key: string) { return (this.data?.systemSettings || []).find(setting => setting.key === key)?.value; }
   getSystemSettings() { return this.data?.systemSettings || []; }
