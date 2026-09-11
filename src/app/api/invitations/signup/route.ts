@@ -22,12 +22,25 @@ export async function POST(request: NextRequest) {
     try {
       const admin = createAdminClient();
       const tokenHash = hashToken(body.token);
-      const { data: invitation, error: invError } = await admin
+      let { data: invitation, error: invError } = await admin
         .from("signup_invitations")
         .select("*")
         .eq("token_hash", tokenHash)
         .eq("is_active", true)
         .single();
+
+      if ((invError || !invitation) && body.token !== tokenHash) {
+        const fallback = await admin
+          .from("signup_invitations")
+          .select("*")
+          .eq("token_hash", body.token)
+          .eq("is_active", true)
+          .single();
+        if (!fallback.error && fallback.data) {
+          invitation = fallback.data;
+          invError = null;
+        }
+      }
 
       if (invError || !invitation) {
         return NextResponse.json({ error: "Invalid or expired invitation token." }, { status: 400 });

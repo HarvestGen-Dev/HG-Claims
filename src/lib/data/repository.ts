@@ -55,7 +55,7 @@ class Repository {
   getProfiles() { return this.data?.profiles || []; }
   getProfileById(id?: string | null) { if (!id) return undefined; return (this.data?.profiles || []).find(profile => profile.id === id); }
   getMinistries() { return (this.data?.ministries || []).map(m => ({ ...m, leader: m.leader_id ? this.getProfileById(m.leader_id) : null })); }
-  getCategories() { return this.data?.categories || []; }
+  getCategories() { return [...(this.data?.categories || [])].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)); }
   getCostCentres() { return (this.data?.costCentres || []).map(c => ({ ...c, ministry: this.getMinistries().find(m => m.id === c.ministry_id) })); }
   getApprovalRules() { return (this.data?.approvalRules || []).map(r => ({ ...r, ministry: this.getMinistries().find(m => m.id === r.ministry_id), expense_category: this.getCategories().find(c => c.id === r.expense_category_id), approver_user: this.getProfiles().find(p => p.id === r.approver_user_id) })); }
   getSetting(key: string) { return (this.data?.systemSettings || []).find(setting => setting.key === key)?.value; }
@@ -69,11 +69,15 @@ class Repository {
       creator: this.getProfileById(inv.created_by),
     }));
   }
-  createSignupInvitation(data: { role_code: RoleCode; ministry_id?: string | null; max_uses?: number; expires_in_days?: number; description?: string }) {
-    return this.command("create_invitation", data);
+  async createSignupInvitation(data: { role_code: RoleCode; ministry_id?: string | null; max_uses?: number; expires_in_days?: number; description?: string }) {
+    const result = await this.command("create_invitation", data);
+    try { await this.refresh(); } catch {}
+    return result;
   }
-  revokeSignupInvitation(id: string) {
-    return this.command("revoke_invitation", { id });
+  async revokeSignupInvitation(id: string) {
+    const result = await this.command("revoke_invitation", { id });
+    try { await this.refresh(); } catch {}
+    return result;
   }
   async completeOnboarding(data: { full_name: string; phone?: string }) {
     const result = await this.command("complete_onboarding", data);

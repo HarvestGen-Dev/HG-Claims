@@ -143,6 +143,9 @@ export default function UserManagementPage() {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       const fullUrl = `${origin}${result.signup_url || `/signup?invite=${result.raw_token}`}`;
       setGeneratedLink(fullUrl);
+      try {
+        await db.refresh();
+      } catch {}
       setInvitations(db.getSignupInvitations());
       showToast.success("Invitation link generated successfully.", "Invitation Created");
     } catch (err: any) {
@@ -163,6 +166,9 @@ export default function UserManagementPage() {
     if (confirm("Are you sure you want to revoke this invitation link? It will immediately stop accepting new sign-ups.")) {
       try {
         await db.revokeSignupInvitation(id);
+        try {
+          await db.refresh();
+        } catch {}
         setInvitations(db.getSignupInvitations());
         showToast.info("Invitation link has been revoked.", "Invitation Revoked");
       } catch (err: any) {
@@ -180,6 +186,7 @@ export default function UserManagementPage() {
     setInviteMinistryId(ministries[0]?.id || "");
     setInviteUsageType("single");
     setCopied(false);
+    setInvitations(db.getSignupInvitations());
   };
 
   return (
@@ -352,6 +359,7 @@ export default function UserManagementPage() {
                     <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
                       <th className="py-3 px-4">Role & Ministry</th>
                       <th className="py-3 px-4">Note / Purpose</th>
+                      <th className="py-3 px-4">Invitation Link</th>
                       <th className="py-3 px-4 text-center">Usage</th>
                       <th className="py-3 px-4">Expires</th>
                       <th className="py-3 px-4 text-center">Status</th>
@@ -361,7 +369,7 @@ export default function UserManagementPage() {
                   <tbody className="divide-y divide-slate-100">
                     {invitations.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-8 text-center text-slate-400">
+                        <td colSpan={7} className="py-8 text-center text-slate-400">
                           No invitation links generated yet. Click &quot;Create Sign-up Link&quot; above to invite users.
                         </td>
                       </tr>
@@ -389,6 +397,26 @@ export default function UserManagementPage() {
                             </td>
                             <td className="py-3.5 px-4 text-slate-600">
                               {inv.description || <span className="text-slate-400 italic">No notes</span>}
+                            </td>
+                            <td className="py-3.5 px-4 font-mono text-[11px]">
+                              {isActive ? (
+                                <div className="flex items-center gap-1.5 max-w-xs">
+                                  <span className="truncate text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200">
+                                    {fullUrl}
+                                  </span>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleCopyLink(fullUrl)}
+                                    className="h-6 px-1.5 text-[10px] text-emerald-700 hover:bg-emerald-50 border-emerald-300"
+                                    title="Copy Link"
+                                  >
+                                    <Copy className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 italic">Link inactive</span>
+                              )}
                             </td>
                             <td className="py-3.5 px-4 text-center font-medium">
                               <span className="text-slate-900">{inv.use_count}</span>

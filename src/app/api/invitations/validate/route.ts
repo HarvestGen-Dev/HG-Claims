@@ -15,12 +15,25 @@ export async function GET(request: NextRequest) {
   try {
     const admin = createAdminClient();
     const tokenHash = hashToken(token);
-    const { data: invitation, error } = await admin
+    let { data: invitation, error } = await admin
       .from("signup_invitations")
       .select("*, ministry:ministries(id, name, code)")
       .eq("token_hash", tokenHash)
       .eq("is_active", true)
       .single();
+
+    if ((error || !invitation) && token !== tokenHash) {
+      const fallback = await admin
+        .from("signup_invitations")
+        .select("*, ministry:ministries(id, name, code)")
+        .eq("token_hash", token)
+        .eq("is_active", true)
+        .single();
+      if (!fallback.error && fallback.data) {
+        invitation = fallback.data;
+        error = null;
+      }
+    }
 
     if (!error && invitation) {
       if (new Date(invitation.expires_at).getTime() < Date.now()) {
