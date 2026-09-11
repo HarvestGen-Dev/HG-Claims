@@ -20,6 +20,7 @@ export default function MinistryManagementPage() {
 
   const [editingMin, setEditingMin] = useState<Ministry | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     code: "",
     name: "",
@@ -63,6 +64,7 @@ export default function MinistryManagementPage() {
         setError("Ministry name and code are required.");
         return;
       }
+      setIsSaving(true);
 
       if (isCreating) {
         await db.createMinistry({
@@ -89,6 +91,8 @@ export default function MinistryManagementPage() {
       refresh();
     } catch (error) {
       showToast.error(error instanceof Error ? error.message : "Unable to save changes.", "Save Error");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -256,11 +260,11 @@ export default function MinistryManagementPage() {
             {error && <p className="text-xs text-red-600 font-medium">{error}</p>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsCreating(false); setEditingMin(null); }}>
+            <Button variant="outline" onClick={() => { setIsCreating(false); setEditingMin(null); }} disabled={isSaving}>
               Cancel
             </Button>
-            <Button onClick={handleSave} className="bg-emerald-700 hover:bg-emerald-800 text-white">
-              {isCreating ? "Create Ministry" : "Save Changes"}
+            <Button onClick={handleSave} loading={isSaving} disabled={isSaving} className="bg-emerald-700 hover:bg-emerald-800 text-white">
+              {isSaving ? "Saving..." : isCreating ? "Create Ministry" : "Save Changes"}
             </Button>
           </DialogFooter>
         </Dialog>

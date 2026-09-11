@@ -195,6 +195,7 @@ export function PaymentModal({
         </Button>
         <Button
           onClick={handleConfirm}
+          loading={loading}
           disabled={loading || !paymentRef.trim()}
           className="bg-emerald-700 hover:bg-emerald-800 text-white"
         >

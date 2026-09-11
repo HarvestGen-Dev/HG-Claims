@@ -20,6 +20,7 @@ export default function CostCentreManagementPage() {
 
   const [editingCC, setEditingCC] = useState<CostCentre | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     code: "",
     name: "",
@@ -61,6 +62,7 @@ export default function CostCentreManagementPage() {
         setError("Cost centre name and code are required.");
         return;
       }
+      setIsSaving(true);
 
       if (isCreating) {
         await db.createCostCentre({
@@ -87,6 +89,8 @@ export default function CostCentreManagementPage() {
       refresh();
     } catch (error) {
       showToast.error(error instanceof Error ? error.message : "Unable to save changes.", "Save Error");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -245,11 +249,11 @@ export default function CostCentreManagementPage() {
             {error && <p className="text-xs text-red-600 font-medium">{error}</p>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsCreating(false); setEditingCC(null); }}>
+            <Button variant="outline" onClick={() => { setIsCreating(false); setEditingCC(null); }} disabled={isSaving}>
               Cancel
             </Button>
-            <Button onClick={handleSave} className="bg-emerald-700 hover:bg-emerald-800 text-white">
-              {isCreating ? "Create Cost Centre" : "Save Changes"}
+            <Button onClick={handleSave} loading={isSaving} disabled={isSaving} className="bg-emerald-700 hover:bg-emerald-800 text-white">
+              {isSaving ? "Saving..." : isCreating ? "Create Cost Centre" : "Save Changes"}
             </Button>
           </DialogFooter>
         </Dialog>

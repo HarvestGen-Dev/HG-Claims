@@ -77,6 +77,7 @@ export function RejectModal({
         </Button>
         <Button
           onClick={handleConfirm}
+          loading={loading}
           disabled={loading || !reason.trim()}
           className="bg-red-600 hover:bg-red-700 text-white"
         >

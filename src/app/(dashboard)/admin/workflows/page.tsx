@@ -20,6 +20,8 @@ export default function WorkflowConfigurationPage() {
     db.getSetting("approval_thresholds")?.final_approval_threshold || 500
   );
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [isSavingThreshold, setIsSavingThreshold] = useState(false);
+  const [isSavingRule, setIsSavingRule] = useState(false);
 
   const ministries = db.getMinistries();
   const categories = db.getCategories();
@@ -45,12 +47,15 @@ export default function WorkflowConfigurationPage() {
 
   const handleSaveThreshold = async () => {
     try {
+      setIsSavingThreshold(true);
       await db.updateSetting("approval_thresholds", { final_approval_threshold: Number(threshold), currency: "MYR" });
       setSavedSuccess(true);
       showToast.success("Changes have been made.", "Threshold Updated");
       setTimeout(() => setSavedSuccess(false), 3000);
     } catch (error) {
       showToast.error(error instanceof Error ? error.message : "Unable to save changes.", "Save Error");
+    } finally {
+      setIsSavingThreshold(false);
     }
   };
 
@@ -94,6 +99,7 @@ export default function WorkflowConfigurationPage() {
         setError("Rule name is required.");
         return;
       }
+      setIsSavingRule(true);
 
       const payload = {
         name: formData.name.trim(),
@@ -121,6 +127,8 @@ export default function WorkflowConfigurationPage() {
       refresh();
     } catch (error) {
       showToast.error(error instanceof Error ? error.message : "Unable to save changes.", "Save Error");
+    } finally {
+      setIsSavingRule(false);
     }
   };
 
@@ -184,9 +192,11 @@ export default function WorkflowConfigurationPage() {
               </div>
               <Button
                 onClick={handleSaveThreshold}
+                loading={isSavingThreshold}
+                disabled={isSavingThreshold}
                 className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs"
               >
-                Save Threshold Limit
+                {isSavingThreshold ? "Saving..." : "Save Threshold Limit"}
               </Button>
             </div>
 
@@ -374,11 +384,11 @@ export default function WorkflowConfigurationPage() {
             {error && <p className="text-xs text-red-600 font-medium">{error}</p>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsCreating(false); setEditingRule(null); }}>
+            <Button variant="outline" onClick={() => { setIsCreating(false); setEditingRule(null); }} disabled={isSavingRule}>
               Cancel
             </Button>
-            <Button onClick={handleSaveRule} className="bg-emerald-700 hover:bg-emerald-800 text-white">
-              {isCreating ? "Create Workflow Rule" : "Save Changes"}
+            <Button onClick={handleSaveRule} loading={isSavingRule} disabled={isSavingRule} className="bg-emerald-700 hover:bg-emerald-800 text-white">
+              {isSavingRule ? "Saving..." : isCreating ? "Create Workflow Rule" : "Save Changes"}
             </Button>
           </DialogFooter>
         </Dialog>

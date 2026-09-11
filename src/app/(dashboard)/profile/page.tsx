@@ -17,6 +17,7 @@ export default function ProfilePage() {
   const [bankName, setBankName] = useState(user?.bank_name || "");
   const [bankAccountNumber, setBankAccountNumber] = useState(user?.bank_account_number || "");
   const [saved, setSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -29,6 +30,7 @@ export default function ProfilePage() {
   const handleSave = async () => {
     try {
       if (!user) return;
+      setIsSaving(true);
       await db.updateProfile(user.id, {
         phone,
         bank_name: bankName.trim() || null,
@@ -40,6 +42,8 @@ export default function ProfilePage() {
       setTimeout(() => setSaved(false), 3000);
     } catch (error) {
       showToast.error(error instanceof Error ? error.message : "Unable to save changes.", "Save Error");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -150,8 +154,13 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex justify-end pt-2">
-              <Button onClick={handleSave} className="h-8 bg-emerald-700 hover:bg-emerald-800 text-white font-medium text-xs px-4 shadow-2xs">
-                Save Changes
+              <Button
+                onClick={handleSave}
+                loading={isSaving}
+                disabled={isSaving}
+                className="h-8 bg-emerald-700 hover:bg-emerald-800 text-white font-medium text-xs px-4 shadow-2xs"
+              >
+                {isSaving ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </CardContent>

@@ -14,6 +14,7 @@ import { Bell, CheckCheck, Clock, ArrowRight } from "lucide-react";
 export default function NotificationsPage() {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isMarking, setIsMarking] = useState(false);
 
   const loadNotifs = () => {
     if (!user) return;
@@ -26,11 +27,19 @@ export default function NotificationsPage() {
 
   const handleMarkAll = async () => {
     try {
-    if (!user) return;
-    await db.markAllNotificationsAsRead(user.id);
-    loadNotifs();
-
-    } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
+      if (!user) return;
+      setIsMarking(true);
+      await db.markAllNotificationsAsRead(user.id);
+      loadNotifs();
+    } catch (error) {
+      window.dispatchEvent(
+        new CustomEvent("workspace-error", {
+          detail: error instanceof Error ? error.message : "Unable to save changes.",
+        })
+      );
+    } finally {
+      setIsMarking(false);
+    }
   };
 
   return (
@@ -51,6 +60,8 @@ export default function NotificationsPage() {
             variant="outline"
             size="sm"
             onClick={handleMarkAll}
+            loading={isMarking}
+            disabled={isMarking}
             className="text-xs gap-1.5 border-slate-300"
           >
             <CheckCheck className="w-3.5 h-3.5" />

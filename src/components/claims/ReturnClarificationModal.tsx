@@ -77,6 +77,7 @@ export function ReturnClarificationModal({
         </Button>
         <Button
           onClick={handleConfirm}
+          loading={loading}
           disabled={loading || !reason.trim()}
           className="bg-amber-600 hover:bg-amber-700 text-white"
         >

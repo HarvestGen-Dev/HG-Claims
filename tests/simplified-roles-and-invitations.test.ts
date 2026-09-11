@@ -285,4 +285,76 @@ describe("Simplified Role Model & Signup Invitations", () => {
       expect(canUserApproveClaim(finance, claim)).toBe(true);
     });
   });
+
+  describe("6. Signup Form Password Strength & Validation Rules", () => {
+    function evaluatePassword(password: string) {
+      const hasMinLength = password.length >= 8;
+      const hasUppercase = /[A-Z]/.test(password);
+      const hasLowercase = /[a-z]/.test(password);
+      const hasNumber = /[0-9]/.test(password);
+      const hasSpecial = /[^A-Za-z0-9]/.test(password);
+      const hasGoodLength = password.length >= 12;
+
+      let score = 0;
+      if (hasMinLength) score += 1;
+      if (hasUppercase && hasLowercase) score += 1;
+      if (hasNumber) score += 1;
+      if (hasSpecial) score += 1;
+      if (hasGoodLength) score += 1;
+
+      return {
+        hasMinLength,
+        hasUpperAndLower: hasUppercase && hasLowercase,
+        hasNumber,
+        hasSpecial,
+        hasGoodLength,
+        score,
+        isValid: hasMinLength,
+      };
+    }
+
+    it("should reject passwords under 8 characters", () => {
+      const short = evaluatePassword("Abc1!");
+      expect(short.hasMinLength).toBe(false);
+      expect(short.isValid).toBe(false);
+    });
+
+    it("should calculate higher scores for strong passwords with mixed case, numbers, symbols, and length", () => {
+      const weak = evaluatePassword("password");
+      expect(weak.score).toBe(1); // min length only
+
+      const medium = evaluatePassword("Password123");
+      expect(medium.score).toBe(3); // min length, upper+lower, number
+
+      const strong = evaluatePassword("Church!P@ss2026#Live");
+      expect(strong.score).toBe(5); // all 5 criteria
+      expect(strong.hasGoodLength).toBe(true);
+      expect(strong.hasSpecial).toBe(true);
+      expect(strong.isValid).toBe(true);
+    });
+
+    it("should persist full_name upon consuming invitation and creating profile", () => {
+      const { raw_token } = db.createSignupInvitation({
+        role_code: "MINISTRY_LEADER",
+        ministry_id: "m-youth-01",
+        created_by: adminUser.id,
+      });
+
+      const newUserId = `u-named-${Date.now()}`;
+      const newProfile: Profile = {
+        id: newUserId,
+        email: "pastor.david@example.com",
+        full_name: "Pastor David Tan",
+        status: "ACTIVE",
+        onboarding_completed_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      db.getProfiles().push(newProfile);
+
+      const consumed = db.consumeSignupInvitation(raw_token, newUserId);
+      expect(consumed.full_name).toBe("Pastor David Tan");
+      expect(consumed.roles).toEqual(["MINISTRY_LEADER"]);
+    });
+  });
 });

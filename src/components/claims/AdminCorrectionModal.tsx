@@ -144,6 +144,7 @@ export function AdminCorrectionModal({
         </Button>
         <Button
           onClick={handleConfirm}
+          loading={loading}
           disabled={loading || !reason.trim()}
           className="bg-blue-600 hover:bg-blue-700 text-white"
         >

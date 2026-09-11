@@ -50,6 +50,7 @@ export default function UserManagementPage() {
   const [copied, setCopied] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [inviteBusy, setInviteBusy] = useState(false);
+  const [userSaving, setUserSaving] = useState(false);
 
   useEffect(() => {
     const unsub = db.subscribe(() => {
@@ -87,6 +88,7 @@ export default function UserManagementPage() {
 
   const handleSaveUser = async () => {
     if (!editingUser) return;
+    setUserSaving(true);
     try {
       await db.updateProfile(editingUser.id, {
         full_name: editingUser.full_name,
@@ -102,6 +104,8 @@ export default function UserManagementPage() {
       showToast.success("Changes have been made.", "User Updated");
     } catch (error) {
       showToast.error(error instanceof Error ? error.message : "Unable to save changes.", "Save Error");
+    } finally {
+      setUserSaving(false);
     }
   };
 
@@ -576,8 +580,8 @@ export default function UserManagementPage() {
             )}
 
             <DialogFooter className="mt-6">
-              <Button type="button" variant="outline" onClick={resetInviteModal}>Cancel</Button>
-              <Button type="submit" disabled={inviteBusy} className="bg-emerald-700 hover:bg-emerald-800 text-white">
+              <Button type="button" variant="outline" onClick={resetInviteModal} disabled={inviteBusy}>Cancel</Button>
+              <Button type="submit" loading={inviteBusy} disabled={inviteBusy} className="bg-emerald-700 hover:bg-emerald-800 text-white">
                 {inviteBusy ? "Generating..." : "Generate Link"}
               </Button>
             </DialogFooter>
@@ -587,7 +591,7 @@ export default function UserManagementPage() {
 
       {/* Edit User Modal */}
       {editingUser && (
-        <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+        <Dialog open={!!editingUser} onOpenChange={(open) => !open && !userSaving && setEditingUser(null)}>
           <DialogHeader>
             <DialogTitle>Edit User Roles & Ministry</DialogTitle>
           </DialogHeader>
@@ -659,8 +663,8 @@ export default function UserManagementPage() {
             </div>
           </div>
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button>
-            <Button onClick={handleSaveUser} className="bg-emerald-700 hover:bg-emerald-800 text-white">Save Changes</Button>
+            <Button variant="outline" onClick={() => setEditingUser(null)} disabled={userSaving}>Cancel</Button>
+            <Button onClick={handleSaveUser} loading={userSaving} disabled={userSaving} className="bg-emerald-700 hover:bg-emerald-800 text-white">Save Changes</Button>
           </DialogFooter>
         </Dialog>
       )}

@@ -234,10 +234,11 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
               <Button
                 size="sm"
                 onClick={handleApprove}
+                loading={loadingAction}
                 disabled={loadingAction}
                 className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-2xs font-medium"
               >
-                <CheckCircle2 className="w-3.5 h-3.5" />
+                {!loadingAction && <CheckCircle2 className="w-3.5 h-3.5" />}
                 <span>Approve</span>
               </Button>
 
@@ -273,10 +274,11 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                   variant="outline"
                   size="sm"
                   onClick={handleVerifyFinance}
+                  loading={loadingAction}
                   disabled={loadingAction}
                   className="h-7 text-xs border-violet-200 text-violet-800 hover:bg-violet-50 gap-1.5"
                 >
-                  <ShieldCheck className="w-3.5 h-3.5" />
+                  {!loadingAction && <ShieldCheck className="w-3.5 h-3.5" />}
                   <span>Verify Receipts</span>
                 </Button>
               )}

@@ -408,20 +408,22 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
             variant="outline"
             size="sm"
             onClick={handleSaveDraft}
+            loading={isSavingDraft}
             disabled={isSavingDraft || isSubmitting}
             className="h-8 text-xs border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 gap-1.5"
           >
-            <Save className="w-3.5 h-3.5 text-zinc-400" />
+            {!isSavingDraft && <Save className="w-3.5 h-3.5 text-zinc-400" />}
             <span>{isSavingDraft ? "Saving..." : "Save Draft"}</span>
           </Button>
 
           <Button
             type="submit"
             size="sm"
+            loading={isSubmitting}
             disabled={isSubmitting || isSavingDraft}
             className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-medium shadow-2xs gap-1.5"
           >
-            <Send className="w-3.5 h-3.5" />
+            {!isSubmitting && <Send className="w-3.5 h-3.5" />}
             <span>{isSubmitting ? "Submitting..." : "Submit Claim"}</span>
           </Button>
         </div>
@@ -754,20 +756,22 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
               variant="outline"
               size="sm"
               onClick={handleSaveDraft}
+              loading={isSavingDraft}
               disabled={isSavingDraft || isSubmitting}
               className="h-8 text-xs border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 gap-1.5"
             >
-              <Save className="w-3.5 h-3.5 text-zinc-400" />
+              {!isSavingDraft && <Save className="w-3.5 h-3.5 text-zinc-400" />}
               <span>{isSavingDraft ? "Saving..." : "Save Draft"}</span>
             </Button>
 
             <Button
               type="submit"
               size="sm"
+              loading={isSubmitting}
               disabled={isSubmitting || isSavingDraft || !declarationAccepted}
               className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-medium px-5 shadow-2xs gap-1.5"
             >
-              <Send className="w-3.5 h-3.5" />
+              {!isSubmitting && <Send className="w-3.5 h-3.5" />}
               <span>{isSubmitting ? "Submitting..." : "Submit Claim"}</span>
             </Button>
           </div>
@@ -800,12 +804,14 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           </Button>
           <Button
             type="button"
-            onClick={() => {
+            loading={isSavingDraft}
+            disabled={isSavingDraft || isSubmitting}
+            onClick={async () => {
               setLeaveHref(null);
-              void handleSaveDraft();
+              await handleSaveDraft();
             }}
           >
-            Save draft
+            {isSavingDraft ? "Saving..." : "Save draft"}
           </Button>
         </DialogFooter>
       </Dialog>

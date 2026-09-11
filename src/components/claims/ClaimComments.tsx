@@ -138,10 +138,11 @@ export function ClaimComments({
           <Button
             type="submit"
             size="sm"
+            loading={isSubmitting}
             disabled={!content.trim() || isSubmitting}
             className="flex items-center gap-1.5"
           >
-            <Send className="w-3.5 h-3.5" />
+            {!isSubmitting && <Send className="w-3.5 h-3.5" />}
             <span>{isSubmitting ? "Posting..." : "Post Comment"}</span>
           </Button>
         </div>

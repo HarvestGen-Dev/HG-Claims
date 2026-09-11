@@ -8,12 +8,15 @@ const signupSchema = z.object({
   token: z.string().min(1),
   email: z.string().email().max(254),
   password: z.string().min(8, "Password must be at least 8 characters long"),
+  fullName: z.string().optional(),
+  name: z.string().optional(),
 }).strict();
 
 export async function POST(request: NextRequest) {
   try {
     const text = await request.text();
     const body = signupSchema.parse(JSON.parse(text));
+    const fullName = (body.fullName || body.name || "").trim();
 
     // Try Supabase admin if available
     try {
@@ -43,6 +46,7 @@ export async function POST(request: NextRequest) {
         email: body.email,
         password: body.password,
         email_confirm: true,
+        user_metadata: fullName ? { full_name: fullName } : undefined,
       });
 
       if (createError || !authUser.user) {
@@ -60,9 +64,10 @@ export async function POST(request: NextRequest) {
 
       // Update profile
       await admin.from("profiles").update({
+        full_name: fullName || undefined,
         ministry_id: invitation.ministry_id || null,
         default_ministry_id: invitation.ministry_id || null,
-        onboarding_completed_at: null, // User still needs onboarding
+        onboarding_completed_at: null, // User still needs onboarding for bank/phone if applicable
       }).eq("id", authUser.user.id);
 
       // Increment use count
@@ -95,7 +100,7 @@ export async function POST(request: NextRequest) {
     const newProfile = {
       id: newUserId,
       email: body.email,
-      full_name: "", // empty until onboarding
+      full_name: fullName,
       phone: null,
       ministry_id: validation.invitation.ministry_id || null,
       default_ministry_id: validation.invitation.ministry_id || null,

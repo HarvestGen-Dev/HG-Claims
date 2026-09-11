@@ -78,53 +78,56 @@ export default function SystemSettingsPage() {
   const [notifInApp, setNotifInApp] = useState(notifSetting.in_app_enabled);
 
   const [saved, setSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSaveAll = async () => {
     try {
-    // 1. Update Claim Numbering
-    await db.updateSetting("claim_numbering", {
-      prefix,
-      year_format: "YYYY",
-      digits: Number(digits),
-    }, user?.id);
+      setIsSaving(true);
+      // 1. Update Claim Numbering
+      await db.updateSetting("claim_numbering", {
+        prefix,
+        year_format: "YYYY",
+        digits: Number(digits),
+      }, user?.id);
 
-    // 2. Update Organization Profile
-    await db.updateSetting("organization_profile", {
-      name: orgName,
-      registration_no: regNo,
-      address,
-      phone,
-      email,
-      currency,
-    }, user?.id);
+      // 2. Update Organization Profile
+      await db.updateSetting("organization_profile", {
+        name: orgName,
+        registration_no: regNo,
+        address,
+        phone,
+        email,
+        currency,
+      }, user?.id);
 
-    // 3. Update Claim Form Format & Rules
-    await db.updateSetting("claim_form_config", {
-      declaration_text: declarationText,
-      allow_claimant_change_ministry: allowMinistryChange,
-      require_vendor_name: requireVendor,
-      require_receipt_for_all_expenses: requireReceipt,
-      enable_internal_reference: enableInternalRef,
-      form_guidance_banner: guidanceBanner,
-      max_file_size_mb: Number(maxFileSize),
-      max_attachment_count: Number(maxFiles),
-    }, user?.id);
+      // 3. Update Claim Form Format & Rules
+      await db.updateSetting("claim_form_config", {
+        declaration_text: declarationText,
+        allow_claimant_change_ministry: allowMinistryChange,
+        require_vendor_name: requireVendor,
+        require_receipt_for_all_expenses: requireReceipt,
+        enable_internal_reference: enableInternalRef,
+        form_guidance_banner: guidanceBanner,
+        max_file_size_mb: Number(maxFileSize),
+        max_attachment_count: Number(maxFiles),
+      }, user?.id);
 
-    // 4. Update Notifications
-    await db.updateSetting("notification_settings", {
-      email_enabled: notifEmail,
-      in_app_enabled: notifInApp,
-      notify_on_submit: true,
-      notify_on_approval: true,
-      notify_on_payment: true,
-    }, user?.id);
+      // 4. Update Notifications
+      await db.updateSetting("notification_settings", {
+        email_enabled: notifEmail,
+        in_app_enabled: notifInApp,
+        notify_on_submit: true,
+        notify_on_approval: true,
+        notify_on_payment: true,
+      }, user?.id);
 
-    setSaved(true);
-    showToast.success("Changes have been made.", "Settings Saved");
-    setTimeout(() => setSaved(false), 4000);
-
+      setSaved(true);
+      showToast.success("Changes have been made.", "Settings Saved");
+      setTimeout(() => setSaved(false), 4000);
     } catch (error) {
       showToast.error(error instanceof Error ? error.message : "Unable to save changes.", "Save Error");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -145,9 +148,11 @@ export default function SystemSettingsPage() {
 
           <Button
             onClick={handleSaveAll}
+            loading={isSaving}
+            disabled={isSaving}
             className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold shadow-md px-6 text-xs"
           >
-            Save All Configuration Changes
+            {isSaving ? "Saving Configuration..." : "Save All Configuration Changes"}
           </Button>
         </div>
 
@@ -432,9 +437,11 @@ export default function SystemSettingsPage() {
         <div className="flex justify-end pt-4">
           <Button
             onClick={handleSaveAll}
+            loading={isSaving}
+            disabled={isSaving}
             className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-8 shadow-md"
           >
-            Save All Configuration Changes
+            {isSaving ? "Saving Configuration..." : "Save All Configuration Changes"}
           </Button>
         </div>
       </div>

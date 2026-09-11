@@ -18,6 +18,7 @@ export default function CategoryManagementPage() {
   const [categories, setCategories] = useState<ExpenseCategory[]>(db.getCategories());
   const [editingCat, setEditingCat] = useState<ExpenseCategory | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     code: "",
     name: "",
@@ -59,6 +60,7 @@ export default function CategoryManagementPage() {
         setError("Category name and code are required.");
         return;
       }
+      setIsSaving(true);
 
       if (isCreating) {
         await db.createCategory({
@@ -85,6 +87,8 @@ export default function CategoryManagementPage() {
       refresh();
     } catch (error) {
       showToast.error(error instanceof Error ? error.message : "Unable to save changes.", "Save Error");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -238,11 +242,11 @@ export default function CategoryManagementPage() {
             {error && <p className="text-xs text-red-600 font-medium">{error}</p>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsCreating(false); setEditingCat(null); }}>
+            <Button variant="outline" onClick={() => { setIsCreating(false); setEditingCat(null); }} disabled={isSaving}>
               Cancel
             </Button>
-            <Button onClick={handleSave} className="bg-emerald-700 hover:bg-emerald-800 text-white">
-              {isCreating ? "Create Category" : "Save Changes"}
+            <Button onClick={handleSave} loading={isSaving} disabled={isSaving} className="bg-emerald-700 hover:bg-emerald-800 text-white">
+              {isSaving ? "Saving..." : isCreating ? "Create Category" : "Save Changes"}
             </Button>
           </DialogFooter>
         </Dialog>
