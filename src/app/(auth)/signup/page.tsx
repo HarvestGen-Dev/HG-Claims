@@ -267,7 +267,7 @@ function SignupContent() {
           </div>
         )}
       </main>
-      <footer className="auth-footer">NewLife Community Church &middot; Expenses</footer>
+      <footer className="auth-footer">New Life Community Church &middot; Expenses</footer>
     </div>
   );
 }

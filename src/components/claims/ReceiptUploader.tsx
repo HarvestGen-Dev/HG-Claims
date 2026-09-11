@@ -179,9 +179,9 @@ export function ReceiptUploader({
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
 
       {/* Attachment List */}
-      {attachments.length > 0 && (
+      {(attachments || []).length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {attachments.map((att, idx) => (
+          {(attachments || []).map((att, idx) => (
             <div
               key={att.id || idx}
               className="flex items-center justify-between p-2.5 rounded-lg border border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-900/60 text-xs shadow-2xs"

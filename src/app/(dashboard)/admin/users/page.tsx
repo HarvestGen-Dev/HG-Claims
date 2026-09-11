@@ -249,8 +249,8 @@ export default function UserManagementPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {profiles.map((u) => {
-                      const userMinistry = ministries.find(m => m.id === u.ministry_id);
+                    {(profiles || []).map((u) => {
+                      const userMinistry = (ministries || []).find(m => m.id === u.ministry_id);
                       const isOnboarded = !!u.onboarding_completed_at;
 
                       return (
@@ -267,7 +267,7 @@ export default function UserManagementPage() {
                           </td>
                           <td className="py-3.5 px-4">
                             <div className="flex flex-wrap items-center gap-1.5">
-                              {u.roles?.map(r => (
+                              {(u.roles || []).map(r => (
                                 <span
                                   key={r}
                                   className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold"
@@ -362,7 +362,7 @@ export default function UserManagementPage() {
                         </td>
                       </tr>
                     ) : (
-                      invitations.map((inv) => {
+                      (invitations || []).map((inv) => {
                         const isExpired = new Date(inv.expires_at).getTime() < Date.now();
                         const isExhausted = inv.use_count >= inv.max_uses;
                         const isActive = inv.is_active && !isExpired && !isExhausted;
@@ -507,7 +507,7 @@ export default function UserManagementPage() {
                   className="w-full border border-slate-300 rounded-md p-2 text-xs bg-white h-9 focus:ring-1 focus:ring-emerald-500"
                 >
                   <option value="">-- Select a Ministry --</option>
-                  {ministries.map((m) => (
+                  {(ministries || []).map((m) => (
                     <option key={m.id} value={m.id}>{m.name} ({m.code})</option>
                   ))}
                 </select>
@@ -626,7 +626,7 @@ export default function UserManagementPage() {
                 className="w-full border border-slate-300 rounded-md p-2 text-xs bg-white h-9 focus:ring-1 focus:ring-emerald-500"
               >
                 <option value="">-- No Specific Ministry --</option>
-                {ministries.map((m) => (
+                {(ministries || []).map((m) => (
                   <option key={m.id} value={m.id}>{m.name} ({m.code})</option>
                 ))}
               </select>
@@ -635,7 +635,7 @@ export default function UserManagementPage() {
             <div className="space-y-2 pt-2">
               <label className="font-semibold text-slate-700 block">Assign Active System Roles</label>
               <div className="grid grid-cols-1 gap-2">
-                {activeRoles.map((r) => {
+                {(activeRoles || []).map((r) => {
                   const isChecked = selectedRoles.includes(r.code);
                   return (
                     <label

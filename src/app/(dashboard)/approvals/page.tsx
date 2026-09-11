@@ -148,7 +148,7 @@ export default function ApprovalsInboxPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
-                  {displayedList.map((c) => {
+                  {(displayedList || []).map((c) => {
                     const activeStep = c.workflow_steps?.find(s => s.status === "IN_PROGRESS");
                     return (
                       <tr key={c.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-900/50 transition-colors">
@@ -174,7 +174,7 @@ export default function ApprovalsInboxPage() {
                         </td>
                         <td className="py-3 px-4 text-center">
                           <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200/70 dark:bg-amber-950/30 dark:text-amber-300">
-                            {activeStep?.step_name || c.status.replace(/_/g, " ")}
+                            {activeStep?.step_name || (c.status || "").replace(/_/g, " ")}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">

@@ -25,7 +25,7 @@ export function ClaimComments({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Filter comments based on user role
-  const visibleComments = comments.filter(c => {
+  const visibleComments = (comments || []).filter(c => {
     if (c.visibility === "PUBLIC_WORKFLOW") return true;
     if (c.visibility === "FINANCE_INTERNAL") {
       return currentUser?.roles?.includes("FINANCE_OFFICER") || currentUser?.roles?.includes("SYSTEM_ADMIN");

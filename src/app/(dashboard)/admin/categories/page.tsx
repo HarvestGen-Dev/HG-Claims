@@ -136,7 +136,7 @@ export default function CategoryManagementPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {categories.map((c) => (
+                  {(categories || []).map((c) => (
                     <tr key={c.id} className="hover:bg-slate-50/70">
                       <td className="py-3.5 px-4 font-bold text-slate-400 text-center">{c.display_order}</td>
                       <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{c.code}</td>

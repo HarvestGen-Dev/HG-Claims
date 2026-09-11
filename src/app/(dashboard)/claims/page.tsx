@@ -138,7 +138,7 @@ function ClaimsContent() {
 
       {/* Claims Table Container */}
       <div className="rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-950 shadow-2xs overflow-hidden">
-        {filteredClaims.length === 0 ? (
+        {(filteredClaims || []).length === 0 ? (
           <div className="py-16 text-center space-y-2.5">
             <FileText className="w-8 h-8 text-zinc-300 mx-auto" />
             <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">No claims match the filter</p>
@@ -146,7 +146,7 @@ function ClaimsContent() {
             <Button variant="outline" onClick={() => { setSearch(""); setSelectedStatus("ALL"); }}>Clear filters</Button>
           </div>
         ) : (
-          <><MobileClaimList claims={filteredClaims} /><div className="hidden sm:block overflow-x-auto">
+          <><MobileClaimList claims={filteredClaims || []} /><div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-zinc-50/50 border-b border-zinc-100 dark:bg-zinc-900/50 dark:border-zinc-800 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
@@ -162,7 +162,7 @@ function ClaimsContent() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
-                {filteredClaims.map((c) => (
+                {(filteredClaims || []).map((c) => (
                   <tr key={c.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-900/50 transition-colors">
                     <td className="py-3 px-4 font-mono font-medium text-zinc-900 dark:text-zinc-100">
                       <Link href={`/claims/${c.id}`} className="hover:underline hover:text-emerald-700 dark:hover:text-emerald-400">

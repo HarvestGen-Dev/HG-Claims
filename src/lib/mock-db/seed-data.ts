@@ -455,7 +455,7 @@ export const INITIAL_SYSTEM_SETTINGS: SystemSetting[] = [
     id: "sett-org-03",
     key: "organization_profile",
     value: {
-      name: "NewLife Community Church",
+      name: "New Life Community Church",
       short_name: "NLCC",
       registration_no: "PPM-003-10-14051998",
       address: "Jalan Universiti, 46200 Petaling Jaya, Selangor, Malaysia",
@@ -483,7 +483,7 @@ export const INITIAL_SYSTEM_SETTINGS: SystemSetting[] = [
     id: "sett-form-05",
     key: "claim_form_config",
     value: {
-      declaration_text: "I confirm that these expenses were incurred for legitimate church ministry purposes in accordance with NewLife Community Church financial policies, have not previously been claimed or reimbursed from any other source, and are supported by the authentic receipts and documents provided.",
+      declaration_text: "I confirm that these expenses were incurred for legitimate church ministry purposes in accordance with New Life Community Church financial policies, have not previously been claimed or reimbursed from any other source, and are supported by the authentic receipts and documents provided.",
       allow_claimant_change_ministry: true,
       require_vendor_name: false,
       require_receipt_for_all_expenses: true,

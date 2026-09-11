@@ -60,13 +60,13 @@ export default function NotificationsPage() {
 
         <Card>
           <CardContent className="p-0">
-            {notifications.length === 0 ? (
+            {(notifications || []).length === 0 ? (
               <div className="py-16 text-center text-xs text-slate-400">
                 No notifications to display.
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
-                {notifications.map((n) => (
+                {(notifications || []).map((n) => (
                   <Link
                     key={n.id}
                     href={n.link || "#"}

@@ -68,7 +68,7 @@ export function ClaimTimeline({ steps }: ClaimTimelineProps) {
                     !isCompleted && !isInProgress && !isReturned && !isRejected && "bg-zinc-100 text-zinc-500 dark:bg-zinc-800"
                   )}
                 >
-                  {step.status.replace(/_/g, " ")}
+                  {(step.status || "").replace(/_/g, " ")}
                 </span>
               </div>
 
@@ -76,7 +76,7 @@ export function ClaimTimeline({ steps }: ClaimTimelineProps) {
                 {step.assigned_user ? (
                   <span>Assigned: <strong className="text-zinc-700 dark:text-zinc-300">{step.assigned_user.full_name}</strong></span>
                 ) : (
-                  <span>Role: <strong className="text-zinc-700 dark:text-zinc-300">{step.approver_role.replace(/_/g, " ")}</strong></span>
+                  <span>Role: <strong className="text-zinc-700 dark:text-zinc-300">{(step.approver_role || "Approver").replace(/_/g, " ")}</strong></span>
                 )}
 
                 {step.completed_at && (

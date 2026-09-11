@@ -223,7 +223,7 @@ export default function WorkflowConfigurationPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {rules.map((r) => (
+                  {(rules || []).map((r) => (
                     <tr key={r.id} className="hover:bg-slate-50/70">
                       <td className="py-3.5 px-4 font-bold text-slate-400 text-center">{r.sequence}</td>
                       <td className="py-3.5 px-4 font-semibold text-slate-900">{r.name}</td>
@@ -232,7 +232,7 @@ export default function WorkflowConfigurationPage() {
                       <td className="py-3.5 px-4 font-mono">{r.max_amount ? formatCurrency(r.max_amount) : "No Limit"}</td>
                       <td className="py-3.5 px-4">
                         <span className="font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-[10px]">
-                          {r.approver_role.replace(/_/g, " ")}
+                          {(r.approver_role || "").replace(/_/g, " ")}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-center">
@@ -340,7 +340,7 @@ export default function WorkflowConfigurationPage() {
                 className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs"
               >
                 <option value="">All Church Ministries</option>
-                {ministries.map((m) => (
+                {(ministries || []).map((m) => (
                   <option key={m.id} value={m.id}>{m.name}</option>
                 ))}
               </select>
@@ -355,7 +355,7 @@ export default function WorkflowConfigurationPage() {
                   className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs"
                 >
                   <option value="">-- Select Specific User --</option>
-                  {profiles.map((p) => (
+                  {(profiles || []).map((p) => (
                     <option key={p.id} value={p.id}>{p.full_name} ({p.email})</option>
                   ))}
                 </select>

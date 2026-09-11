@@ -1,5 +1,5 @@
 -- ============================================================================
--- NewLife Expense Claim Management System (NLCC) - Master Seed Data
+-- New Life Expense Claim Management System (NLCC) - Master Seed Data
 -- ============================================================================
 
 -- 1. Insert System Settings

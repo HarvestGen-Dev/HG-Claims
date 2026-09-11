@@ -9,8 +9,8 @@ import { WorkspaceFeedback } from "@/components/layout/WorkspaceFeedback";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "NewLife Expense Claim Management System (NLCC)",
-  description: "Digital expense claim, approval workflow, and reimbursement system for NewLife Community Church",
+  title: "New Life Expense Claim Management System",
+  description: "Digital expense claim, approval workflow, and reimbursement system for New Life Community Church",
 };
 
 export default function RootLayout({

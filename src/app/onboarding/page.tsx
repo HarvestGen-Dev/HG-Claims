@@ -134,7 +134,7 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            <Button disabled={busy} className="w-full h-11 gap-2 mt-4 bg-emerald-600 hover:bg-emerald-700 text-white" type="submit">
+            <Button disabled={busy} className="w-full h-11 gap-2 mt-4 bg-emerald-700 hover:bg-emerald-800 text-white" type="submit">
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
               {busy ? "Saving Profile..." : "Get Started"}
               <ArrowRight className="h-4 w-4" />
@@ -149,7 +149,7 @@ export default function OnboardingPage() {
       </div>
 
       <footer className="text-center text-xs text-slate-400 mt-8">
-        NewLife Community Church &middot; Expense Portal
+        New Life Community Church &middot; Expenses
       </footer>
     </div>
   );

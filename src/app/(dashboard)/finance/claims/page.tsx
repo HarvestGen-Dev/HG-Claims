@@ -184,7 +184,7 @@ function FinanceClaimsContent() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
-                {filtered.map((c) => (
+                {(filtered || []).map((c) => (
                   <tr key={c.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-900/50 transition-colors">
                     <td className="py-3 px-4 font-mono font-medium text-zinc-900 dark:text-zinc-100">
                       <Link href={`/finance/claims/${c.id}`} className="hover:underline hover:text-emerald-700 dark:hover:text-emerald-400">

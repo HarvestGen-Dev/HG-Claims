@@ -140,7 +140,7 @@ export default function MinistryManagementPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {ministries.map((m) => (
+                  {(ministries || []).map((m) => (
                     <tr key={m.id} className="hover:bg-slate-50/70">
                       <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{m.code}</td>
                       <td className="py-3.5 px-4 font-semibold text-slate-800">{m.name}</td>
@@ -227,7 +227,7 @@ export default function MinistryManagementPage() {
                 className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs"
               >
                 <option value="">-- No Leader Assigned --</option>
-                {profiles.map((p) => (
+                {(profiles || []).map((p) => (
                   <option key={p.id} value={p.id}>{p.full_name} ({p.email})</option>
                 ))}
               </select>

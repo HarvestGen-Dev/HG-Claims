@@ -28,7 +28,7 @@ export default function SystemSettingsPage() {
   // Load existing settings from DB
   const numberingSetting = db.getSetting("claim_numbering") || { prefix: "NLCC", year_format: "YYYY", digits: 6 };
   const orgSetting = db.getSetting("organization_profile") || {
-    name: "NewLife Community Church",
+    name: "New Life Community Church",
     short_name: "NLCC",
     registration_no: "PPM-003-10-14051998",
     address: "Jalan Universiti, 46200 Petaling Jaya, Selangor, Malaysia",

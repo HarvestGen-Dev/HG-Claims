@@ -138,7 +138,7 @@ export default function CostCentreManagementPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {costCentres.map((cc) => (
+                  {(costCentres || []).map((cc) => (
                     <tr key={cc.id} className="hover:bg-slate-50/70">
                       <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{cc.code}</td>
                       <td className="py-3.5 px-4 font-semibold text-slate-800">{cc.name}</td>
@@ -216,7 +216,7 @@ export default function CostCentreManagementPage() {
                 className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs"
               >
                 <option value="">General / All Ministries</option>
-                {ministries.map((m) => (
+                {(ministries || []).map((m) => (
                   <option key={m.id} value={m.id}>{m.name}</option>
                 ))}
               </select>

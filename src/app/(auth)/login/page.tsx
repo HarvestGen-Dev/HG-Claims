@@ -51,7 +51,7 @@ export default function LoginPage() {
         </form>
         <Link href="/forgot-password" className="inline-block mt-6 text-sm text-emerald-700">Forgot password?</Link>
       </main>
-      <footer className="auth-footer">NewLife Community Church &middot; Expenses</footer>
+      <footer className="auth-footer">New Life Community Church &middot; Expenses</footer>
     </div>
   );
 }

@@ -44,7 +44,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   const categories = db.getCategories();
   const costCentres = db.getCostCentres();
   const formConfig = db.getSetting("claim_form_config") || {
-    declaration_text: "I confirm that these expenses were incurred for legitimate church ministry purposes in accordance with NewLife Community Church financial policies, have not previously been claimed or reimbursed from any other source, and are supported by the authentic receipts and documents provided.",
+    declaration_text: "I confirm that these expenses were incurred for legitimate church ministry purposes in accordance with New Life Community Church financial policies, have not previously been claimed or reimbursed from any other source, and are supported by the authentic receipts and documents provided.",
     allow_claimant_change_ministry: true,
     require_vendor_name: false,
     require_receipt_for_all_expenses: true,

@@ -1,5 +1,5 @@
 -- ============================================================================
--- NewLife Expense Claim Management System (NLCC) - Initial Schema
+-- New Life Expense Claim Management System (NLCC) - Initial Schema
 -- ============================================================================
 
 -- Extensions

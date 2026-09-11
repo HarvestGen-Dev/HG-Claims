@@ -204,7 +204,7 @@ export function ExpenseItemsEditor({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-1 border-b border-zinc-200/60 dark:border-zinc-800">
         <div>
           <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
-            Receipts & Invoices ({expenses.length})
+            Receipts & Invoices ({(expenses || []).length})
           </h3>
           <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
             Each receipt row has its own cost centre and supporting document attachment.
@@ -218,25 +218,12 @@ export function ExpenseItemsEditor({
               {formatCurrency(total)}
             </span>
           </div>
-
-          {!disabled && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addReceipt}
-              className="h-8 text-xs border-zinc-200 hover:bg-zinc-50 text-zinc-800 dark:border-zinc-700 dark:text-zinc-200 gap-1.5 shadow-2xs font-medium"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Receipt</span>
-            </Button>
-          )}
         </div>
       </div>
 
       {/* Receipt Cards */}
       <div className="space-y-3.5">
-        {expenses.map((item, idx) => (
+        {(expenses || []).map((item, idx) => (
           <div
             key={item.id || item.temp_id || idx}
             className="rounded-xl border border-zinc-200 bg-white p-4 shadow-2xs dark:border-zinc-800 dark:bg-zinc-900/60 transition-all hover:border-zinc-300 dark:hover:border-zinc-700"
@@ -528,6 +515,21 @@ export function ExpenseItemsEditor({
           </div>
         ))}
       </div>
+
+      {/* Add Receipt Button (below last receipt upload section, above declaration) */}
+      {!disabled && (
+        <div className="pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={addReceipt}
+            className="w-full h-10 border-dashed border-zinc-300 hover:border-emerald-600 hover:bg-emerald-50/50 hover:text-emerald-700 text-zinc-700 dark:border-zinc-700 dark:hover:border-emerald-500 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-300 text-xs font-semibold gap-2 transition-all shadow-2xs"
+          >
+            <Plus className="w-4 h-4 text-emerald-600" />
+            <span>Add Receipt</span>
+          </Button>
+        </div>
+      )}
 
       {/* Viewer Modal */}
       <ReceiptViewerModal
