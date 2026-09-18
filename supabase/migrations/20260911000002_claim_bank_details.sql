@@ -2,11 +2,12 @@
 -- Description: Adds bank_name and bank_account_number to public.claims and public.profiles,
 -- updating private.command (save_draft, submit_claim, profile, correct) and private.snapshot.
 
--- 1. Ensure columns exist on public.claims and public.profiles
+-- 1. Ensure columns exist on public.claims and public.profiles, and expense_category_id is nullable on public.claim_expenses
 ALTER TABLE public.claims ADD COLUMN IF NOT EXISTS bank_name TEXT;
 ALTER TABLE public.claims ADD COLUMN IF NOT EXISTS bank_account_number TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS bank_name TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS bank_account_number TEXT;
+ALTER TABLE public.claim_expenses ALTER COLUMN expense_category_id DROP NOT NULL;
 
 -- 2. Update private.command to support bank_name and bank_account_number
 CREATE OR REPLACE FUNCTION private.command(action text, payload jsonb) RETURNS jsonb
@@ -102,7 +103,7 @@ BEGIN
     DELETE FROM public.claim_expenses WHERE claim_id=cid;
 
     FOR item IN SELECT * FROM jsonb_array_elements(payload->'expenses') LOOP
-      IF NOT EXISTS(SELECT 1 FROM public.expense_categories WHERE id=(item->>'expense_category_id')::uuid AND is_active) THEN
+      IF item->>'expense_category_id' IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.expense_categories WHERE id=(item->>'expense_category_id')::uuid AND is_active) THEN
         RAISE EXCEPTION 'Choose an active expense category';
       END IF;
       IF NOT EXISTS(SELECT 1 FROM public.cost_centres WHERE id=(item->>'cost_centre_id')::uuid AND is_active AND (ministry_id IS NULL OR ministry_id=(payload->>'ministry_id')::uuid)) THEN
@@ -120,7 +121,7 @@ BEGIN
         claim_id, expense_date, expense_category_id, cost_centre_id, vendor, description, amount, sort_order
       )
       VALUES(
-        cid, (item->>'expense_date')::date, (item->>'expense_category_id')::uuid,
+        cid, (item->>'expense_date')::date, NULLIF(item->>'expense_category_id','')::uuid,
         (item->>'cost_centre_id')::uuid, NULLIF(trim(COALESCE(item->>'vendor','')),''),
         trim(COALESCE(item->>'description','')), (item->>'amount')::numeric,
         COALESCE((item->>'sort_order')::integer, 0)

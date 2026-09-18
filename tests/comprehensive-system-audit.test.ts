@@ -66,7 +66,7 @@ describe("Comprehensive NLCC System & Workflow Test Suite", () => {
       global.window = {
         sessionStorage: mockSessionStorage,
         dispatchEvent: () => true,
-      };
+      } as any;
     });
 
     afterEach(() => {

@@ -151,6 +151,7 @@ describe("Ministry Head Submitter Model & Receipt-Level Cost Centres", () => {
         submitted_by_user_id: ministryLeader.id,
         claimant_name: "Mark Lee",
         claimant_email: "mark.lee@example.com",
+        claimant_phone: "+60 12-345 6789",
         ministry_id: "m-youth-01",
         claim_date: "2026-09-09",
         purpose: "Combined Youth & Worship Camp Logistics",

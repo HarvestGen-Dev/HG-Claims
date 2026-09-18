@@ -144,6 +144,7 @@ export interface CostCentre {
 
 export interface ClaimExpense {
   id: string;
+  temp_id?: string;
   claim_id: string;
   expense_date: string;
   expense_category_id?: string | null;
@@ -164,6 +165,8 @@ export interface ClaimExpense {
 
 export interface ClaimAttachment {
   id: string;
+  temp_id?: string;
+  expense_temp_id?: string;
   claim_id: string;
   expense_id?: string | null;
   storage_path: string;

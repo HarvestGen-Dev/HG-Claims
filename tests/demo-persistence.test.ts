@@ -14,7 +14,8 @@ describe("Demo workspace persistence", () => {
   it("restores edited drafts and their receipt changes after a reload", async () => {
     const { db } = await import("@/lib/mock-db/repository");
     const data = {
-      claimant_id: "u-jaeden-01", ministry_id: "m-youth-01", cost_centre_id: "cc-youth-01",
+      claimant_id: "u-jaeden-01", claimant_name: "Jaeden Ting", claimant_email: "jaeden@nlcc.org.my", claimant_phone: "+60 12-345 6789",
+      ministry_id: "m-youth-01", cost_centre_id: "cc-youth-01",
       programme_event: "Rehearsal", claim_date: "2026-09-10", purpose: "Transport",
       payment_method: "PERSONAL_REIMBURSEMENT", expenses: [],
     };
