@@ -124,7 +124,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
   };
 
   const handleVerifyFinance = async () => {
-    if (!user) return;
+    if (!user || !canVerify(claim) || claim.finance_review?.receipts_verified || loadingAction) return;
     try {
       setLoadingAction(true);
       const updated = await db.verifyClaim(claim.id, user, "All receipts and cost allocations verified.");
@@ -299,7 +299,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
           {/* Finance Controls */}
           {isFinanceUser && (
             <>
-              {!claim.finance_review?.receipts_verified && claim.status !== "DRAFT" && claim.status !== "PAID" && (
+              {canVerify(claim) && !claim.finance_review?.receipts_verified && (
                 <Button
                   variant="outline"
                   size="sm"

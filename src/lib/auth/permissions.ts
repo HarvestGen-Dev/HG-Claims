@@ -57,7 +57,9 @@ export function canUserRecordPayment(user: Profile | null | undefined, claim: Cl
 }
 
 export function canUserVerifyClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
-  return canUserReviewClaim(user, claim);
+  if (!user || !claim || !canUserReviewClaim(user, claim)) return false;
+  // Finance verification excludes both the submitter and the claimant, even for admins.
+  return claim.claimant_id !== user.id && claim.status === "PENDING_FINANCE_REVIEW";
 }
 
 export function canUserManageSystem(user: Profile | null | undefined): boolean {
@@ -88,4 +90,3 @@ export function isOnboardingCompleted(user: Profile | null | undefined): boolean
   if (!user) return false;
   return !!user.onboarding_completed_at && isRealFullName(user.full_name, user.email);
 }
-
