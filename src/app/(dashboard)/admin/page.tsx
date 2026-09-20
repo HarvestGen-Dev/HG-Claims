@@ -37,7 +37,7 @@ export default function AdminOverviewPage() {
     },
     {
       title: "Approval Workflows",
-      desc: "Configure multi-level approval rules, custom ministry routes, and RM 500 limits.",
+      desc: "View the direct Finance Review and payment process.",
       icon: <GitBranch className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />,
       href: "/admin/workflows",
     },

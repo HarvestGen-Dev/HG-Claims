@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { PrintClaimView } from "@/components/claims/PrintClaimView";
 import { db } from "@/lib/data/repository";
 import { Claim } from "@/lib/types/database";
+import Link from "next/link";
 
 export default function PrintPage() {
   const params = useParams();
@@ -18,7 +19,7 @@ export default function PrintPage() {
     }
   }, [id]);
 
-  if (!claim) return <div className="p-8 text-center text-sm">Loading printable claim...</div>;
+  if (!claim) return <div className="p-8 text-center text-sm" role="alert">Claim not found or access denied. <Link href="/claims" className="underline">Back to claims</Link></div>;
 
   return <PrintClaimView claim={claim} />;
 }

@@ -19,7 +19,7 @@ export function isClaimSubmitter(user: Profile | null | undefined, claim: Claim 
 export function canUserReviewClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
   if (!user || !claim || user.status !== "ACTIVE" || !user.roles) return false;
   // Rule 1: Submitter can NEVER review/approve/return/reject their own claim
-  if (isClaimSubmitter(user, claim)) return false;
+  if (isClaimSubmitter(user, claim) || claim.claimant_id === user.id) return false;
 
   // Rule 2: Must be Finance Officer or System Admin
   return user.roles.includes("FINANCE_OFFICER") || user.roles.includes("SYSTEM_ADMIN");
@@ -28,8 +28,7 @@ export function canUserReviewClaim(user: Profile | null | undefined, claim: Clai
 export function canUserApproveClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
   if (!canUserReviewClaim(user, claim)) return false;
   if (!claim) return false;
-  return claim.status === "PENDING_FINANCE_REVIEW" || claim.status === "SUBMITTED" ||
-    (claim.workflow_steps?.some(s => s.status === "IN_PROGRESS") ?? false);
+  return claim.status === "PENDING_FINANCE_REVIEW";
 }
 
 export function canUserReturnClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
@@ -52,7 +51,7 @@ export function canUserEditClaim(user: Profile | null | undefined, claim: Claim 
 export function canUserRecordPayment(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
   if (!user || !claim || user.status !== "ACTIVE" || !user.roles) return false;
   if (claim.status !== "APPROVED_FOR_PAYMENT") return false;
-  if (isClaimSubmitter(user, claim)) return false;
+  if (isClaimSubmitter(user, claim) || claim.claimant_id === user.id) return false;
   return user.roles.includes("FINANCE_OFFICER") || user.roles.includes("SYSTEM_ADMIN");
 }
 

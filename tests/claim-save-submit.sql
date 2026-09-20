@@ -4,7 +4,7 @@ BEGIN;
 DO $$
 DECLARE
   actor uuid; ministry uuid; centre uuid; receipt jsonb; payload jsonb;
-  saved jsonb; submitted jsonb; v_claim_id uuid; claim_version integer;
+  saved jsonb; submitted jsonb; v_claim_id uuid; claim_version integer; reviewer uuid; snapshot jsonb;
 BEGIN
   SELECT p.id, jsonb_build_object(
     'storage_path', o.name, 'original_filename', 'regression-receipt',
@@ -48,8 +48,14 @@ BEGIN
   SELECT version INTO claim_version FROM public.claims WHERE id=v_claim_id;
   submitted=public.nlcc_command('submit_claim',payload || jsonb_build_object('id',v_claim_id,'version',claim_version));
   IF submitted->>'id' IS DISTINCT FROM saved->>'id' OR NOT EXISTS (
-    SELECT 1 FROM public.claims WHERE id=v_claim_id AND status<>'DRAFT' AND submitted_at IS NOT NULL
+    SELECT 1 FROM public.claims WHERE id=v_claim_id AND status='PENDING_FINANCE_REVIEW' AND submitted_at IS NOT NULL
   ) THEN RAISE EXCEPTION 'Draft was not submitted'; END IF;
+  IF (SELECT count(*) FROM public.claim_workflow_steps s JOIN public.claim_workflows w ON w.id=s.workflow_id
+      WHERE w.claim_id=v_claim_id AND w.is_current) <> 1 OR NOT EXISTS (
+    SELECT 1 FROM public.claim_workflow_steps s JOIN public.claim_workflows w ON w.id=s.workflow_id
+    WHERE w.claim_id=v_claim_id AND w.is_current AND s.approver_role='FINANCE_OFFICER'
+      AND s.status='IN_PROGRESS' AND s.assigned_user_id IS NULL
+  ) THEN RAISE EXCEPTION 'Submission did not create one shared Finance Review step'; END IF;
   IF public.nlcc_command('submit_claim',payload)->>'id' IS DISTINCT FROM saved->>'id' THEN
     RAISE EXCEPTION 'Submission retry was not idempotent';
   END IF;
@@ -59,5 +65,36 @@ BEGIN
   EXCEPTION WHEN raise_exception THEN
     IF SQLERRM <> 'Invalid request key format' THEN RAISE; END IF;
   END;
+  SELECT p.id INTO STRICT reviewer FROM public.profiles p JOIN public.user_roles ur ON ur.user_id=p.id
+    JOIN public.roles r ON r.id=ur.role_id WHERE p.status='ACTIVE' AND p.id<>actor AND r.code IN ('FINANCE_OFFICER','SYSTEM_ADMIN') LIMIT 1;
+  PERFORM set_config('request.jwt.claim.sub',reviewer::text,true);
+  SELECT version INTO claim_version FROM public.claims WHERE id=v_claim_id;
+  PERFORM public.nlcc_command('verify',jsonb_build_object('claim_id',v_claim_id,'version',claim_version));
+  SELECT version INTO claim_version FROM public.claims WHERE id=v_claim_id;
+  PERFORM public.nlcc_command('return',jsonb_build_object('claim_id',v_claim_id,'version',claim_version,'reason','Clarify receipt'));
+  IF NOT EXISTS(SELECT 1 FROM public.claims WHERE id=v_claim_id AND clarification_reason='Clarify receipt' AND returned_by=reviewer) THEN
+    RAISE EXCEPTION 'Return reason or reviewer was lost'; END IF;
+  -- Make the previous review unambiguously older even within this single transaction.
+  UPDATE public.finance_reviews SET created_at=now()-interval '1 day' WHERE claim_id=v_claim_id;
+  PERFORM set_config('request.jwt.claim.sub',actor::text,true);
+  SELECT version INTO claim_version FROM public.claims WHERE id=v_claim_id;
+  PERFORM public.nlcc_command('submit_claim',payload || jsonb_build_object('id',v_claim_id,'version',claim_version));
+  snapshot=public.nlcc_snapshot();
+  IF EXISTS(SELECT 1 FROM jsonb_array_elements(snapshot->'claims') x WHERE x->>'id'=v_claim_id::text AND x->'finance_review'<>'null'::jsonb) THEN
+    RAISE EXCEPTION 'Stale receipt verification survived resubmission'; END IF;
+  PERFORM set_config('request.jwt.claim.sub',reviewer::text,true);
+  SELECT version INTO claim_version FROM public.claims WHERE id=v_claim_id;
+  BEGIN
+    PERFORM public.nlcc_command('approve',jsonb_build_object('claim_id',v_claim_id,'version',claim_version));
+    RAISE EXCEPTION 'Approval accepted stale verification' USING ERRCODE='PZ002';
+  EXCEPTION WHEN raise_exception THEN NULL; END;
+  PERFORM public.nlcc_command('verify',jsonb_build_object('claim_id',v_claim_id,'version',claim_version));
+  SELECT version INTO claim_version FROM public.claims WHERE id=v_claim_id;
+  PERFORM public.nlcc_command('approve',jsonb_build_object('claim_id',v_claim_id,'version',claim_version));
+  SELECT version INTO claim_version FROM public.claims WHERE id=v_claim_id;
+  PERFORM public.nlcc_command('pay',jsonb_build_object('claim_id',v_claim_id,'version',claim_version,'amount',1.25,
+    'payment_date',current_date,'payment_reference','AUDIT-ROLLBACK','payment_method','BANK_TRANSFER'));
+  IF NOT EXISTS(SELECT 1 FROM public.claims WHERE id=v_claim_id AND status='PAID') THEN RAISE EXCEPTION 'Payment was not recorded'; END IF;
+  IF (SELECT count(*) FROM public.payments WHERE claim_id=v_claim_id) <> 1 THEN RAISE EXCEPTION 'Payment count incorrect'; END IF;
 END $$;
 ROLLBACK;

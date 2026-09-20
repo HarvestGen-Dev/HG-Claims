@@ -62,11 +62,13 @@ from Supabase Auth invitations/recovery. In-app claim notifications are implemen
 
 ### Database and Roles
 
-The confirmed hosted project already has all five migrations installed. For a new
+The confirmed hosted project uses the migrations in `supabase/migrations`. For a new
 project, authenticate with `supabase login`, link the intended project, review
 `supabase db push --dry-run`, then run `supabase db push`.
 
 Use `node tools/bootstrap-admin.mjs PROJECT_REFERENCE ADMIN_EMAIL` for the first
 administrator. It creates an unverified account without a password or outgoing email.
-Assign ministry leaders, finance officers, and final approvers before accepting claims.
+Assign Ministry Leaders, Finance Officers, and System Admins. Submitted claims go directly to Finance Review; an independent Finance Officer or System Admin verifies and approves them.
 See `PRODUCTION_SETUP.md` for verified setup status and outstanding launch work.
+
+See [SITE_AUDIT.md](SITE_AUDIT.md) for the latest functional audit, fixes, verification, and remaining configuration items.

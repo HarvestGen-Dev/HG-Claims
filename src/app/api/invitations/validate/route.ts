@@ -1,71 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/mock-db/repository";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hashToken } from "@/lib/utils/token";
 
 export const dynamic = "force-dynamic";
-
+const headers = { "Cache-Control": "private, no-store" };
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("token") || request.nextUrl.searchParams.get("invite");
-  if (!token) {
-    return NextResponse.json({ valid: false, error: "Invitation token is missing." }, { status: 400 });
-  }
-
-  // Try Supabase if configured
+  if (!token || token.length > 256) return NextResponse.json({ valid: false, error: "Invitation token is missing or invalid." }, { status: 400, headers });
   try {
-    const admin = createAdminClient();
-    const tokenHash = hashToken(token);
-    let { data: invitation, error } = await admin
-      .from("signup_invitations")
-      .select("*, ministry:ministries(id, name, code)")
-      .eq("token_hash", tokenHash)
-      .eq("is_active", true)
-      .single();
-
-    if ((error || !invitation) && token !== tokenHash) {
-      const fallback = await admin
-        .from("signup_invitations")
-        .select("*, ministry:ministries(id, name, code)")
-        .eq("token_hash", token)
-        .eq("is_active", true)
-        .single();
-      if (!fallback.error && fallback.data) {
-        invitation = fallback.data;
-        error = null;
-      }
+    const { data: invitation, error } = await createAdminClient().from("signup_invitations")
+      .select("role_code,ministry_id,description,expires_at,use_count,max_uses,is_active,ministry:ministries(name)")
+      .eq("token_hash", hashToken(token)).maybeSingle();
+    if (error) throw error;
+    if (!invitation || !invitation.is_active || new Date(invitation.expires_at).getTime() <= Date.now() || invitation.use_count >= invitation.max_uses) {
+      return NextResponse.json({ valid: false, error: "Invitation link is invalid, expired, or fully used." }, { status: 400, headers });
     }
-
-    if (!error && invitation) {
-      if (new Date(invitation.expires_at).getTime() < Date.now()) {
-        return NextResponse.json({ valid: false, error: "Invitation link has expired." }, { status: 400 });
-      }
-      if (invitation.use_count >= invitation.max_uses) {
-        return NextResponse.json({ valid: false, error: "Invitation link usage limit has been reached." }, { status: 400 });
-      }
-
-      return NextResponse.json({
-        valid: true,
-        role_code: invitation.role_code,
-        ministry_id: invitation.ministry_id,
-        ministry_name: invitation.ministry?.name || null,
-        description: invitation.description,
-      });
-    }
+    const ministry = invitation.ministry as unknown as { name?: string } | null;
+    return NextResponse.json({ valid: true, role_code: invitation.role_code, ministry_id: invitation.ministry_id,
+      ministry_name: ministry?.name || null, description: invitation.description }, { headers });
   } catch {
-    // Fallback to mock db
+    return NextResponse.json({ valid: false, error: "Unable to validate the invitation. Please try again." }, { status: 503, headers });
   }
-
-  // Fallback to mock repository
-  const result = db.validateSignupInvitation(token);
-  if (!result.valid || !result.invitation) {
-    return NextResponse.json({ valid: false, error: result.reason || "Invalid invitation token." }, { status: 400 });
-  }
-
-  return NextResponse.json({
-    valid: true,
-    role_code: result.invitation.role_code,
-    ministry_id: result.invitation.ministry_id,
-    ministry_name: result.invitation.ministry?.name || null,
-    description: result.invitation.description,
-  });
 }

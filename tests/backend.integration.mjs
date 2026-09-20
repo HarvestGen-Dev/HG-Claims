@@ -19,7 +19,7 @@ async function transition(client, action, claimId, payload = {}) {
   const claim = (await snapshot(client)).claims.find(c => c.id === claimId);
   return command(client, action, { claim_id: claimId, version: claim.version, ...payload });
 }
-for (const [name, role] of Object.entries({ admin: "SYSTEM_ADMIN", claimant: "CLAIMANT", leader: "MINISTRY_LEADER", outsider: "MINISTRY_LEADER", finance: "FINANCE_OFFICER", final: "FINAL_APPROVER" })) {
+for (const [name, role] of Object.entries({ admin: "SYSTEM_ADMIN", claimant: "MINISTRY_LEADER", leader: "MINISTRY_LEADER", outsider: "MINISTRY_LEADER", finance: "FINANCE_OFFICER" })) {
   const email = name + "-" + suffix + "@nlcc-test.invalid";
   const { data, error } = await service.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: name } });
   assert.ifError(error);
@@ -53,10 +53,10 @@ const bytes = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQ
 assert.ifError((await claimant.client.storage.from("receipts").upload(path, bytes, { contentType: "image/png" })).error);
 check(!!(await outsider.client.storage.from("receipts").download(path)).error, "Unrelated receipt download denied");
 const payload = {
-  request_key: randomUUID(), ministry_id: ministry.id, cost_centre_id: costCentre.id, programme_event: "Integration test",
+  request_key: randomUUID(), ministry_id: ministry.id, claimant_name: "Integration Claimant",
   claim_date: "2026-09-10", purpose: "Transport", payment_method: "PERSONAL_REIMBURSEMENT", declaration_accepted: true,
-  expenses: [{ expense_date: "2026-09-10", expense_category_id: category.id, description: "Travel", amount: 25.50, sort_order: 1 }],
-  attachments: [{ storage_path: path, original_filename: "receipt.png", file_category: "RECEIPT" }],
+  expenses: [{ temp_id: "receipt-1", cost_centre_id: costCentre.id, expense_date: "2026-09-10", expense_category_id: category.id, description: "Travel", amount: 25.50, sort_order: 1 }],
+  attachments: [{ expense_temp_id: "receipt-1", storage_path: path, original_filename: "receipt.png", file_category: "RECEIPT" }],
 };
 await denied(claimant.client, "submit_claim", { ...payload, attachments: [] });
 await denied(claimant.client, "submit_claim", { ...payload, expenses: undefined });
@@ -70,17 +70,16 @@ check((await command(claimant.client, "submit_claim", payload)).id === saved.id,
 check(!(await snapshot(outsider.client)).claims.some(c => c.id === saved.id), "Other ministry cannot read claim");
 await denied(outsider.client, "approve", { claim_id: saved.id, version: claim.version });
 await denied(claimant.client, "approve", { claim_id: saved.id, version: claim.version });
-await transition(leader.client, "return", saved.id, { reason: "Clarify purpose" });
+await transition(finance.client, "return", saved.id, { reason: "Clarify purpose" });
 claim = (await snapshot(claimant.client)).claims.find(c => c.id === saved.id);
 await command(claimant.client, "submit_claim", { ...payload, id: saved.id, version: claim.version, purpose: "Corrected transport purpose" });
-claim = (await snapshot(leader.client)).claims.find(c => c.id === saved.id);
-const approvals = await Promise.all([1,2].map(() => leader.client.rpc("nlcc_command", { action: "approve", payload: { claim_id: saved.id, version: claim.version } })));
-check(approvals.filter(r => !r.error).length === 1, "Concurrent approval advances only one step");
 claim = (await snapshot(finance.client)).claims.find(c => c.id === saved.id);
-check(claim.status === "PENDING_FINANCE_REVIEW", "Finance follows leader");
+check(claim.status === "PENDING_FINANCE_REVIEW", "Submission goes directly to finance");
 await denied(finance.client, "approve", { claim_id: saved.id, version: claim.version });
 await transition(finance.client, "verify", saved.id, { reason: "Verified against receipt" });
-await transition(finance.client, "approve", saved.id);
+claim = (await snapshot(finance.client)).claims.find(c => c.id === saved.id);
+const approvals = await Promise.all([1,2].map(() => finance.client.rpc("nlcc_command", { action: "approve", payload: { claim_id: saved.id, version: claim.version } })));
+check(approvals.filter(r => !r.error).length === 1, "Concurrent approval succeeds once");
 await transition(finance.client, "comment", saved.id, { content: "Internal note", visibility: "FINANCE_INTERNAL" });
 check(!(await snapshot(claimant.client)).claims.find(c => c.id === saved.id).comments.some(c => c.content === "Internal note"), "Internal notes stay private");
 claim = (await snapshot(finance.client)).claims.find(c => c.id === saved.id);

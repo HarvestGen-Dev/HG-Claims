@@ -7,7 +7,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { db } from "@/lib/data/repository";
-import { useAuth } from "@/lib/auth/context";
 import {
   Settings,
   CheckCircle2,
@@ -23,7 +22,6 @@ import { showToast } from "@/lib/utils/toast";
 
 
 export default function SystemSettingsPage() {
-  const { user } = useAuth();
 
   // Load existing settings from DB
   const numberingSetting = db.getSetting("claim_numbering") || { prefix: "NLCC", year_format: "YYYY", digits: 6 };
@@ -74,7 +72,7 @@ export default function SystemSettingsPage() {
   const [maxFileSize, setMaxFileSize] = useState(formConfigSetting.max_file_size_mb || 10);
   const [maxFiles, setMaxFiles] = useState(formConfigSetting.max_attachment_count || 15);
 
-  const [notifEmail, setNotifEmail] = useState(notifSetting.email_enabled);
+  const notifEmail = false;
   const [notifInApp, setNotifInApp] = useState(notifSetting.in_app_enabled);
 
   const [saved, setSaved] = useState(false);
@@ -83,25 +81,21 @@ export default function SystemSettingsPage() {
   const handleSaveAll = async () => {
     try {
       setIsSaving(true);
-      // 1. Update Claim Numbering
-      await db.updateSetting("claim_numbering", {
+      await db.updateSettings([
+        { key: "claim_numbering", value: {
         prefix,
         year_format: "YYYY",
         digits: Number(digits),
-      }, user?.id);
-
-      // 2. Update Organization Profile
-      await db.updateSetting("organization_profile", {
+        } },
+        { key: "organization_profile", value: {
         name: orgName,
         registration_no: regNo,
         address,
         phone,
         email,
         currency,
-      }, user?.id);
-
-      // 3. Update Claim Form Format & Rules
-      await db.updateSetting("claim_form_config", {
+        } },
+        { key: "claim_form_config", value: {
         declaration_text: declarationText,
         allow_claimant_change_ministry: allowMinistryChange,
         require_vendor_name: requireVendor,
@@ -110,16 +104,15 @@ export default function SystemSettingsPage() {
         form_guidance_banner: guidanceBanner,
         max_file_size_mb: Number(maxFileSize),
         max_attachment_count: Number(maxFiles),
-      }, user?.id);
-
-      // 4. Update Notifications
-      await db.updateSetting("notification_settings", {
+        } },
+        { key: "notification_settings", value: {
         email_enabled: notifEmail,
         in_app_enabled: notifInApp,
         notify_on_submit: true,
         notify_on_approval: true,
         notify_on_payment: true,
-      }, user?.id);
+        } },
+      ]);
 
       setSaved(true);
       showToast.success("Changes have been made.", "Settings Saved");
@@ -329,7 +322,7 @@ export default function SystemSettingsPage() {
               <div className="space-y-1 sm:col-span-1 flex flex-col justify-end">
                 <span className="text-slate-400 block mb-1">Generated Preview:</span>
                 <span className="px-3 py-2 rounded-lg bg-slate-900 text-emerald-400 font-mono font-bold text-sm text-center">
-                  {prefix}-2026-{"0".repeat(Math.max(0, digits - 3))}125
+                  {prefix}-{new Date().getFullYear()}-{"0".repeat(Math.min(5, Math.max(0, digits - 3)))}125
                 </span>
               </div>
             </div>
@@ -415,10 +408,10 @@ export default function SystemSettingsPage() {
               <input
                 type="checkbox"
                 checked={notifEmail}
-                onChange={(e) => setNotifEmail(e.target.checked)}
+                disabled
                 className="rounded text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
               />
-              <span className="font-semibold text-slate-800">Enable Transactional Email Notifications</span>
+              <span className="font-semibold text-slate-800">Claim email notifications (not configured)</span>
             </label>
 
             <label className="flex items-center gap-3 cursor-pointer">

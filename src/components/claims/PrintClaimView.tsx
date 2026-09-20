@@ -21,12 +21,12 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
   return (
     <div className="bg-white min-h-screen text-slate-900 p-4 sm:p-8 font-sans">
       {/* Print Control Bar (Hidden on print) */}
-      <div className="max-w-4xl mx-auto mb-6 flex items-center justify-between print:hidden p-4 bg-slate-50 rounded-2xl border border-slate-200">
+      <div className="max-w-4xl mx-auto mb-6 flex flex-wrap gap-3 items-center justify-between print:hidden p-4 bg-slate-50 rounded-2xl border border-slate-200">
         <Button variant="outline" size="sm" onClick={() => router.back()} className="gap-1.5">
           <ArrowLeft className="w-4 h-4" />
           Back to Claim
         </Button>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-slate-500">Standard A4 Printable Format</span>
           <Button onClick={() => window.print()} className="bg-emerald-800 hover:bg-emerald-900 text-white gap-1.5 shadow-sm">
             <Printer className="w-4 h-4" />
@@ -36,7 +36,7 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
       </div>
 
       {/* Printable Sheet */}
-      <div className="max-w-4xl mx-auto bg-white border border-slate-300 p-8 rounded-lg shadow-sm print:border-none print:shadow-none print:p-0">
+      <div className="max-w-4xl mx-auto bg-white border border-slate-300 p-4 sm:p-8 rounded-lg shadow-sm print:border-none print:shadow-none print:p-0">
         {/* Church Official Header */}
         <div className="flex flex-wrap justify-between items-start gap-4 border-b-2 border-slate-900 pb-4 mb-6">
           <div>
@@ -50,7 +50,7 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
         </div>
 
         {/* Header Metadata Grid */}
-        <div className="grid grid-cols-2 gap-4 text-xs border border-slate-300 rounded p-4 mb-6 bg-slate-50/50">
+        <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-4 text-xs break-words border border-slate-300 rounded p-4 mb-6 bg-slate-50/50">
           <div>
             <p className="mb-1"><span className="text-slate-500 inline-block w-28">Claimant Name:</span> <strong>{claimantName}</strong></p>
             <p className="mb-1"><span className="text-slate-500 inline-block w-28">Email:</span> {claim.claimant_email || claim.claimant?.email || "-"}</p>
@@ -80,6 +80,7 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
         {/* Itemized Expenses Table */}
         <div className="mb-6">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Itemized Receipts & Cost Allocations</h3>
+          <div className="overflow-x-auto print:overflow-visible">
           <table className="w-full text-left text-xs border-collapse border border-slate-300">
             <thead>
               <tr className="bg-slate-100 border-b border-slate-300 font-bold">
@@ -113,6 +114,7 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
               </tr>
             </tfoot>
           </table>
+          </div>
         </div>
 
         {/* Attached Receipts Summary */}

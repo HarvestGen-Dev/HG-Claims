@@ -71,21 +71,14 @@ class Repository {
   }
   async createSignupInvitation(data: { role_code: RoleCode; ministry_id?: string | null; max_uses?: number; expires_in_days?: number; description?: string }) {
     const result = await this.command("create_invitation", data);
-    try { await this.refresh(); } catch {}
     return result;
   }
   async revokeSignupInvitation(id: string) {
     const result = await this.command("revoke_invitation", { id });
-    try { await this.refresh(); } catch {}
     return result;
   }
   async deleteSignupInvitation(id: string) {
-    if (this.data?.signupInvitations) {
-      this.data.signupInvitations = this.data.signupInvitations.filter(i => i.id !== id);
-      this.listeners.forEach(l => l());
-    }
     const result = await this.command("delete_invitation", { id });
-    try { await this.refresh(); } catch {}
     return result;
   }
   async completeOnboarding(data: { full_name: string; phone?: string }) {
@@ -117,12 +110,7 @@ class Repository {
   async saveClaimDraft(payload: Record<string, unknown>): Promise<Claim> { const result = await this.command("save_draft", payload); return this.getClaimById(result.id)!; }
   async submitClaim(payload: Record<string, unknown>): Promise<Claim> { const result = await this.command("submit_claim", payload); return this.getClaimById(result.id)!; }
   async deleteClaim(id: string) {
-    if (this.data?.claims) {
-      this.data.claims = this.data.claims.filter(c => c.id !== id);
-      this.listeners.forEach(l => l());
-    }
     const result = await this.command("delete_claim", { id });
-    try { await this.refresh(); } catch {}
     return result;
   }
   private async claimCommand(action: string, id: string, data: Record<string, unknown>) {
@@ -137,51 +125,32 @@ class Repository {
   correctClaimMetadata(data: { claim_id: string; [key: string]: unknown }) { const { actor, ...payload } = data; return this.claimCommand("correct", data.claim_id, payload); }
   addComment(id: string, _author: Profile, content: string, visibility: string) { return this.claimCommand("comment", id, { content, visibility }); }
   async updateProfile(id: string, data: Partial<Profile>) { await this.command("profile", { id, data }); return this.getProfileById(id)!; }
+  updateSettings(settings: { key: string; value: Record<string, unknown> }[]) { return this.command("settings", { settings }); }
   updateSetting(key: string, value: Record<string, unknown>, _actor?: string) { return this.command("setting", { key, value }); }
   markNotificationAsRead(id: string) { return this.command("read_notifications", { id }); }
   markAllNotificationsAsRead(_userId: string) { return this.command("read_notifications", {}); }
   createMinistry(data: Partial<Ministry>) { return this.command("master_save", { table: "ministries", data }); }
   updateMinistry(id: string, data: Partial<Ministry>) { return this.command("master_save", { table: "ministries", id, data }); }
   async deleteMinistry(id: string) {
-    if (this.data?.ministries) {
-      this.data.ministries = this.data.ministries.filter(m => m.id !== id);
-      this.listeners.forEach(l => l());
-    }
     const result = await this.command("master_delete", { table: "ministries", id });
-    try { await this.refresh(); } catch {}
     return result;
   }
   createCategory(data: Partial<ExpenseCategory>) { return this.command("master_save", { table: "expense_categories", data }); }
   updateCategory(id: string, data: Partial<ExpenseCategory>) { return this.command("master_save", { table: "expense_categories", id, data }); }
   async deleteCategory(id: string) {
-    if (this.data?.categories) {
-      this.data.categories = this.data.categories.filter(c => c.id !== id);
-      this.listeners.forEach(l => l());
-    }
     const result = await this.command("master_delete", { table: "expense_categories", id });
-    try { await this.refresh(); } catch {}
     return result;
   }
   createCostCentre(data: Partial<CostCentre>) { return this.command("master_save", { table: "cost_centres", data }); }
   updateCostCentre(id: string, data: Partial<CostCentre>) { return this.command("master_save", { table: "cost_centres", id, data }); }
   async deleteCostCentre(id: string) {
-    if (this.data?.costCentres) {
-      this.data.costCentres = this.data.costCentres.filter(cc => cc.id !== id);
-      this.listeners.forEach(l => l());
-    }
     const result = await this.command("master_delete", { table: "cost_centres", id });
-    try { await this.refresh(); } catch {}
     return result;
   }
   createApprovalRule(data: Partial<ApprovalRule>) { return this.command("master_save", { table: "approval_rules", data }); }
   updateApprovalRule(id: string, data: Partial<ApprovalRule>) { return this.command("master_save", { table: "approval_rules", id, data }); }
   async deleteApprovalRule(id: string) {
-    if (this.data?.approvalRules) {
-      this.data.approvalRules = this.data.approvalRules.filter(r => r.id !== id);
-      this.listeners.forEach(l => l());
-    }
     const result = await this.command("master_delete", { table: "approval_rules", id });
-    try { await this.refresh(); } catch {}
     return result;
   }
   getFinanceStats() {

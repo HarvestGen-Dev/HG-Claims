@@ -26,7 +26,9 @@ export function generateClaimsCsv(claims: Claim[]): string {
 
   const escapeCsv = (str: string | number | null | undefined): string => {
     if (str === null || str === undefined) return `""`;
-    const s = String(str).replace(/"/g, `""`);
+    const value = String(str);
+    const safe = /^[\s]*[=+@-]/.test(value) ? `'${value}` : value;
+    const s = safe.replace(/"/g, `""`);
     return `"${s}"`;
   };
 

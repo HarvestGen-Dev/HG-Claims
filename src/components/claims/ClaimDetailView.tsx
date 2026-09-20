@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -51,6 +51,10 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
   const router = useRouter();
   const { user, canApprove, canEdit, canPay, canVerify, hasRole } = useAuth();
   const [claim, setClaim] = useState<Claim>(initialClaim);
+  useEffect(() => db.subscribe(() => {
+    const latest = db.getClaimById(initialClaim.id);
+    if (latest) setClaim(latest);
+  }), [initialClaim.id]);
   const [activeTab, setActiveTab] = useState<"details" | "workflow" | "comments" | "audit">("details");
 
   // Modals
@@ -80,7 +84,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
   };
 
   const handleApprove = async () => {
-    if (!user) return;
+    if (!user || !canApprove(claim) || !claim.finance_review?.receipts_verified || loadingAction) return;
     try {
       setLoadingAction(true);
       const updated = await db.approveStep(claim.id, user, "Approved in accordance with ministry guidelines.");
@@ -138,7 +142,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
   };
 
   const handlePaymentConfirm = async (paymentData: any) => {
-    if (!user) return;
+    if (!user || !canPay(claim) || loadingAction) return;
     try {
       setLoadingAction(true);
       const updated = await db.recordPayment({
@@ -265,7 +269,8 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                 size="sm"
                 onClick={handleApprove}
                 loading={loadingAction}
-                disabled={loadingAction}
+                disabled={loadingAction || !claim.finance_review?.receipts_verified}
+                title={!claim.finance_review?.receipts_verified ? "Verify receipts before approving" : "Approve claim"}
                 className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-2xs font-medium"
               >
                 {!loadingAction && <CheckCircle2 className="w-3.5 h-3.5" />}
@@ -313,7 +318,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                 </Button>
               )}
 
-              {claim.status === "APPROVED_FOR_PAYMENT" && (
+              {canPay(claim) && (
                 <Button
                   size="sm"
                   onClick={() => setShowPaymentModal(true)}

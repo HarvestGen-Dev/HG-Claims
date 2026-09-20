@@ -467,7 +467,7 @@ export default function UserManagementPage() {
                     const isExhausted = inv.use_count >= inv.max_uses;
                     const isActive = inv.is_active && !isExpired && !isExhausted;
                     const origin = typeof window !== "undefined" ? window.location.origin : "";
-                    const fullUrl = `${origin}${inv.signup_url || `/signup?invite=${inv.raw_token || inv.token_hash}`}`;
+                    const fullUrl = inv.signup_url ? `${origin}${inv.signup_url}` : inv.raw_token ? `${origin}/signup?invite=${inv.raw_token}` : "";
 
                     return (
                       <div key={inv.id} className="p-4 space-y-2.5">
@@ -510,7 +510,9 @@ export default function UserManagementPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleCopyLink(fullUrl)}
+                              disabled={!fullUrl}
+                                    title={fullUrl ? "Copy invitation link" : "The link is shown only when created. Create a new link if needed."}
+                                    onClick={() => handleCopyLink(fullUrl)}
                               className="flex-1 text-xs h-8 text-emerald-700 hover:bg-emerald-50 border-emerald-300"
                             >
                               <Copy className="w-3.5 h-3.5 mr-1" />
@@ -571,7 +573,7 @@ export default function UserManagementPage() {
                         const isExhausted = inv.use_count >= inv.max_uses;
                         const isActive = inv.is_active && !isExpired && !isExhausted;
                         const origin = typeof window !== "undefined" ? window.location.origin : "";
-                        const fullUrl = `${origin}${inv.signup_url || `/signup?invite=${inv.raw_token || inv.token_hash}`}`;
+                        const fullUrl = inv.signup_url ? `${origin}${inv.signup_url}` : inv.raw_token ? `${origin}/signup?invite=${inv.raw_token}` : "";
 
                         return (
                           <tr key={inv.id} className="hover:bg-slate-50/70">
@@ -594,14 +596,15 @@ export default function UserManagementPage() {
                               {isActive ? (
                                 <div className="flex items-center gap-1.5 max-w-xs">
                                   <span className="truncate text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200">
-                                    {fullUrl}
+                                    {fullUrl || "Link available only when created"}
                                   </span>
                                   <Button
                                     variant="outline"
                                     size="sm"
+                                    disabled={!fullUrl}
+                                    title={fullUrl ? "Copy invitation link" : "The link is shown only when created. Create a new link if needed."}
                                     onClick={() => handleCopyLink(fullUrl)}
                                     className="h-6 px-1.5 text-[10px] text-emerald-700 hover:bg-emerald-50 border-emerald-300"
-                                    title="Copy Link"
                                   >
                                     <Copy className="w-3 h-3" />
                                   </Button>
@@ -637,6 +640,8 @@ export default function UserManagementPage() {
                                   <Button
                                     variant="outline"
                                     size="sm"
+                                    disabled={!fullUrl}
+                                    title={fullUrl ? "Copy invitation link" : "The link is shown only when created. Create a new link if needed."}
                                     onClick={() => handleCopyLink(fullUrl)}
                                     className="text-xs h-7 px-2"
                                   >

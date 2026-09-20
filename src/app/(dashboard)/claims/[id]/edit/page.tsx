@@ -9,8 +9,10 @@ import { Claim } from "@/lib/types/database";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth/context";
 
 export default function EditClaimPage() {
+  const { canEdit } = useAuth();
   const params = useParams();
   const id = params.id as string;
   const [claim, setClaim] = useState<Claim | null>(null);
@@ -49,7 +51,7 @@ export default function EditClaimPage() {
 
   return (
     <AppLayout>
-      <ClaimForm initialClaim={claim} isEditMode={true} />
+      {canEdit(claim) ? <ClaimForm initialClaim={claim} isEditMode={true} /> : <p role="alert">Only the submitter can edit a draft or returned claim.</p>}
     </AppLayout>
   );
 }
