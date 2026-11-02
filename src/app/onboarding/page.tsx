@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2, UserCheck, Phone, User, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/data/repository";
+import { iamClient } from "@/lib/domains";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -48,8 +48,8 @@ export default function OnboardingPage() {
     setError("");
 
     try {
-      // 1. Complete onboarding in data repository
-      await db.completeOnboarding({
+      // 1. Complete onboarding in IAM domain client
+      await iamClient.completeOnboarding({
         full_name: fullName.trim(),
         phone: phone.trim() || undefined,
       });

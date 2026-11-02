@@ -15,7 +15,7 @@ import { ClaimStatusBadge } from "@/components/claims/ClaimStatusBadge";
 import { MobileClaimList } from "@/components/claims/MobileClaimList";
 import { PaymentModal } from "@/components/claims/PaymentModal";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/data/repository";
+import { claimsClient, financeClient, masterDataClient } from "@/lib/domains";
 import { Claim } from "@/lib/types/database";
 import { formatCurrency } from "@/lib/utils/formatters";
 import { generateClaimsCsv, downloadCsv } from "@/lib/utils/export-csv";
@@ -33,11 +33,11 @@ function FinanceClaimsContent() {
   const [paymentClaim, setPaymentClaim] = useState<Claim | null>(null);
   const [loadingAction, setLoadingAction] = useState(false);
 
-  const ministries = db.getMinistries();
+  const ministries = masterDataClient.getMinistries();
 
   const loadData = () => {
     if (!user) return;
-    setClaims(db.getClaims(user));
+    setClaims(claimsClient.getClaims(user));
   };
 
   useEffect(() => {
@@ -70,7 +70,7 @@ function FinanceClaimsContent() {
     if (!user || !paymentClaim) return;
     try {
       setLoadingAction(true);
-      await db.recordPayment({
+      await financeClient.recordPayment({
         ...paymentData,
         claim_id: paymentClaim.id,
         processor: user,

@@ -1,173 +1,193 @@
-import type { Profile, Claim, Ministry, ExpenseCategory, CostCentre, ApprovalRule, Notification, SystemSetting, AuditLog, SignupInvitation, RoleCode } from "@/lib/types/database";
+import type {
+  Profile,
+  Claim,
+  Ministry,
+  ExpenseCategory,
+  CostCentre,
+  ApprovalRule,
+  RoleCode,
+} from "@/lib/types/database";
+import {
+  workspaceStore,
+  iamClient,
+  masterDataClient,
+  claimsClient,
+  financeClient,
+  notificationClient,
+} from "@/lib/domains";
 
-interface Workspace {
-  user_id: string;
-  profiles: Profile[];
-  claims: Claim[];
-  ministries: Ministry[];
-  categories: ExpenseCategory[];
-  costCentres: CostCentre[];
-  approvalRules: ApprovalRule[];
-  notifications: Notification[];
-  systemSettings: SystemSetting[];
-  auditLogs: AuditLog[];
-  signupInvitations?: SignupInvitation[];
-}
-const empty = (): Workspace => ({ user_id: "", profiles: [], claims: [], ministries: [], categories: [], costCentres: [], approvalRules: [], notifications: [], systemSettings: [], auditLogs: [], signupInvitations: [] });
-
-// A memory-only read model. Every write is authorized and committed by PostgreSQL.
+/**
+ * Backward-compatible Repository Facade delegating to bounded-context domain clients:
+ * - iamClient (/api/v1/iam)
+ * - masterDataClient (/api/v1/master-data)
+ * - claimsClient (/api/v1/claims)
+ * - financeClient (/api/v1/finance)
+ * - notificationClient (/api/v1/notifications)
+ */
 class Repository {
-  private data = empty();
-  private listeners = new Set<() => void>();
-  subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
-  clear() { this.data = empty(); this.listeners.forEach(listener => listener()); }
-  async refresh() {
-    const response = await fetch("/api/workspace", { cache: "no-store" });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Unable to load the workspace.");
-    this.data = {
-      ...empty(),
-      ...(data && typeof data === "object" ? data : {}),
-      profiles: Array.isArray(data?.profiles) ? data.profiles : [],
-      claims: Array.isArray(data?.claims) ? data.claims : [],
-      ministries: Array.isArray(data?.ministries) ? data.ministries : [],
-      categories: Array.isArray(data?.categories) ? data.categories : [],
-      costCentres: Array.isArray(data?.costCentres) ? data.costCentres : [],
-      approvalRules: Array.isArray(data?.approvalRules) ? data.approvalRules : [],
-      notifications: Array.isArray(data?.notifications) ? data.notifications : [],
-      systemSettings: Array.isArray(data?.systemSettings) ? data.systemSettings : [],
-      auditLogs: Array.isArray(data?.auditLogs) ? data.auditLogs : [],
-      signupInvitations: Array.isArray(data?.signupInvitations) ? data.signupInvitations : [],
-    };
-    this.listeners.forEach(listener => listener());
-    return this.getProfileById(data.user_id)!;
+  subscribe = workspaceStore.subscribe;
+  clear() {
+    workspaceStore.clear();
   }
-  private async command(action: string, payload: Record<string, unknown>) {
-    const response = await fetch("/api/workspace", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, payload }) });
-    const data = await response.json();
-    if (!response.ok) {
-      if (response.status === 409) await this.refresh();
-      throw new Error(data.error || "Unable to save changes.");
-    }
-    await this.refresh();
-    return data;
+  refresh(): Promise<Profile> {
+    return workspaceStore.refresh();
   }
-  getProfiles() { return this.data?.profiles || []; }
-  getProfileById(id?: string | null) { if (!id) return undefined; return (this.data?.profiles || []).find(profile => profile.id === id); }
-  getMinistries() { return (this.data?.ministries || []).map(m => ({ ...m, leader: m.leader_id ? this.getProfileById(m.leader_id) : null })); }
-  getCategories() { return [...(this.data?.categories || [])].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)); }
-  getCostCentres() { return [...(this.data?.costCentres || [])].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)).map(c => ({ ...c, ministry: this.getMinistries().find(m => m.id === c.ministry_id) })); }
-  getApprovalRules() { return (this.data?.approvalRules || []).map(r => ({ ...r, ministry: this.getMinistries().find(m => m.id === r.ministry_id), expense_category: this.getCategories().find(c => c.id === r.expense_category_id), approver_user: this.getProfiles().find(p => p.id === r.approver_user_id) })); }
-  getSetting(key: string) { return (this.data?.systemSettings || []).find(setting => setting.key === key)?.value; }
-  getSystemSettings() { return this.data?.systemSettings || []; }
-  getAuditLogs() { return this.data?.auditLogs || []; }
-  getNotifications(userId: string) { return (this.data?.notifications || []).filter(item => item.user_id === userId); }
+
+  // IAM & Onboarding Domain
+  getProfiles() {
+    return iamClient.getProfiles();
+  }
+  getProfileById(id?: string | null) {
+    return iamClient.getProfileById(id);
+  }
   getSignupInvitations() {
-    return (this.data?.signupInvitations || []).map(inv => ({
-      ...inv,
-      ministry: inv.ministry || (inv.ministry_id ? this.getMinistries().find(m => m.id === inv.ministry_id) : null),
-      creator: this.getProfileById(inv.created_by),
-    }));
+    return iamClient.getSignupInvitations();
   }
-  async createSignupInvitation(data: { role_code: RoleCode; ministry_id?: string | null; max_uses?: number; expires_in_days?: number; description?: string }) {
-    const result = await this.command("create_invitation", data);
-    return result;
+  createSignupInvitation(data: {
+    role_code: RoleCode;
+    ministry_id?: string | null;
+    max_uses?: number;
+    expires_in_days?: number;
+    description?: string;
+  }) {
+    return iamClient.createSignupInvitation(data);
   }
-  async revokeSignupInvitation(id: string) {
-    const result = await this.command("revoke_invitation", { id });
-    return result;
+  revokeSignupInvitation(id: string) {
+    return iamClient.revokeSignupInvitation(id);
   }
-  async deleteSignupInvitation(id: string) {
-    const result = await this.command("delete_invitation", { id });
-    return result;
+  deleteSignupInvitation(id: string) {
+    return iamClient.deleteSignupInvitation(id);
   }
-  async completeOnboarding(data: { full_name: string; phone?: string }) {
-    const result = await this.command("complete_onboarding", data);
-    return result;
+  completeOnboarding(data: { full_name: string; phone?: string }) {
+    return iamClient.completeOnboarding(data);
   }
-  getClaims(_user?: Profile) {
-    return (this.data?.claims || []).map(c => ({
-      ...c,
-      claimant: this.getProfileById(c.claimant_id),
-      submitted_by: this.getProfileById(c.submitted_by_user_id || c.claimant_id),
-      ministry: this.getMinistries().find(m => m.id === c.ministry_id),
-      cost_centre: this.getCostCentres().find(cc => cc.id === c.cost_centre_id),
-      returned_by_user: c.returned_by ? this.getProfileById(c.returned_by) : null,
-      expenses: (c.expenses || []).map(e => ({
-        ...e,
-        expense_category: this.getCategories().find(cat => cat.id === e.expense_category_id),
-        cost_centre: this.getCostCentres().find(cc => cc.id === e.cost_centre_id),
-        attachments: (c.attachments || []).filter(a => a.expense_id === e.id)
-      })),
-      workflow_steps: (c.workflow_steps || []).map(s => ({ ...s, assigned_user: this.getProfiles().find(p => p.id === s.assigned_user_id), completed_by_user: this.getProfiles().find(p => p.id === s.completed_by) })),
-      approval_actions: (c.approval_actions || []).map(a => ({ ...a, actor: this.getProfileById(a.actor_id) })),
-      comments: (c.comments || []).map(comment => ({ ...comment, author: this.getProfileById(comment.author_id) })),
-      finance_review: c.finance_review ? { ...c.finance_review, reviewer: this.getProfileById(c.finance_review.reviewer_id) } : null,
-      payment: c.payment ? { ...c.payment, processor: this.getProfileById(c.payment.processed_by) } : null,
-    }));
+  updateProfile(id: string, data: Partial<Profile>) {
+    return iamClient.updateProfile(id, data);
   }
-  getClaimById(id: string): Claim | null { return this.getClaims().find(c => c.id === id) || null; }
-  async saveClaimDraft(payload: Record<string, unknown>): Promise<Claim> { const result = await this.command("save_draft", payload); return this.getClaimById(result.id)!; }
-  async submitClaim(payload: Record<string, unknown>): Promise<Claim> { const result = await this.command("submit_claim", payload); return this.getClaimById(result.id)!; }
-  async deleteClaim(id: string) {
-    const result = await this.command("delete_claim", { id });
-    return result;
+
+  // Master Data & Org Configuration Domain
+  getMinistries() {
+    return masterDataClient.getMinistries();
   }
-  private async claimCommand(action: string, id: string, data: Record<string, unknown>) {
-    const result = await this.command(action, { ...data, claim_id: id, version: this.getClaimById(id)?.version });
-    return this.getClaimById(result.id)!;
+  getCategories() {
+    return masterDataClient.getCategories();
   }
-  approveStep(id: string, _actor: Profile, reason?: string) { return this.claimCommand("approve", id, { reason }); }
-  returnForClarification(id: string, _actor: Profile, reason: string) { return this.claimCommand("return", id, { reason }); }
-  rejectClaim(id: string, _actor: Profile, reason: string) { return this.claimCommand("reject", id, { reason }); }
-  verifyClaim(id: string, _actor: Profile, reason?: string) { return this.claimCommand("verify", id, { reason }); }
-  recordPayment(data: { claim_id: string; [key: string]: unknown }) { const { processor, ...payload } = data; return this.claimCommand("pay", data.claim_id, payload); }
-  correctClaimMetadata(data: { claim_id: string; [key: string]: unknown }) { const { actor, ...payload } = data; return this.claimCommand("correct", data.claim_id, payload); }
-  addComment(id: string, _author: Profile, content: string, visibility: string) { return this.claimCommand("comment", id, { content, visibility }); }
-  async updateProfile(id: string, data: Partial<Profile>) { await this.command("profile", { id, data }); return this.getProfileById(id)!; }
-  updateSettings(settings: { key: string; value: Record<string, unknown> }[]) { return this.command("settings", { settings }); }
-  updateSetting(key: string, value: Record<string, unknown>, _actor?: string) { return this.command("setting", { key, value }); }
-  markNotificationAsRead(id: string) { return this.command("read_notifications", { id }); }
-  markAllNotificationsAsRead(_userId: string) { return this.command("read_notifications", {}); }
-  createMinistry(data: Partial<Ministry>) { return this.command("master_save", { table: "ministries", data }); }
-  updateMinistry(id: string, data: Partial<Ministry>) { return this.command("master_save", { table: "ministries", id, data }); }
-  async deleteMinistry(id: string) {
-    const result = await this.command("master_delete", { table: "ministries", id });
-    return result;
+  getCostCentres() {
+    return masterDataClient.getCostCentres();
   }
-  createCategory(data: Partial<ExpenseCategory>) { return this.command("master_save", { table: "expense_categories", data }); }
-  updateCategory(id: string, data: Partial<ExpenseCategory>) { return this.command("master_save", { table: "expense_categories", id, data }); }
-  async deleteCategory(id: string) {
-    const result = await this.command("master_delete", { table: "expense_categories", id });
-    return result;
+  getSetting(key: string) {
+    return masterDataClient.getSetting(key);
   }
-  createCostCentre(data: Partial<CostCentre>) { return this.command("master_save", { table: "cost_centres", data }); }
-  updateCostCentre(id: string, data: Partial<CostCentre>) { return this.command("master_save", { table: "cost_centres", id, data }); }
-  async deleteCostCentre(id: string) {
-    const result = await this.command("master_delete", { table: "cost_centres", id });
-    return result;
+  getSystemSettings() {
+    return masterDataClient.getSystemSettings();
   }
-  createApprovalRule(data: Partial<ApprovalRule>) { return this.command("master_save", { table: "approval_rules", data }); }
-  updateApprovalRule(id: string, data: Partial<ApprovalRule>) { return this.command("master_save", { table: "approval_rules", id, data }); }
-  async deleteApprovalRule(id: string) {
-    const result = await this.command("master_delete", { table: "approval_rules", id });
-    return result;
+  updateSettings(settings: { key: string; value: Record<string, unknown> }[]) {
+    return masterDataClient.updateSettings(settings);
+  }
+  updateSetting(key: string, value: Record<string, unknown>, actor?: string) {
+    return masterDataClient.updateSetting(key, value, actor);
+  }
+  createMinistry(data: Partial<Ministry>) {
+    return masterDataClient.createMinistry(data);
+  }
+  updateMinistry(id: string, data: Partial<Ministry>) {
+    return masterDataClient.updateMinistry(id, data);
+  }
+  deleteMinistry(id: string) {
+    return masterDataClient.deleteMinistry(id);
+  }
+  createCategory(data: Partial<ExpenseCategory>) {
+    return masterDataClient.createCategory(data);
+  }
+  updateCategory(id: string, data: Partial<ExpenseCategory>) {
+    return masterDataClient.updateCategory(id, data);
+  }
+  deleteCategory(id: string) {
+    return masterDataClient.deleteCategory(id);
+  }
+  createCostCentre(data: Partial<CostCentre>) {
+    return masterDataClient.createCostCentre(data);
+  }
+  updateCostCentre(id: string, data: Partial<CostCentre>) {
+    return masterDataClient.updateCostCentre(id, data);
+  }
+  deleteCostCentre(id: string) {
+    return masterDataClient.deleteCostCentre(id);
+  }
+
+  // Claims & Receipts Domain
+  getClaims(user?: Profile) {
+    return claimsClient.getClaims(user);
+  }
+  getClaimById(id: string): Claim | null {
+    return claimsClient.getClaimById(id);
+  }
+  saveClaimDraft(payload: Record<string, unknown>): Promise<Claim> {
+    return claimsClient.saveClaimDraft(payload);
+  }
+  submitClaim(payload: Record<string, unknown>): Promise<Claim> {
+    return claimsClient.submitClaim(payload);
+  }
+  deleteClaim(id: string) {
+    return claimsClient.deleteClaim(id);
+  }
+  addComment(
+    id: string,
+    author: Profile,
+    content: string,
+    visibility: string
+  ) {
+    return claimsClient.addComment(id, author, content, visibility);
+  }
+
+  // Finance & Workflow Domain
+  getApprovalRules() {
+    return financeClient.getApprovalRules();
+  }
+  createApprovalRule(data: Partial<ApprovalRule>) {
+    return financeClient.createApprovalRule(data);
+  }
+  updateApprovalRule(id: string, data: Partial<ApprovalRule>) {
+    return financeClient.updateApprovalRule(id, data);
+  }
+  deleteApprovalRule(id: string) {
+    return financeClient.deleteApprovalRule(id);
+  }
+  approveStep(id: string, actor: Profile, reason?: string) {
+    return financeClient.approveStep(id, actor, reason);
+  }
+  returnForClarification(id: string, actor: Profile, reason: string) {
+    return financeClient.returnForClarification(id, actor, reason);
+  }
+  rejectClaim(id: string, actor: Profile, reason: string) {
+    return financeClient.rejectClaim(id, actor, reason);
+  }
+  verifyClaim(id: string, actor: Profile, reason?: string) {
+    return financeClient.verifyClaim(id, actor, reason);
+  }
+  recordPayment(data: { claim_id: string; [key: string]: unknown }) {
+    return financeClient.recordPayment(data);
+  }
+  correctClaimMetadata(data: { claim_id: string; [key: string]: unknown }) {
+    return financeClient.correctClaimMetadata(data);
   }
   getFinanceStats() {
-    const claims = this.getClaims().filter(c => !["DRAFT","CANCELLED"].includes(c.status));
-    const paid = claims.filter(c => c.status === "PAID");
-    const ministries = new Map<string, { name: string; total: number; count: number }>();
-    const costCentres = new Map<string, { name: string; total: number }>();
-    claims.forEach(c => {
-      const ministry = ministries.get(c.ministry_id) || { name: c.ministry?.name || "General", total: 0, count: 0 };
-      ministry.total += Number(c.total_amount); ministry.count++; ministries.set(c.ministry_id, ministry);
-      c.expenses?.forEach(e => { const cc = costCentres.get(e.cost_centre_id) || { name: e.cost_centre ? `${e.cost_centre.code} - ${e.cost_centre.name}` : "General", total: 0 }; cc.total += Number(e.amount); costCentres.set(e.cost_centre_id, cc); });
-    });
-    return { totalClaims: claims.length, awaitingReview: claims.filter(c => c.status === "PENDING_FINANCE_REVIEW").length,
-      awaitingPayment: claims.filter(c => c.status === "APPROVED_FOR_PAYMENT").length, paidCount: paid.length,
-      totalPaidAmount: paid.reduce((sum,c) => sum + Number(c.total_amount),0),
-      totalPendingAmount: claims.filter(c => !["PAID","REJECTED"].includes(c.status)).reduce((sum,c) => sum + Number(c.total_amount),0),
-      byMinistry: Array.from(ministries.values()), byCostCentre: Array.from(costCentres.values()), byCategory: [] };
+    return financeClient.getFinanceStats();
+  }
+
+  // Notifications & Audit Domain
+  getAuditLogs() {
+    return notificationClient.getAuditLogs();
+  }
+  getNotifications(userId: string) {
+    return notificationClient.getNotifications(userId);
+  }
+  markNotificationAsRead(id: string) {
+    return notificationClient.markNotificationAsRead(id);
+  }
+  markAllNotificationsAsRead(userId: string) {
+    return notificationClient.markAllNotificationsAsRead(userId);
   }
 }
+
 export const db = new Repository();

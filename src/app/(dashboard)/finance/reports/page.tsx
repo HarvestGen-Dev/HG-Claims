@@ -8,7 +8,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/data/repository";
+import { claimsClient, masterDataClient } from "@/lib/domains";
 import { Claim } from "@/lib/types/database";
 import { formatCurrency } from "@/lib/utils/formatters";
 import { generateClaimsCsv, downloadCsv } from "@/lib/utils/export-csv";
@@ -33,12 +33,12 @@ export default function FinancialReportsPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  const ministries = db.getMinistries();
-  const costCentres = db.getCostCentres();
+  const ministries = masterDataClient.getMinistries();
+  const costCentres = masterDataClient.getCostCentres();
 
   useEffect(() => {
     if (!user) return;
-    setClaims(db.getClaims(user));
+    setClaims(claimsClient.getClaims(user));
   }, [user]);
 
   const filtered = claims.filter((c) => {

@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { Profile, RoleCode, Claim } from "@/lib/types/database";
-import { db } from "@/lib/data/repository";
+import { workspaceStore } from "@/lib/domains";
 import { createClient } from "@/lib/supabase/client";
 import { userHasRole, canUserCreateClaim, canUserApproveClaim, canUserEditClaim, canUserRecordPayment, canUserVerifyClaim, canUserReviewClaim, isOnboardingCompleted } from "./permissions";
 
@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState("");
   const pathname = usePathname();
   const refreshUser = useCallback(async () => {
-    const profile = await db.refresh();
+    const profile = await workspaceStore.refresh();
     setUser(profile);
     const primaryRole = (profile?.roles?.[0] as RoleCode) || "MINISTRY_LEADER";
     setActiveRole(primaryRole);
@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { user: authenticated } } = await client.auth.getUser();
         if (authenticated && !cancelled) await refreshUser();
         const { data } = client.auth.onAuthStateChange(event => {
-          if (event === "SIGNED_OUT") { db.clear(); setUser(null); }
+          if (event === "SIGNED_OUT") { workspaceStore.clear(); setUser(null); }
         });
         unsubscribe = () => data.subscription.unsubscribe();
       } catch (cause) { if (!cancelled) setError(cause instanceof Error ? cause.message : "Unable to load your account."); }
@@ -63,10 +63,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user?.id || ["/","/login","/signup","/forgot-password","/reset-password"].includes(pathname)) return;
     let active = true;
     setIsRefreshing(true);
-    refreshUser().catch(cause => { if (active) setError(cause instanceof Error ? cause.message : "Unable to refresh the workspace."); })
+    workspaceStore.refreshIfStale(15000)
+      .then(profile => {
+        if (active && profile) setUser(profile);
+      })
+      .catch(cause => { if (active) setError(cause instanceof Error ? cause.message : "Unable to refresh the workspace."); })
       .finally(() => { if (active) setIsRefreshing(false); });
     return () => { active = false; };
-  }, [pathname, user?.id, refreshUser]);
+  }, [pathname, user?.id]);
 
   // Onboarding route enforcement
   useEffect(() => {
@@ -87,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     const { error: signOutError } = await createClient().auth.signOut();
     if (signOutError) throw signOutError;
-    db.clear(); setUser(null);
+    workspaceStore.clear(); setUser(null);
     window.location.assign("/login");
   };
   const publicPage = ["/","/login","/signup","/forgot-password","/reset-password"].includes(pathname);

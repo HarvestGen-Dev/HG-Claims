@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ClaimForm } from "@/components/claims/ClaimForm";
-import { db } from "@/lib/data/repository";
+import { claimsClient } from "@/lib/domains";
 import { Claim } from "@/lib/types/database";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ export default function EditClaimPage() {
 
   useEffect(() => {
     if (!id) return;
-    const found = db.getClaimById(id);
+    const found = claimsClient.getClaimById(id);
     setClaim(found);
     setLoading(false);
   }, [id]);

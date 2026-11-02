@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { db } from "@/lib/data/repository";
+import { iamClient, masterDataClient, workspaceStore } from "@/lib/domains";
 import { Profile, RoleCode, SignupInvitation, Ministry } from "@/lib/types/database";
 import {
   UserCheck,
@@ -29,9 +29,9 @@ import { showToast } from "@/lib/utils/toast";
 
 
 export default function UserManagementPage() {
-  const [profiles, setProfiles] = useState<Profile[]>(db.getProfiles());
-  const [ministries, setMinistries] = useState<Ministry[]>(db.getMinistries());
-  const [invitations, setInvitations] = useState<SignupInvitation[]>(db.getSignupInvitations());
+  const [profiles, setProfiles] = useState<Profile[]>(iamClient.getProfiles());
+  const [ministries, setMinistries] = useState<Ministry[]>(masterDataClient.getMinistries());
+  const [invitations, setInvitations] = useState<SignupInvitation[]>(iamClient.getSignupInvitations());
   const [activeTab, setActiveTab] = useState<"users" | "invitations">("users");
 
   // Edit user state
@@ -56,10 +56,10 @@ export default function UserManagementPage() {
   const [userSaving, setUserSaving] = useState(false);
 
   useEffect(() => {
-    const unsub = db.subscribe(() => {
-      setProfiles(db.getProfiles());
-      setMinistries(db.getMinistries());
-      setInvitations(db.getSignupInvitations());
+    const unsub = workspaceStore.subscribe(() => {
+      setProfiles(iamClient.getProfiles());
+      setMinistries(masterDataClient.getMinistries());
+      setInvitations(iamClient.getSignupInvitations());
     });
     return unsub;
   }, []);
@@ -93,7 +93,7 @@ export default function UserManagementPage() {
     if (!editingUser) return;
     setUserSaving(true);
     try {
-      await db.updateProfile(editingUser.id, {
+      await iamClient.updateProfile(editingUser.id, {
         full_name: editingUser.full_name,
         email: editingUser.email,
         phone: editingUser.phone,
@@ -102,7 +102,7 @@ export default function UserManagementPage() {
         status: editingUser.status,
         roles: selectedRoles,
       });
-      setProfiles(db.getProfiles());
+      setProfiles(iamClient.getProfiles());
       setEditingUser(null);
       showToast.success("Changes have been made.", "User Updated");
     } catch (error) {
@@ -115,8 +115,8 @@ export default function UserManagementPage() {
   const handleToggleStatus = async (u: Profile) => {
     try {
       const newStatus = u.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
-      await db.updateProfile(u.id, { status: newStatus });
-      setProfiles(db.getProfiles());
+      await iamClient.updateProfile(u.id, { status: newStatus });
+      setProfiles(iamClient.getProfiles());
       showToast.info(`User status changed to ${newStatus.toLowerCase()}.`, "Status Updated");
     } catch (error) {
       showToast.error(error instanceof Error ? error.message : "Unable to update status.", "Error");
@@ -135,7 +135,7 @@ export default function UserManagementPage() {
     setInviteBusy(true);
     try {
       const maxUses = inviteUsageType === "single" ? 1 : Number(inviteMaxUses) || 5;
-      const result = await db.createSignupInvitation({
+      const result = await iamClient.createSignupInvitation({
         role_code: inviteRole,
         ministry_id: inviteRole === "MINISTRY_LEADER" ? inviteMinistryId : null,
         max_uses: maxUses,
@@ -146,10 +146,7 @@ export default function UserManagementPage() {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       const fullUrl = `${origin}${result.signup_url || `/signup?invite=${result.raw_token}`}`;
       setGeneratedLink(fullUrl);
-      try {
-        await db.refresh();
-      } catch {}
-      setInvitations(db.getSignupInvitations());
+      setInvitations(iamClient.getSignupInvitations());
       showToast.success("Invitation link generated successfully.", "Invitation Created");
     } catch (err: any) {
       setInviteError(err instanceof Error ? err.message : "Unable to create invitation link.");
@@ -168,11 +165,8 @@ export default function UserManagementPage() {
   const handleRevokeInvite = async (id: string) => {
     if (confirm("Are you sure you want to revoke this invitation link? It will immediately stop accepting new sign-ups.")) {
       try {
-        await db.revokeSignupInvitation(id);
-        try {
-          await db.refresh();
-        } catch {}
-        setInvitations(db.getSignupInvitations());
+        await iamClient.revokeSignupInvitation(id);
+        setInvitations(iamClient.getSignupInvitations());
         showToast.info("Invitation link has been revoked.", "Invitation Revoked");
       } catch (err: any) {
         showToast.error(err instanceof Error ? err.message : "Failed to revoke invitation.", "Revoke Error");
@@ -184,11 +178,8 @@ export default function UserManagementPage() {
     if (!deletingInvite) return;
     try {
       setIsDeletingInvite(true);
-      await db.deleteSignupInvitation(deletingInvite.id);
-      try {
-        await db.refresh();
-      } catch {}
-      setInvitations(db.getSignupInvitations());
+      await iamClient.deleteSignupInvitation(deletingInvite.id);
+      setInvitations(iamClient.getSignupInvitations());
       showToast.success("Invitation link deleted successfully.", "Invitation Deleted");
       setDeletingInvite(null);
     } catch (err: any) {
@@ -207,7 +198,7 @@ export default function UserManagementPage() {
     setInviteMinistryId(ministries[0]?.id || "");
     setInviteUsageType("single");
     setCopied(false);
-    setInvitations(db.getSignupInvitations());
+    setInvitations(iamClient.getSignupInvitations());
   };
 
   return (

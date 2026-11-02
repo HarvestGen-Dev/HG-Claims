@@ -7,14 +7,14 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { db } from "@/lib/data/repository";
+import { iamClient, masterDataClient, workspaceStore } from "@/lib/domains";
 import { Ministry, Profile } from "@/lib/types/database";
 import { Building2, Plus, Edit, CheckCircle2, UserCheck, Trash2 } from "lucide-react";
 import { showToast } from "@/lib/utils/toast";
 
 export default function MinistryManagementPage() {
-  const [ministries, setMinistries] = useState<Ministry[]>(db.getMinistries());
-  const [profiles, setProfiles] = useState<Profile[]>(db.getProfiles());
+  const [ministries, setMinistries] = useState<Ministry[]>(masterDataClient.getMinistries());
+  const [profiles, setProfiles] = useState<Profile[]>(iamClient.getProfiles());
 
   const [editingMin, setEditingMin] = useState<Ministry | null>(null);
   const [deletingMin, setDeletingMin] = useState<Ministry | null>(null);
@@ -31,14 +31,14 @@ export default function MinistryManagementPage() {
   const [error, setError] = useState("");
 
   const refresh = () => {
-    setMinistries(db.getMinistries());
-    setProfiles(db.getProfiles());
+    setMinistries(masterDataClient.getMinistries());
+    setProfiles(iamClient.getProfiles());
   };
 
   React.useEffect(() => {
-    const unsub = db.subscribe(() => {
-      setMinistries(db.getMinistries());
-      setProfiles(db.getProfiles());
+    const unsub = workspaceStore.subscribe(() => {
+      setMinistries(masterDataClient.getMinistries());
+      setProfiles(iamClient.getProfiles());
     });
     return unsub;
   }, []);
@@ -76,7 +76,7 @@ export default function MinistryManagementPage() {
       setIsSaving(true);
 
       if (isCreating) {
-        await db.createMinistry({
+        await masterDataClient.createMinistry({
           code: formData.code.trim().toUpperCase(),
           name: formData.name.trim(),
           description: formData.description.trim(),
@@ -86,7 +86,7 @@ export default function MinistryManagementPage() {
         setIsCreating(false);
         showToast.success("Ministry created successfully.", "Ministry Created");
       } else if (editingMin) {
-        await db.updateMinistry(editingMin.id, {
+        await masterDataClient.updateMinistry(editingMin.id, {
           code: formData.code.trim().toUpperCase(),
           name: formData.name.trim(),
           description: formData.description.trim(),
@@ -107,7 +107,7 @@ export default function MinistryManagementPage() {
 
   const handleToggleStatus = async (m: Ministry) => {
     try {
-      await db.updateMinistry(m.id, { is_active: !m.is_active });
+      await masterDataClient.updateMinistry(m.id, { is_active: !m.is_active });
       refresh();
       showToast.info(`Ministry status changed to ${!m.is_active ? "Active" : "Inactive"}.`, "Status Updated");
     } catch (error) {
@@ -119,7 +119,7 @@ export default function MinistryManagementPage() {
     if (!deletingMin) return;
     try {
       setIsDeleting(true);
-      await db.deleteMinistry(deletingMin.id);
+      await masterDataClient.deleteMinistry(deletingMin.id);
       showToast.success(`Ministry "${deletingMin.name}" deleted successfully.`, "Ministry Deleted");
       setDeletingMin(null);
       refresh();

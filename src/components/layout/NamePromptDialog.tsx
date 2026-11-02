@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/data/repository";
+import { iamClient } from "@/lib/domains";
 import { isRealFullName } from "@/lib/auth/permissions";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -54,7 +54,7 @@ export function NamePromptDialog() {
     setError("");
 
     try {
-      await db.completeOnboarding({
+      await iamClient.completeOnboarding({
         full_name: trimmed,
         phone: phone.trim() || undefined,
       });

@@ -19,7 +19,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ClaimStatusBadge } from "@/components/claims/ClaimStatusBadge";
 import { MobileClaimList } from "@/components/claims/MobileClaimList";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/data/repository";
+import { claimsClient } from "@/lib/domains";
 import { Claim } from "@/lib/types/database";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 
@@ -30,7 +30,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) return;
-    setClaims(db.getClaims(user));
+    setClaims(claimsClient.getClaims(user));
   }, [user]);
 
   // Status counts for user (submitted by user or user is claimant)

@@ -24,7 +24,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { ExpenseItemsEditor, ExpenseItemDraft } from "./ExpenseItemsEditor";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/data/repository";
+import { claimsClient, masterDataClient } from "@/lib/domains";
 import { Claim, Ministry, CostCentre } from "@/lib/types/database";
 import { Dialog, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/utils/formatters";
@@ -40,9 +40,9 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   const router = useRouter();
   const { user } = useAuth();
 
-  const ministries = db.getMinistries();
-  const costCentres = db.getCostCentres();
-  const formConfig = db.getSetting("claim_form_config") || {
+  const ministries = masterDataClient.getMinistries();
+  const costCentres = masterDataClient.getCostCentres();
+  const formConfig = masterDataClient.getSetting("claim_form_config") || {
     declaration_text: "I confirm that these expenses were incurred for legitimate church ministry purposes in accordance with New Life Community Church financial policies, have not previously been claimed or reimbursed from any other source, and are supported by the authentic receipts and documents provided.",
     allow_claimant_change_ministry: true,
     require_vendor_name: false,
@@ -273,7 +273,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         attachments: gatherAttachments(),
       };
 
-      const savedClaim = await db.saveClaimDraft({
+      const savedClaim = await claimsClient.saveClaimDraft({
         ...claimData,
         version: initialClaim?.version,
         request_key: requestKey.current,
@@ -346,7 +346,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         attachments: gatherAttachments(),
       };
 
-      const submitted = await db.submitClaim({
+      const submitted = await claimsClient.submitClaim({
         ...claimData,
         version: initialClaim?.version,
         request_key: requestKey.current,

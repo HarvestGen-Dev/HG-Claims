@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
 import { canUserCreateClaim } from "@/lib/auth/permissions";
-import { db } from "@/lib/data/repository";
+import { claimsClient, notificationClient, workspaceStore } from "@/lib/domains";
 import { cn } from "@/lib/utils/cn";
 
 export function BottomNav() {
@@ -27,7 +27,7 @@ export function BottomNav() {
   useEffect(() => {
     if (!user) return;
     const updateBadges = () => {
-      const all = db.getClaims(user);
+      const all = claimsClient.getClaims(user);
 
       const pendingApprovals = all.filter((c) => {
         if (c.claimant_id === user.id || c.submitted_by_user_id === user.id) return false;
@@ -45,14 +45,13 @@ export function BottomNav() {
       setFinanceCount(pendingFinance);
 
       try {
-        const notifs = db.getNotifications(user.id);
+        const notifs = notificationClient.getNotifications(user.id);
         setUnreadNotifications(notifs.filter((n) => !n.is_read).length);
       } catch {}
     };
 
     updateBadges();
-    const interval = setInterval(updateBadges, 4000);
-    return () => clearInterval(interval);
+    return workspaceStore.subscribe(updateBadges);
   }, [user]);
 
   if (!user) return null;

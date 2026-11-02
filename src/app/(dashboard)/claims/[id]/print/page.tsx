@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { PrintClaimView } from "@/components/claims/PrintClaimView";
-import { db } from "@/lib/data/repository";
+import { claimsClient } from "@/lib/domains";
 import { Claim } from "@/lib/types/database";
 import Link from "next/link";
 
@@ -14,7 +14,7 @@ export default function PrintPage() {
 
   useEffect(() => {
     if (id) {
-      const found = db.getClaimById(id);
+      const found = claimsClient.getClaimById(id);
       setClaim(found);
     }
   }, [id]);

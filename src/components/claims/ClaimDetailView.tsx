@@ -36,7 +36,7 @@ import { ReceiptViewerModal } from "./ReceiptViewerModal";
 
 
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/data/repository";
+import { claimsClient, financeClient, masterDataClient, workspaceStore } from "@/lib/domains";
 import { Claim, ClaimAttachment } from "@/lib/types/database";
 import { showToast } from "@/lib/utils/toast";
 
@@ -51,8 +51,8 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
   const router = useRouter();
   const { user, canApprove, canEdit, canPay, canVerify, hasRole } = useAuth();
   const [claim, setClaim] = useState<Claim>(initialClaim);
-  useEffect(() => db.subscribe(() => {
-    const latest = db.getClaimById(initialClaim.id);
+  useEffect(() => workspaceStore.subscribe(() => {
+    const latest = claimsClient.getClaimById(initialClaim.id);
     if (latest) setClaim(latest);
   }), [initialClaim.id]);
   const [activeTab, setActiveTab] = useState<"details" | "workflow" | "comments" | "audit">("details");
@@ -68,13 +68,13 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
   const [loadingAction, setLoadingAction] = useState(false);
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
 
-  const costCentres = db.getCostCentres();
+  const costCentres = masterDataClient.getCostCentres();
 
   const handleDeleteClaim = async () => {
     if (!user) return;
     try {
       setLoadingAction(true);
-      await db.deleteClaim(claim.id);
+      await claimsClient.deleteClaim(claim.id);
       showToast.success("Claim has been deleted.", "Claim Deleted");
       router.push("/claims");
     } catch (err: any) {
@@ -87,7 +87,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
     if (!user || !canApprove(claim) || !claim.finance_review?.receipts_verified || loadingAction) return;
     try {
       setLoadingAction(true);
-      const updated = await db.approveStep(claim.id, user, "Approved in accordance with ministry guidelines.");
+      const updated = await financeClient.approveStep(claim.id, user, "Approved in accordance with ministry guidelines.");
       setClaim(updated);
       showToast.success("Claim has been successfully approved.", "Claim Approved");
     } catch (err: any) {
@@ -101,7 +101,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
     if (!user) return;
     try {
       setLoadingAction(true);
-      const updated = await db.returnForClarification(claim.id, user, reason);
+      const updated = await financeClient.returnForClarification(claim.id, user, reason);
       setClaim(updated);
       setShowReturnModal(false);
       showToast.info("Claim returned to submitter for clarification.", "Claim Returned");
@@ -116,7 +116,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
     if (!user) return;
     try {
       setLoadingAction(true);
-      const updated = await db.rejectClaim(claim.id, user, reason);
+      const updated = await financeClient.rejectClaim(claim.id, user, reason);
       setClaim(updated);
       setShowRejectModal(false);
       showToast.warning("Claim has been marked as rejected.", "Claim Rejected");
@@ -131,7 +131,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
     if (!user || !canVerify(claim) || claim.finance_review?.receipts_verified || loadingAction) return;
     try {
       setLoadingAction(true);
-      const updated = await db.verifyClaim(claim.id, user, "All receipts and cost allocations verified.");
+      const updated = await financeClient.verifyClaim(claim.id, user, "All receipts and cost allocations verified.");
       setClaim(updated);
       showToast.success("Finance verification recorded.", "Finance Verified");
     } catch (err: any) {
@@ -145,7 +145,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
     if (!user || !canPay(claim) || loadingAction) return;
     try {
       setLoadingAction(true);
-      const updated = await db.recordPayment({
+      const updated = await financeClient.recordPayment({
         ...paymentData,
         claim_id: claim.id,
         processor: user,
@@ -164,7 +164,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
     if (!user) return;
     try {
       setLoadingAction(true);
-      const updated = await db.correctClaimMetadata({
+      const updated = await financeClient.correctClaimMetadata({
         ...data,
         claim_id: claim.id,
         actor: user,
@@ -182,7 +182,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
   const handleAddComment = async (content: string, visibility: "PUBLIC_WORKFLOW" | "FINANCE_INTERNAL") => {
     try {
       if (!user) return;
-      const updated = await db.addComment(claim.id, user, content, visibility);
+      const updated = await claimsClient.addComment(claim.id, user, content, visibility);
       setClaim(updated);
       showToast.success(visibility === "FINANCE_INTERNAL" ? "Internal finance note added." : "Comment posted successfully.", "Comment Added");
     } catch (error) {

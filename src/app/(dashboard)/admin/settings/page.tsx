@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { db } from "@/lib/data/repository";
+import { masterDataClient } from "@/lib/domains";
 import {
   Settings,
   CheckCircle2,
@@ -24,8 +24,8 @@ import { showToast } from "@/lib/utils/toast";
 export default function SystemSettingsPage() {
 
   // Load existing settings from DB
-  const numberingSetting = db.getSetting("claim_numbering") || { prefix: "NLCC", year_format: "YYYY", digits: 6 };
-  const orgSetting = db.getSetting("organization_profile") || {
+  const numberingSetting = masterDataClient.getSetting("claim_numbering") || { prefix: "NLCC", year_format: "YYYY", digits: 6 };
+  const orgSetting = masterDataClient.getSetting("organization_profile") || {
     name: "New Life Community Church",
     short_name: "NLCC",
     registration_no: "PPM-003-10-14051998",
@@ -34,7 +34,7 @@ export default function SystemSettingsPage() {
     email: "finance@newlife.org.my",
     currency: "RM",
   };
-  const formConfigSetting = db.getSetting("claim_form_config") || {
+  const formConfigSetting = masterDataClient.getSetting("claim_form_config") || {
     declaration_text: "I confirm that these expenses were incurred for legitimate church ministry purposes in accordance with NewLife Community Church financial policies, have not previously been claimed or reimbursed from any other source, and are supported by the authentic receipts and documents provided.",
     allow_claimant_change_ministry: true,
     require_vendor_name: false,
@@ -44,7 +44,7 @@ export default function SystemSettingsPage() {
     max_file_size_mb: 10,
     max_attachment_count: 15,
   };
-  const notifSetting = db.getSetting("notification_settings") || {
+  const notifSetting = masterDataClient.getSetting("notification_settings") || {
     email_enabled: true,
     in_app_enabled: true,
     notify_on_submit: true,
@@ -81,7 +81,7 @@ export default function SystemSettingsPage() {
   const handleSaveAll = async () => {
     try {
       setIsSaving(true);
-      await db.updateSettings([
+      await masterDataClient.updateSettings([
         { key: "claim_numbering", value: {
         prefix,
         year_format: "YYYY",

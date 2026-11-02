@@ -7,14 +7,14 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { db } from "@/lib/data/repository";
+import { masterDataClient, workspaceStore } from "@/lib/domains";
 import { CostCentre } from "@/lib/types/database";
 import { PieChart, Plus, Edit, GripVertical, ArrowUp, ArrowDown, Loader2, Trash2 } from "lucide-react";
 import { showToast } from "@/lib/utils/toast";
 
 export default function CostCentreManagementPage() {
-  const [costCentres, setCostCentres] = useState<CostCentre[]>(db.getCostCentres());
-  const [ministries, setMinistries] = useState(db.getMinistries());
+  const [costCentres, setCostCentres] = useState<CostCentre[]>(masterDataClient.getCostCentres());
+  const [ministries, setMinistries] = useState(masterDataClient.getMinistries());
 
   const [editingCC, setEditingCC] = useState<CostCentre | null>(null);
   const [deletingCC, setDeletingCC] = useState<CostCentre | null>(null);
@@ -38,14 +38,14 @@ export default function CostCentreManagementPage() {
   const [error, setError] = useState("");
 
   const refresh = () => {
-    setCostCentres(db.getCostCentres());
-    setMinistries(db.getMinistries());
+    setCostCentres(masterDataClient.getCostCentres());
+    setMinistries(masterDataClient.getMinistries());
   };
 
   React.useEffect(() => {
-    const unsub = db.subscribe(() => {
-      setCostCentres(db.getCostCentres());
-      setMinistries(db.getMinistries());
+    const unsub = workspaceStore.subscribe(() => {
+      setCostCentres(masterDataClient.getCostCentres());
+      setMinistries(masterDataClient.getMinistries());
     });
     return unsub;
   }, []);
@@ -85,7 +85,7 @@ export default function CostCentreManagementPage() {
       setIsSaving(true);
 
       if (isCreating) {
-        await db.createCostCentre({
+        await masterDataClient.createCostCentre({
           code: formData.code.trim().toUpperCase(),
           name: formData.name.trim(),
           ministry_id: formData.ministry_id || null,
@@ -96,7 +96,7 @@ export default function CostCentreManagementPage() {
         setIsCreating(false);
         showToast.success("Cost centre created successfully.", "Cost Centre Created");
       } else if (editingCC) {
-        await db.updateCostCentre(editingCC.id, {
+        await masterDataClient.updateCostCentre(editingCC.id, {
           code: formData.code.trim().toUpperCase(),
           name: formData.name.trim(),
           ministry_id: formData.ministry_id || null,
@@ -118,7 +118,7 @@ export default function CostCentreManagementPage() {
 
   const handleToggleStatus = async (cc: CostCentre) => {
     try {
-      await db.updateCostCentre(cc.id, { is_active: !cc.is_active });
+      await masterDataClient.updateCostCentre(cc.id, { is_active: !cc.is_active });
       refresh();
       showToast.info(`Cost centre status changed to ${!cc.is_active ? "Active" : "Inactive"}.`, "Status Updated");
     } catch (error) {
@@ -130,7 +130,7 @@ export default function CostCentreManagementPage() {
     if (!deletingCC) return;
     try {
       setIsDeleting(true);
-      await db.deleteCostCentre(deletingCC.id);
+      await masterDataClient.deleteCostCentre(deletingCC.id);
       showToast.success(`Cost centre "${deletingCC.name}" deleted successfully.`, "Cost Centre Deleted");
       setDeletingCC(null);
       refresh();
@@ -152,7 +152,7 @@ export default function CostCentreManagementPage() {
 
     try {
       for (let i = 0; i < updatedList.length; i++) {
-        await db.updateCostCentre(updatedList[i].id, {
+        await masterDataClient.updateCostCentre(updatedList[i].id, {
           display_order: updatedList[i].display_order,
         });
       }

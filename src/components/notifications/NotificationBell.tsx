@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Bell, CheckCheck, Clock, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/data/repository";
+import { notificationClient, workspaceStore } from "@/lib/domains";
 import { Notification } from "@/lib/types/database";
 import { formatDateTime } from "@/lib/utils/formatters";
 
@@ -17,14 +17,11 @@ export function NotificationBell() {
   useEffect(() => {
     if (!user) return;
     const loadNotifs = () => {
-      const items = db.getNotifications(user.id);
+      const items = notificationClient.getNotifications(user.id);
       setNotifications(items);
     };
     loadNotifs();
-
-    // Poll periodically or update on focus
-    const interval = setInterval(loadNotifs, 3000);
-    return () => clearInterval(interval);
+    return workspaceStore.subscribe(loadNotifs);
   }, [user]);
 
   // Click outside to close
@@ -43,15 +40,15 @@ export function NotificationBell() {
   const handleMarkAllRead = async () => {
     try {
     if (!user) return;
-    await db.markAllNotificationsAsRead(user.id);
-    setNotifications(db.getNotifications(user.id));
+    await notificationClient.markAllNotificationsAsRead(user.id);
+    setNotifications(notificationClient.getNotifications(user.id));
 
     } catch (error) { window.dispatchEvent(new CustomEvent("workspace-error", { detail: error instanceof Error ? error.message : "Unable to save changes." })); }
   };
 
   const handleItemClick = async (n: Notification) => {
     try {
-    await db.markNotificationAsRead(n.id);
+    await notificationClient.markNotificationAsRead(n.id);
     setNotifications(prev => prev.map(item => item.id === n.id ? { ...item, is_read: true } : item));
     setIsOpen(false);
 

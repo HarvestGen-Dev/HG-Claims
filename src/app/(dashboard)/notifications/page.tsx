@@ -6,7 +6,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/data/repository";
+import { notificationClient } from "@/lib/domains";
 import { Notification } from "@/lib/types/database";
 import { formatDateTime } from "@/lib/utils/formatters";
 import { Bell, CheckCheck, Clock, ArrowRight } from "lucide-react";
@@ -18,7 +18,7 @@ export default function NotificationsPage() {
 
   const loadNotifs = () => {
     if (!user) return;
-    setNotifications(db.getNotifications(user.id));
+    setNotifications(notificationClient.getNotifications(user.id));
   };
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export default function NotificationsPage() {
     try {
       if (!user) return;
       setIsMarking(true);
-      await db.markAllNotificationsAsRead(user.id);
+      await notificationClient.markAllNotificationsAsRead(user.id);
       loadNotifs();
     } catch (error) {
       window.dispatchEvent(

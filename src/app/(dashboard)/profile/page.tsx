@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/data/repository";
+import { iamClient } from "@/lib/domains";
 import { Check, User, Landmark } from "lucide-react";
 import { showToast } from "@/lib/utils/toast";
 import { MALAYSIAN_BANKS } from "@/lib/constants/banks";
@@ -31,7 +31,7 @@ export default function ProfilePage() {
     try {
       if (!user) return;
       setIsSaving(true);
-      await db.updateProfile(user.id, {
+      await iamClient.updateProfile(user.id, {
         phone,
         bank_name: bankName.trim() || null,
         bank_account_number: bankAccountNumber.trim() || null,

@@ -12,7 +12,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/data/repository";
+import { claimsClient, financeClient } from "@/lib/domains";
 import { Claim } from "@/lib/types/database";
 import { formatCurrency } from "@/lib/utils/formatters";
 import { generateClaimsCsv, downloadCsv } from "@/lib/utils/export-csv";
@@ -36,8 +36,8 @@ export default function FinanceDashboardPage() {
 
   useEffect(() => {
     if (!user) return;
-    setStats(db.getFinanceStats());
-    setClaims(db.getClaims(user));
+    setStats(financeClient.getFinanceStats());
+    setClaims(claimsClient.getClaims(user));
   }, [user]);
 
   const handleExport = () => {

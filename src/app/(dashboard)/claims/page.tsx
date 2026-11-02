@@ -10,7 +10,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui
 import { ClaimStatusBadge } from "@/components/claims/ClaimStatusBadge";
 import { MobileClaimList } from "@/components/claims/MobileClaimList";
 import { useAuth } from "@/lib/auth/context";
-import { db } from "@/lib/data/repository";
+import { claimsClient, workspaceStore } from "@/lib/domains";
 import { Claim, ClaimStatus } from "@/lib/types/database";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 import { generateClaimsCsv, downloadCsv } from "@/lib/utils/export-csv";
@@ -35,9 +35,9 @@ function ClaimsContent() {
 
   useEffect(() => {
     if (!user) return;
-    setClaims(db.getClaims(user).filter(claim => claim.submitted_by_user_id === user.id || claim.claimant_id === user.id));
-    const unsub = db.subscribe(() => {
-      setClaims(db.getClaims(user).filter(claim => claim.submitted_by_user_id === user.id || claim.claimant_id === user.id));
+    setClaims(claimsClient.getClaims(user).filter(claim => claim.submitted_by_user_id === user.id || claim.claimant_id === user.id));
+    const unsub = workspaceStore.subscribe(() => {
+      setClaims(claimsClient.getClaims(user).filter(claim => claim.submitted_by_user_id === user.id || claim.claimant_id === user.id));
     });
     return unsub;
   }, [user]);
@@ -46,12 +46,9 @@ function ClaimsContent() {
     if (!deletingClaim) return;
     try {
       setIsDeletingClaim(true);
-      await db.deleteClaim(deletingClaim.id);
-      try {
-        await db.refresh();
-      } catch {}
+      await claimsClient.deleteClaim(deletingClaim.id);
       if (user) {
-        setClaims(db.getClaims(user).filter(claim => claim.submitted_by_user_id === user.id || claim.claimant_id === user.id));
+        setClaims(claimsClient.getClaims(user).filter(claim => claim.submitted_by_user_id === user.id || claim.claimant_id === user.id));
       }
       showToast.success("Claim deleted successfully.", "Claim Deleted");
       setDeletingClaim(null);
