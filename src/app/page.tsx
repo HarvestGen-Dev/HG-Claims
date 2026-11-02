@@ -22,7 +22,7 @@ export default function HomePage() {
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950">
       <div className="flex flex-col items-center gap-3">
         <div className="h-7 w-7 animate-spin rounded-full border-2 border-zinc-900 border-t-transparent dark:border-zinc-100" />
-        <p className="text-xs font-medium text-zinc-500">Loading New Life Expense Portal...</p>
+        <p className="text-xs font-medium text-zinc-500">Loading Harvest Generation Expense Portal...</p>
       </div>
     </div>
   );

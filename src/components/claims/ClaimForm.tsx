@@ -43,7 +43,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   const ministries = masterDataClient.getMinistries();
   const costCentres = masterDataClient.getCostCentres();
   const formConfig = masterDataClient.getSetting("claim_form_config") || {
-    declaration_text: "I confirm that these expenses were incurred for legitimate church ministry purposes in accordance with New Life Community Church financial policies, have not previously been claimed or reimbursed from any other source, and are supported by the authentic receipts and documents provided.",
+    declaration_text: "I confirm that these expenses were incurred for legitimate ministry purposes in accordance with Harvest Generation financial policies, have not previously been claimed or reimbursed from any other source, and are supported by the authentic receipts and documents provided.",
     allow_claimant_change_ministry: true,
     require_vendor_name: false,
     require_receipt_for_all_expenses: true,
@@ -418,7 +418,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
             size="sm"
             loading={isSubmitting}
             disabled={isSubmitting || isSavingDraft}
-            className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-medium shadow-2xs gap-1.5"
+            className="h-8 text-xs bg-zinc-900 hover:bg-zinc-800 text-white font-medium shadow-2xs gap-1.5"
           >
             {!isSubmitting && <Send className="w-3.5 h-3.5" />}
             <span>{isSubmitting ? "Submitting..." : "Submit Claim"}</span>
@@ -455,7 +455,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
             <button
               type="button"
               onClick={handleFillMyDetails}
-              className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 hover:text-emerald-800 hover:underline dark:text-emerald-400"
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-800 hover:text-zinc-950 hover:underline dark:text-zinc-200"
             >
               <UserCheck className="w-3.5 h-3.5" />
               <span>Fill my details (Self-claim)</span>
@@ -530,7 +530,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           {/* Claimant Reimbursement Banking Details */}
           <div className="pt-3 mt-1 border-t border-zinc-100 dark:border-zinc-800/80">
             <div className="flex items-center gap-1.5 mb-2.5">
-              <Landmark className="w-3.5 h-3.5 text-emerald-700" />
+              <Landmark className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />
               <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
                 Reimbursement Banking Details
               </span>
@@ -724,7 +724,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
             </div>
             <div className="flex items-center gap-2 text-xs">
               <span className="text-zinc-500">Claim Total:</span>
-              <strong className="font-mono text-sm text-emerald-700 dark:text-emerald-400">
+              <strong className="font-mono text-sm text-zinc-900 dark:text-zinc-100">
                 {formatCurrency(totalAmount)}
               </strong>
             </div>
@@ -736,13 +736,13 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
               type="checkbox"
               checked={declarationAccepted}
               onChange={(e) => setDeclarationAccepted(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-emerald-700 focus:ring-emerald-600 accent-emerald-700"
+              className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900 accent-zinc-900"
               required
             />
             <span className="leading-relaxed">
               <strong className="text-zinc-900 dark:text-zinc-100">Declaration: </strong>
               {formConfig.declaration_text ||
-                "These expenses were incurred for legitimate church ministry purposes, have not previously been claimed, and are supported by authentic receipts."}
+                "These expenses were incurred for legitimate ministry purposes, have not previously been claimed, and are supported by authentic receipts."}
             </span>
           </label>
 
@@ -765,7 +765,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
               size="sm"
               loading={isSubmitting}
               disabled={isSubmitting || isSavingDraft || !declarationAccepted}
-              className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-medium px-5 shadow-2xs gap-1.5"
+              className="h-8 text-xs bg-zinc-900 hover:bg-zinc-800 text-white font-medium px-5 shadow-2xs gap-1.5"
             >
               {!isSubmitting && <Send className="w-3.5 h-3.5" />}
               <span>{isSubmitting ? "Submitting..." : "Submit Claim"}</span>

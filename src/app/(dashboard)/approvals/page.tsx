@@ -182,7 +182,7 @@ export default function ApprovalsInboxPage() {
                           </td>
                           <td className="py-3 px-4 text-right">
                             <Link href={`/approvals/${c.id}`}>
-                              <Button size="sm" className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1 shadow-2xs font-medium px-2.5">
+                              <Button size="sm" className="h-7 text-xs bg-zinc-900 hover:bg-zinc-800 text-white gap-1 shadow-2xs font-medium px-2.5">
                                 <span>Review</span>
                                 <ArrowRight className="w-3 h-3" />
                               </Button>

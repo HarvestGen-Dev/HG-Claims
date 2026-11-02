@@ -24,18 +24,18 @@ import { showToast } from "@/lib/utils/toast";
 export default function SystemSettingsPage() {
 
   // Load existing settings from DB
-  const numberingSetting = masterDataClient.getSetting("claim_numbering") || { prefix: "NLCC", year_format: "YYYY", digits: 6 };
+  const numberingSetting = masterDataClient.getSetting("claim_numbering") || { prefix: "HG", year_format: "YYYY", digits: 6 };
   const orgSetting = masterDataClient.getSetting("organization_profile") || {
-    name: "New Life Community Church",
-    short_name: "NLCC",
+    name: "Harvest Generation",
+    short_name: "HG",
     registration_no: "PPM-003-10-14051998",
-    address: "Jalan Universiti, 46200 Petaling Jaya, Selangor, Malaysia",
+    address: "Petaling Jaya, Selangor, Malaysia",
     phone: "+60 3-7956 1234",
-    email: "finance@newlife.org.my",
+    email: "finance@harvestgeneration.org",
     currency: "RM",
   };
   const formConfigSetting = masterDataClient.getSetting("claim_form_config") || {
-    declaration_text: "I confirm that these expenses were incurred for legitimate church ministry purposes in accordance with NewLife Community Church financial policies, have not previously been claimed or reimbursed from any other source, and are supported by the authentic receipts and documents provided.",
+    declaration_text: "I confirm that these expenses were incurred for legitimate ministry purposes in accordance with Harvest Generation financial policies, have not previously been claimed or reimbursed from any other source, and are supported by the authentic receipts and documents provided.",
     allow_claimant_change_ministry: true,
     require_vendor_name: false,
     require_receipt_for_all_expenses: true,
@@ -131,11 +131,11 @@ export default function SystemSettingsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <Sliders className="w-7 h-7 text-emerald-700" />
+              <Sliders className="w-7 h-7 text-zinc-900" />
               Claim Form & System Settings
             </h1>
             <p className="text-xs text-slate-500">
-              Customize the claimant submission form format, declaration text, field requirements, and church details.
+              Customize the claimant submission form format, declaration text, field requirements, and organization details.
             </p>
           </div>
 
@@ -143,27 +143,27 @@ export default function SystemSettingsPage() {
             onClick={handleSaveAll}
             loading={isSaving}
             disabled={isSaving}
-            className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold shadow-md px-6 text-xs"
+            className="bg-zinc-900 hover:bg-zinc-800 text-white font-bold shadow-md px-6 text-xs"
           >
             {isSaving ? "Saving Configuration..." : "Save All Configuration Changes"}
           </Button>
         </div>
 
         {saved && (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold rounded-2xl flex items-center gap-3 shadow-2xs animate-in fade-in">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          <div className="p-4 bg-zinc-50 border border-zinc-200 text-zinc-900 text-xs font-semibold rounded-2xl flex items-center gap-3 shadow-2xs animate-in fade-in">
+            <CheckCircle2 className="w-5 h-5 text-zinc-900 shrink-0" />
             <div>
               <p className="font-bold">Settings Saved Successfully!</p>
-              <p className="text-emerald-700 font-normal">All claim forms and printable templates have been updated dynamically.</p>
+              <p className="text-zinc-600 font-normal">All claim forms and printable templates have been updated dynamically.</p>
             </div>
           </div>
         )}
 
         {/* SECTION 1: CLAIM FORM FORMAT & RULES */}
-        <Card className="border-emerald-200">
+        <Card className="border-zinc-200">
           <CardHeader className="pb-3 border-b border-slate-100">
-            <CardTitle className="text-sm font-bold flex items-center gap-2 text-emerald-950">
-              <FileText className="w-4 h-4 text-emerald-700" />
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-zinc-900">
+              <FileText className="w-4 h-4 text-zinc-900" />
               1. Claim Form Format & Field Requirements
             </CardTitle>
             <CardDescription className="text-xs">
@@ -174,7 +174,7 @@ export default function SystemSettingsPage() {
             {/* Form Guidance Callout Banner */}
             <div className="space-y-1.5">
               <label className="font-bold text-slate-800 flex items-center gap-1.5">
-                <HelpCircle className="w-3.5 h-3.5 text-emerald-700" />
+                <HelpCircle className="w-3.5 h-3.5 text-zinc-900" />
                 Form Guidance & Help Banner (Displayed to Claimants)
               </label>
               <Input
@@ -211,7 +211,7 @@ export default function SystemSettingsPage() {
                   type="checkbox"
                   checked={allowMinistryChange}
                   onChange={(e) => setAllowMinistryChange(e.target.checked)}
-                  className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                  className="mt-0.5 rounded text-zinc-900 focus:ring-zinc-900 accent-zinc-900"
                 />
                 <div>
                   <strong className="text-slate-800 block">Allow Claimant to Change Ministry</strong>
@@ -224,7 +224,7 @@ export default function SystemSettingsPage() {
                   type="checkbox"
                   checked={requireVendor}
                   onChange={(e) => setRequireVendor(e.target.checked)}
-                  className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                  className="mt-0.5 rounded text-zinc-900 focus:ring-zinc-900 accent-zinc-900"
                 />
                 <div>
                   <strong className="text-slate-800 block">Mandatory Merchant / Vendor Name</strong>
@@ -237,7 +237,7 @@ export default function SystemSettingsPage() {
                   type="checkbox"
                   checked={requireReceipt}
                   onChange={(e) => setRequireReceipt(e.target.checked)}
-                  className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                  className="mt-0.5 rounded text-zinc-900 focus:ring-zinc-900 accent-zinc-900"
                 />
                 <div>
                   <strong className="text-slate-800 block">Mandatory Receipt Attachments</strong>
@@ -250,7 +250,7 @@ export default function SystemSettingsPage() {
                   type="checkbox"
                   checked={enableInternalRef}
                   onChange={(e) => setEnableInternalRef(e.target.checked)}
-                  className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                  className="mt-0.5 rounded text-zinc-900 focus:ring-zinc-900 accent-zinc-900"
                 />
                 <div>
                   <strong className="text-slate-800 block">Enable Internal Reference Code</strong>
@@ -321,7 +321,7 @@ export default function SystemSettingsPage() {
 
               <div className="space-y-1 sm:col-span-1 flex flex-col justify-end">
                 <span className="text-slate-400 block mb-1">Generated Preview:</span>
-                <span className="px-3 py-2 rounded-lg bg-slate-900 text-emerald-400 font-mono font-bold text-sm text-center">
+                <span className="px-3 py-2 rounded-lg bg-zinc-900 text-zinc-100 font-mono font-bold text-sm text-center">
                   {prefix}-{new Date().getFullYear()}-{"0".repeat(Math.min(5, Math.max(0, digits - 3)))}125
                 </span>
               </div>
@@ -409,7 +409,7 @@ export default function SystemSettingsPage() {
                 type="checkbox"
                 checked={notifEmail}
                 disabled
-                className="rounded text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                className="rounded text-zinc-900 focus:ring-zinc-900 accent-zinc-900"
               />
               <span className="font-semibold text-slate-800">Claim email notifications (not configured)</span>
             </label>
@@ -419,7 +419,7 @@ export default function SystemSettingsPage() {
                 type="checkbox"
                 checked={notifInApp}
                 onChange={(e) => setNotifInApp(e.target.checked)}
-                className="rounded text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                className="rounded text-zinc-900 focus:ring-zinc-900 accent-zinc-900"
               />
               <span className="font-semibold text-slate-800">Enable In-App Notification Bell & Center</span>
             </label>
@@ -432,7 +432,7 @@ export default function SystemSettingsPage() {
             onClick={handleSaveAll}
             loading={isSaving}
             disabled={isSaving}
-            className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-8 shadow-md"
+            className="bg-zinc-900 hover:bg-zinc-800 text-white font-bold px-8 shadow-md"
           >
             {isSaving ? "Saving Configuration..." : "Save All Configuration Changes"}
           </Button>

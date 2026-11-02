@@ -77,7 +77,7 @@ function TopProgressBarInner({ isBusy: externalBusy = false }: TopProgressBarPro
   return (
     <div className="fixed top-0 left-0 right-0 z-[9999] pointer-events-none h-[3px] bg-transparent overflow-hidden">
       <div
-        className="h-full bg-gradient-to-r from-emerald-600 via-teal-400 to-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.9)] transition-all ease-out duration-200"
+        className="h-full bg-gradient-to-r from-zinc-900 via-zinc-600 to-zinc-900 dark:from-zinc-100 dark:via-zinc-400 dark:to-zinc-100 shadow-[0_0_12px_rgba(24,24,27,0.7)] transition-all ease-out duration-200"
         style={{
           width: `${progress}%`,
           opacity: visible ? 1 : 0,

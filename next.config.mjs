@@ -7,6 +7,9 @@ const nextConfig = {
   output: "standalone",
   outputFileTracingRoot: fileURLToPath(new URL(".", import.meta.url)),
   poweredByHeader: false,
+  experimental: {
+    optimizePackageImports: ["lucide-react", "recharts", "date-fns"],
+  },
   async headers() {
     return [{ source: "/:path*", headers: [
       { key: "X-Content-Type-Options", value: "nosniff" },

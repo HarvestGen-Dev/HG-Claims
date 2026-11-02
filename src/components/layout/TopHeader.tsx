@@ -68,8 +68,8 @@ export function TopHeader({ onToggleMobileMenu }: TopHeaderProps) {
         </button>
 
         <Link href="/dashboard" className="flex items-center gap-2 lg:hidden py-1">
-          <BrandLogo className="w-10 sm:w-12" />
-          <span className="font-semibold text-zinc-900 text-xs tracking-tight dark:text-zinc-100">NLCC</span>
+          <BrandLogo compact />
+          <span className="font-semibold text-zinc-900 text-xs tracking-tight dark:text-zinc-100">Harvest Generation</span>
         </Link>
 
         {/* Global Search */}

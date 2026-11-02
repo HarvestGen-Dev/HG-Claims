@@ -108,8 +108,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       {/* Brand Header */}
       <div className="px-2 py-2.5 mb-3 flex items-start justify-between">
         <div>
-          <Link href="/dashboard" onClick={onNavigate} aria-label="New Life Community Church dashboard" className="block w-fit">
-            <BrandLogo className="w-28" priority />
+          <Link href="/dashboard" onClick={onNavigate} aria-label="Harvest Generation dashboard" className="block w-fit">
+            <BrandLogo priority />
           </Link>
           <p className="mt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">Expense Portal</p>
         </div>
@@ -131,7 +131,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           <Link
             href="/claims/new"
             onClick={onNavigate}
-            className="flex items-center justify-center gap-1.5 w-full py-1.5 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-2xs transition-colors"
+            className="flex items-center justify-center gap-1.5 w-full py-1.5 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-white text-xs font-semibold shadow-2xs transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>New Claim</span>

@@ -62,7 +62,7 @@ export function PasswordRecovery({ reset = false }: { reset?: boolean }) {
         <BrandLogo priority />
       </header>
       <main className="auth-content">
-        <p className="text-sm font-medium text-emerald-700 mb-3">
+        <p className="text-sm font-medium text-zinc-600 mb-3">
           {reset ? "Account security" : "Password recovery"}
         </p>
         <h1 className="text-3xl font-semibold mb-3">
@@ -75,23 +75,23 @@ export function PasswordRecovery({ reset = false }: { reset?: boolean }) {
         </p>
 
         {done ? (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/80 dark:bg-emerald-950/30 p-5 space-y-4 text-left">
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 p-5 space-y-4 text-left">
             <div className="flex items-start gap-3">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+              <CheckCircle2 className="h-5 w-5 text-zinc-900 dark:text-zinc-100 mt-0.5 shrink-0" />
               <div>
-                <h2 className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                   {reset ? "Password updated" : "Check your inbox"}
                 </h2>
-                <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-1 leading-relaxed">
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed">
                   {reset
                     ? "Your password has been reset successfully. You can now sign in with your new credentials."
                     : `If an account is associated with ${email || "your address"}, you will receive instructions to reset your password shortly.`}
                 </p>
               </div>
             </div>
-            <div className="pt-2 border-t border-emerald-200/80 dark:border-emerald-900">
+            <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800">
               <Link href="/login" className="block">
-                <Button className="w-full h-10 text-xs bg-emerald-700 hover:bg-emerald-800 text-white">
+                <Button className="w-full h-10 text-xs bg-zinc-900 hover:bg-zinc-800 text-white">
                   Continue to Sign In
                 </Button>
               </Link>
@@ -199,14 +199,14 @@ export function PasswordRecovery({ reset = false }: { reset?: boolean }) {
         <div className="mt-6">
           <Link
             href="/login"
-            className="inline-flex items-center gap-1.5 text-sm text-emerald-700 hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm text-zinc-700 hover:text-zinc-900 hover:underline"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Back to sign in</span>
           </Link>
         </div>
       </main>
-      <footer className="auth-footer">New Life Community Church &middot; Expenses</footer>
+      <footer className="auth-footer">Harvest Generation &middot; Expenses</footer>
     </div>
   );
 }

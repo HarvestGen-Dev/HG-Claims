@@ -136,17 +136,17 @@ export default function MinistryManagementPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <Building2 className="w-6 h-6 text-emerald-700" />
+              <Building2 className="w-6 h-6 text-zinc-900" />
               Ministries & Department Leaders
             </h1>
             <p className="text-xs text-slate-500">
-              Create, edit and configure church ministries and assign approving ministry leaders.
+              Create, edit and configure ministries and assign approving ministry leaders.
             </p>
           </div>
 
           <Button
             onClick={handleOpenCreate}
-            className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs gap-1.5 shadow-sm"
+            className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs gap-1.5 shadow-sm"
           >
             <Plus className="w-4 h-4" />
             <span>+ Add New Ministry</span>
@@ -352,7 +352,7 @@ export default function MinistryManagementPage() {
                 type="checkbox"
                 checked={formData.is_active}
                 onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                className="rounded text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                className="rounded text-zinc-900 focus:ring-zinc-900 accent-zinc-900"
               />
               <span className="font-semibold text-slate-800">Ministry Active & Available in Claim Forms</span>
             </label>
@@ -363,7 +363,7 @@ export default function MinistryManagementPage() {
             <Button variant="outline" onClick={() => { setIsCreating(false); setEditingMin(null); }} disabled={isSaving}>
               Cancel
             </Button>
-            <Button onClick={handleSave} loading={isSaving} disabled={isSaving} className="bg-emerald-700 hover:bg-emerald-800 text-white">
+            <Button onClick={handleSave} loading={isSaving} disabled={isSaving} className="bg-zinc-900 hover:bg-zinc-800 text-white">
               {isSaving ? "Saving..." : isCreating ? "Create Ministry" : "Save Changes"}
             </Button>
           </DialogFooter>

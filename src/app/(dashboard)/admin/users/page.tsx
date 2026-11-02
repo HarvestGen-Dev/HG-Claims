@@ -208,7 +208,7 @@ export default function UserManagementPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <UserCheck className="w-6 h-6 text-emerald-700" />
+              <UserCheck className="w-6 h-6 text-zinc-900" />
               User & Invitation Management
             </h1>
             <p className="text-xs text-slate-500 mt-1">
@@ -221,7 +221,7 @@ export default function UserManagementPage() {
                 resetInviteModal();
                 setCreatingInvite(true);
               }}
-              className="gap-2 bg-emerald-700 hover:bg-emerald-800 text-white"
+              className="gap-2 bg-zinc-900 hover:bg-zinc-800 text-white"
             >
               <Plus className="h-4 w-4" />
               Create Sign-up Link
@@ -696,7 +696,7 @@ export default function UserManagementPage() {
                 <Input readOnly value={generatedLink} className="h-10 text-xs font-mono bg-slate-50" />
                 <Button
                   onClick={() => handleCopyLink(generatedLink)}
-                  className="bg-emerald-700 hover:bg-emerald-800 text-white shrink-0 gap-1.5"
+                  className="bg-zinc-900 hover:bg-zinc-800 text-white shrink-0 gap-1.5"
                 >
                   {copied ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
                   {copied ? "Copied!" : "Copy"}
@@ -715,7 +715,7 @@ export default function UserManagementPage() {
               <select
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value as RoleCode)}
-                className="w-full border border-slate-300 rounded-md p-2 text-xs bg-white h-9 focus:ring-1 focus:ring-emerald-500"
+                className="w-full border border-slate-300 rounded-md p-2 text-xs bg-white h-9 focus:ring-1 focus:ring-zinc-900"
               >
                 <option value="MINISTRY_LEADER">Ministry Leader (Submits claims for volunteers/staff)</option>
                 <option value="FINANCE_OFFICER">Finance Officer (Reviews, approves, records payments)</option>
@@ -733,7 +733,7 @@ export default function UserManagementPage() {
                   value={inviteMinistryId}
                   onChange={(e) => setInviteMinistryId(e.target.value)}
                   required
-                  className="w-full border border-slate-300 rounded-md p-2 text-xs bg-white h-9 focus:ring-1 focus:ring-emerald-500"
+                  className="w-full border border-slate-300 rounded-md p-2 text-xs bg-white h-9 focus:ring-1 focus:ring-zinc-900"
                 >
                   <option value="">-- Select a Ministry --</option>
                   {(ministries || []).map((m) => (
@@ -749,7 +749,7 @@ export default function UserManagementPage() {
                 <select
                   value={inviteUsageType}
                   onChange={(e) => setInviteUsageType(e.target.value as any)}
-                  className="w-full border border-slate-300 rounded-md p-2 text-xs bg-white h-9 focus:ring-1 focus:ring-emerald-500"
+                  className="w-full border border-slate-300 rounded-md p-2 text-xs bg-white h-9 focus:ring-1 focus:ring-zinc-900"
                 >
                   <option value="single">Single Use (1 user)</option>
                   <option value="multi">Multiple Uses</option>
@@ -774,7 +774,7 @@ export default function UserManagementPage() {
                   <select
                     value={inviteExpiresDays}
                     onChange={(e) => setInviteExpiresDays(parseInt(e.target.value) || 7)}
-                    className="w-full border border-slate-300 rounded-md p-2 text-xs bg-white h-9 focus:ring-1 focus:ring-emerald-500"
+                    className="w-full border border-slate-300 rounded-md p-2 text-xs bg-white h-9 focus:ring-1 focus:ring-zinc-900"
                   >
                     <option value={3}>3 Days</option>
                     <option value={7}>7 Days (Standard)</option>
@@ -806,7 +806,7 @@ export default function UserManagementPage() {
 
             <DialogFooter className="mt-6">
               <Button type="button" variant="outline" onClick={resetInviteModal} disabled={inviteBusy}>Cancel</Button>
-              <Button type="submit" loading={inviteBusy} disabled={inviteBusy} className="bg-emerald-700 hover:bg-emerald-800 text-white">
+              <Button type="submit" loading={inviteBusy} disabled={inviteBusy} className="bg-zinc-900 hover:bg-zinc-800 text-white">
                 {inviteBusy ? "Generating..." : "Generate Link"}
               </Button>
             </DialogFooter>
@@ -852,7 +852,7 @@ export default function UserManagementPage() {
               <select
                 value={selectedMinistryId}
                 onChange={(e) => setSelectedMinistryId(e.target.value)}
-                className="w-full border border-slate-300 rounded-md p-2 text-xs bg-white h-9 focus:ring-1 focus:ring-emerald-500"
+                className="w-full border border-slate-300 rounded-md p-2 text-xs bg-white h-9 focus:ring-1 focus:ring-zinc-900"
               >
                 <option value="">-- No Specific Ministry --</option>
                 {(ministries || []).map((m) => (
@@ -872,7 +872,7 @@ export default function UserManagementPage() {
                       onClick={() => handleToggleRole(r.code)}
                       className={`flex items-start justify-between p-2.5 rounded-lg border cursor-pointer transition-colors ${
                         isChecked
-                          ? "bg-emerald-50/80 border-emerald-400 text-emerald-950 font-semibold"
+                          ? "bg-zinc-100 border-zinc-900 text-zinc-950 font-semibold"
                           : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100/60"
                       }`}
                     >
@@ -880,7 +880,7 @@ export default function UserManagementPage() {
                         <div>{r.label}</div>
                         <div className="text-[11px] font-normal text-slate-500 mt-0.5">{r.description}</div>
                       </div>
-                      {isChecked && <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />}
+                      {isChecked && <CheckCircle2 className="w-4 h-4 text-zinc-900 shrink-0 mt-0.5" />}
                     </label>
                   );
                 })}
@@ -889,7 +889,7 @@ export default function UserManagementPage() {
           </div>
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setEditingUser(null)} disabled={userSaving}>Cancel</Button>
-            <Button onClick={handleSaveUser} loading={userSaving} disabled={userSaving} className="bg-emerald-700 hover:bg-emerald-800 text-white">Save Changes</Button>
+            <Button onClick={handleSaveUser} loading={userSaving} disabled={userSaving} className="bg-zinc-900 hover:bg-zinc-800 text-white">Save Changes</Button>
           </DialogFooter>
         </Dialog>
       )}

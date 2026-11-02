@@ -158,7 +158,7 @@ export default function ProfilePage() {
                 onClick={handleSave}
                 loading={isSaving}
                 disabled={isSaving}
-                className="h-8 bg-emerald-700 hover:bg-emerald-800 text-white font-medium text-xs px-4 shadow-2xs"
+                className="h-8 bg-zinc-900 hover:bg-zinc-800 text-white font-medium text-xs px-4 shadow-2xs"
               >
                 {isSaving ? "Saving..." : "Save Changes"}
               </Button>

@@ -70,9 +70,9 @@ export function NamePromptDialog() {
   return (
     <Dialog open={true} onOpenChange={() => {}}>
       <DialogHeader>
-        <div className="flex items-center gap-2 mb-1 text-emerald-800">
-          <div className="p-2 rounded-full bg-emerald-100 dark:bg-emerald-950">
-            <UserCheck className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
+        <div className="flex items-center gap-2 mb-1 text-zinc-900 dark:text-zinc-100">
+          <div className="p-2 rounded-full bg-zinc-100 dark:bg-zinc-800">
+            <UserCheck className="w-5 h-5 text-zinc-900 dark:text-zinc-100" />
           </div>
           <DialogTitle className="text-base font-bold">Please Enter Your Full Name</DialogTitle>
         </div>
@@ -138,7 +138,7 @@ export function NamePromptDialog() {
             type="submit"
             loading={isSaving}
             disabled={isSaving || !fullName.trim()}
-            className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-md h-10"
+            className="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-xs shadow-md h-10"
           >
             {isSaving ? "Saving Name..." : "Save Name & Continue"}
           </Button>

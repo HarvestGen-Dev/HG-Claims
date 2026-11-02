@@ -241,7 +241,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
           {/* Submitter Edit / Resubmit */}
           {isEditable && (
             <Link href={`/claims/${claim.id}/edit`}>
-              <Button size="sm" className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-2xs font-medium">
+              <Button size="sm" className="h-7 text-xs bg-zinc-900 hover:bg-zinc-800 text-white gap-1.5 shadow-2xs font-medium">
                 <Edit className="w-3.5 h-3.5" />
                 <span>{claim.status === "RETURNED_FOR_CLARIFICATION" ? "Fix & Resubmit" : "Edit Draft"}</span>
               </Button>
@@ -271,7 +271,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                 loading={loadingAction}
                 disabled={loadingAction || !claim.finance_review?.receipts_verified}
                 title={!claim.finance_review?.receipts_verified ? "Verify receipts before approving" : "Approve claim"}
-                className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-2xs font-medium"
+                className="h-7 text-xs bg-zinc-900 hover:bg-zinc-800 text-white gap-1.5 shadow-2xs font-medium"
               >
                 {!loadingAction && <CheckCircle2 className="w-3.5 h-3.5" />}
                 <span>Approve</span>
@@ -323,7 +323,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                   size="sm"
                   onClick={() => setShowPaymentModal(true)}
                   disabled={loadingAction}
-                  className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-2xs font-medium"
+                  className="h-7 text-xs bg-zinc-900 hover:bg-zinc-800 text-white gap-1.5 shadow-2xs font-medium"
                 >
                   <Banknote className="w-3.5 h-3.5" />
                   <span>Record Payment</span>

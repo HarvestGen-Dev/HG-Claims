@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }}>
     {isLoading && !publicPage ? (
       <div role="status" className="min-h-screen flex flex-col items-center justify-center bg-slate-50/60 dark:bg-zinc-950">
-        <div className="h-8 w-8 rounded-full border-2 border-emerald-700 border-t-transparent animate-spin mb-3" />
+        <div className="h-8 w-8 rounded-full border-2 border-zinc-900 dark:border-zinc-100 border-t-transparent animate-spin mb-3" />
         <p className="text-xs font-medium text-slate-500">Connecting to workspace...</p>
       </div>
     ) : error && !publicPage ? (

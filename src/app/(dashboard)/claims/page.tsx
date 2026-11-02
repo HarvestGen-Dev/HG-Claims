@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Plus, Search, FileText, Download, Trash2 } from "lucide-react";
@@ -59,25 +59,27 @@ function ClaimsContent() {
     }
   };
 
-  const filteredClaims = claims.filter((c) => {
-    if (selectedStatus === "IN_REVIEW") {
-      if (!c.status.startsWith("PENDING_") && c.status !== "SUBMITTED") return false;
-    } else if (selectedStatus === "APPROVED") {
-      if (c.status !== "APPROVED" && c.status !== "APPROVED_FOR_PAYMENT") return false;
-    } else if (selectedStatus !== "ALL" && c.status !== selectedStatus) return false;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      return (
-        (c.claim_number && c.claim_number.toLowerCase().includes(q)) ||
-        (c.claimant_name && c.claimant_name.toLowerCase().includes(q)) ||
-        (c.claimant?.full_name && c.claimant.full_name.toLowerCase().includes(q)) ||
-        (c.submitted_by?.full_name && c.submitted_by.full_name.toLowerCase().includes(q)) ||
-        c.purpose.toLowerCase().includes(q) ||
-        (c.ministry?.name && c.ministry.name.toLowerCase().includes(q))
-      );
-    }
-    return true;
-  });
+  const filteredClaims = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return claims.filter((c) => {
+      if (selectedStatus === "IN_REVIEW") {
+        if (!c.status.startsWith("PENDING_") && c.status !== "SUBMITTED") return false;
+      } else if (selectedStatus === "APPROVED") {
+        if (c.status !== "APPROVED" && c.status !== "APPROVED_FOR_PAYMENT") return false;
+      } else if (selectedStatus !== "ALL" && c.status !== selectedStatus) return false;
+      if (q) {
+        return (
+          (c.claim_number && c.claim_number.toLowerCase().includes(q)) ||
+          (c.claimant_name && c.claimant_name.toLowerCase().includes(q)) ||
+          (c.claimant?.full_name && c.claimant.full_name.toLowerCase().includes(q)) ||
+          (c.submitted_by?.full_name && c.submitted_by.full_name.toLowerCase().includes(q)) ||
+          c.purpose.toLowerCase().includes(q) ||
+          (c.ministry?.name && c.ministry.name.toLowerCase().includes(q))
+        );
+      }
+      return true;
+    });
+  }, [claims, selectedStatus, search]);
 
   const handleExport = () => {
     const csv = generateClaimsCsv(filteredClaims);
@@ -119,7 +121,7 @@ function ClaimsContent() {
             <span>Export CSV</span>
           </Button>
           <Link href="/claims/new">
-            <Button size="sm" className="h-8 bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 text-xs shadow-2xs font-medium">
+            <Button size="sm" className="h-8 bg-zinc-900 hover:bg-zinc-800 text-white gap-1.5 text-xs shadow-2xs font-medium">
               <Plus className="w-3.5 h-3.5" />
               <span>New Claim</span>
             </Button>

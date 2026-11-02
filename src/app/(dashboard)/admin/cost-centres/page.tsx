@@ -232,7 +232,7 @@ export default function CostCentreManagementPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <PieChart className="w-6 h-6 text-emerald-700" />
+              <PieChart className="w-6 h-6 text-zinc-900" />
               Budget Cost Centres
             </h1>
             <p className="text-xs text-slate-500 mt-1">
@@ -242,14 +242,14 @@ export default function CostCentreManagementPage() {
 
           <div className="flex items-center gap-3">
             {isReordering && (
-              <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-medium animate-pulse">
+              <div className="flex items-center gap-1.5 text-xs text-zinc-700 font-medium animate-pulse">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 <span>Saving order...</span>
               </div>
             )}
             <Button
               onClick={handleOpenCreate}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs gap-1.5 shadow-sm"
+              className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs gap-1.5 shadow-sm"
             >
               <Plus className="w-4 h-4" />
               <span>+ Add Cost Centre</span>
@@ -564,7 +564,7 @@ export default function CostCentreManagementPage() {
                 type="checkbox"
                 checked={formData.is_active}
                 onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                className="rounded text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                className="rounded text-zinc-900 focus:ring-zinc-900 accent-zinc-900"
               />
               <span className="font-semibold text-slate-800">Cost Centre Active in Claim Forms</span>
             </label>
@@ -575,7 +575,7 @@ export default function CostCentreManagementPage() {
             <Button variant="outline" onClick={() => { setIsCreating(false); setEditingCC(null); }} disabled={isSaving}>
               Cancel
             </Button>
-            <Button onClick={handleSave} loading={isSaving} disabled={isSaving} className="bg-emerald-700 hover:bg-emerald-800 text-white">
+            <Button onClick={handleSave} loading={isSaving} disabled={isSaving} className="bg-zinc-900 hover:bg-zinc-800 text-white">
               {isSaving ? "Saving..." : isCreating ? "Create Cost Centre" : "Save Changes"}
             </Button>
           </DialogFooter>

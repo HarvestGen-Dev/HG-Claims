@@ -28,7 +28,7 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
         </Button>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-slate-500">Standard A4 Printable Format</span>
-          <Button onClick={() => window.print()} className="bg-emerald-800 hover:bg-emerald-900 text-white gap-1.5 shadow-sm">
+          <Button onClick={() => window.print()} className="bg-zinc-900 hover:bg-zinc-800 text-white gap-1.5 shadow-sm">
             <Printer className="w-4 h-4" />
             Print / Save as PDF
           </Button>
@@ -37,13 +37,13 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
 
       {/* Printable Sheet */}
       <div className="max-w-4xl mx-auto bg-white border border-slate-300 p-4 sm:p-8 rounded-lg shadow-sm print:border-none print:shadow-none print:p-0">
-        {/* Church Official Header */}
+        {/* Official Header */}
         <div className="flex flex-wrap justify-between items-start gap-4 border-b-2 border-slate-900 pb-4 mb-6">
           <div>
             <BrandLogo className="w-32" priority />
           </div>
           <div className="text-right">
-            <h2 className="text-lg font-black uppercase tracking-wider text-emerald-800">EXPENSE REIMBURSEMENT VOUCHER</h2>
+            <h2 className="text-lg font-black uppercase tracking-wider text-zinc-900">EXPENSE REIMBURSEMENT VOUCHER</h2>
             <p className="text-sm font-bold text-slate-900 mt-1">{claim.claim_number || "DRAFT"}</p>
             <p className="text-xs text-slate-500">Status: <strong className="uppercase">{claim.status.replace(/_/g, " ")}</strong></p>
           </div>
@@ -72,7 +72,7 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
         {/* Ministry Purpose */}
         <div className="mb-6">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Ministry Purpose & Justification</h3>
-          <p className="text-xs text-slate-800 border-l-2 border-emerald-600 pl-3 py-1 bg-slate-50 rounded-r">
+          <p className="text-xs text-slate-800 border-l-2 border-zinc-900 pl-3 py-1 bg-slate-50 rounded-r">
             {claim.purpose}
           </p>
         </div>

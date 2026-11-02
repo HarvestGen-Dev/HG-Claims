@@ -58,7 +58,7 @@ export default function OnboardingPage() {
       await refreshUser();
 
       // 3. Flash welcome toast
-      showToast.flashSuccess("Welcome to NLCC Expenses! Your profile setup is complete.", "Profile Setup Complete");
+      showToast.flashSuccess("Welcome to Harvest Generation Expenses! Your profile setup is complete.", "Profile Setup Complete");
 
       // 4. Navigate to dashboard
       router.replace("/dashboard");
@@ -73,7 +73,7 @@ export default function OnboardingPage() {
   if (isLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center text-sm text-slate-500">
-        <Loader2 className="h-5 w-5 animate-spin mr-2 text-emerald-600" />
+        <Loader2 className="h-5 w-5 animate-spin mr-2 text-zinc-900" />
         Loading account details...
       </div>
     );
@@ -84,12 +84,12 @@ export default function OnboardingPage() {
       <div className="max-w-md w-full mx-auto space-y-8">
         <div className="text-center">
           <BrandLogo className="mx-auto" priority />
-          <div className="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold px-3 py-1 rounded-full mt-6">
+          <div className="inline-flex items-center gap-1.5 bg-zinc-100 border border-zinc-200 text-zinc-800 text-xs font-semibold px-3 py-1 rounded-full mt-6">
             <UserCheck className="h-3.5 w-3.5" />
             Step 1 of 1 &middot; Profile Setup
           </div>
           <h1 className="mt-3 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-            Welcome to NLCC Expenses
+            Welcome to Harvest Generation Expenses
           </h1>
           <p className="mt-2 text-sm text-slate-600">
             Please tell us your name and contact details so your team and finance can identify you.
@@ -141,7 +141,7 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            <Button disabled={busy} className="w-full h-11 gap-2 mt-4 bg-emerald-700 hover:bg-emerald-800 text-white" type="submit">
+            <Button disabled={busy} className="w-full h-11 gap-2 mt-4 bg-zinc-900 hover:bg-zinc-800 text-white" type="submit">
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
               {busy ? "Saving Profile..." : "Get Started"}
               <ArrowRight className="h-4 w-4" />
@@ -150,13 +150,13 @@ export default function OnboardingPage() {
         </div>
 
         <div className="text-center text-xs text-slate-400 flex items-center justify-center gap-1.5">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          <CheckCircle2 className="h-4 w-4 text-zinc-700" />
           No banking details required for this role.
         </div>
       </div>
 
       <footer className="text-center text-xs text-slate-400 mt-8">
-        New Life Community Church &middot; Expenses
+        Harvest Generation &middot; Expenses
       </footer>
     </div>
   );

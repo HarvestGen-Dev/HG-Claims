@@ -1,4 +1,4 @@
-# New Life Community Church Expense Portal
+# Harvest Generation Expense Portal
 
 Next.js 15, React 18, TypeScript, and Supabase Auth, PostgreSQL, and private Storage.
 Claims, receipts, approvals, payments, and audit records use the real backend.

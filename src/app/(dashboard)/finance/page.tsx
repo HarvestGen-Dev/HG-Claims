@@ -12,7 +12,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth/context";
-import { claimsClient, financeClient } from "@/lib/domains";
+import { claimsClient, financeClient, workspaceStore } from "@/lib/domains";
 import { Claim } from "@/lib/types/database";
 import { formatCurrency } from "@/lib/utils/formatters";
 import { generateClaimsCsv, downloadCsv } from "@/lib/utils/export-csv";
@@ -29,6 +29,8 @@ import {
   CartesianGrid
 } from "recharts";
 
+const COLORS = ["#18181b", "#3f3f46", "#52525b", "#71717a", "#2563eb", "#d97706", "#7c3aed", "#a1a1aa"];
+
 export default function FinanceDashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<any>(null);
@@ -36,16 +38,18 @@ export default function FinanceDashboardPage() {
 
   useEffect(() => {
     if (!user) return;
-    setStats(financeClient.getFinanceStats());
-    setClaims(claimsClient.getClaims(user));
+    const sync = () => {
+      setStats(financeClient.getFinanceStats());
+      setClaims(claimsClient.getClaims(user));
+    };
+    sync();
+    return workspaceStore.subscribe(sync);
   }, [user]);
 
   const handleExport = () => {
     const csv = generateClaimsCsv(claims);
     downloadCsv(`finance_claims_summary_${new Date().toISOString().split("T")[0]}.csv`, csv);
   };
-
-  const COLORS = ["#18181b", "#047857", "#2563eb", "#d97706", "#7c3aed", "#e11d48", "#71717a", "#059669"];
 
   return (
     <AppLayout>
@@ -72,7 +76,7 @@ export default function FinanceDashboardPage() {
               <span>Export Ledger</span>
             </Button>
             <Link href="/finance/claims">
-              <Button size="sm" className="h-8 bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 text-xs shadow-2xs font-medium">
+              <Button size="sm" className="h-8 bg-zinc-900 hover:bg-zinc-800 text-white gap-1.5 text-xs shadow-2xs font-medium">
                 <Layers className="w-3.5 h-3.5" />
                 <span>Process & Disburse</span>
               </Button>

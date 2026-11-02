@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   FileSpreadsheet
 } from "lucide-react";
@@ -8,7 +8,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth/context";
-import { claimsClient, masterDataClient } from "@/lib/domains";
+import { claimsClient, masterDataClient, workspaceStore } from "@/lib/domains";
 import { Claim } from "@/lib/types/database";
 import { formatCurrency } from "@/lib/utils/formatters";
 import { generateClaimsCsv, downloadCsv } from "@/lib/utils/export-csv";
@@ -25,6 +25,8 @@ import {
   Cell
 } from "recharts";
 
+const COLORS = ["#18181b", "#3f3f46", "#52525b", "#71717a", "#2563eb", "#d97706", "#7c3aed", "#a1a1aa"];
+
 export default function FinancialReportsPage() {
   const { user } = useAuth();
   const [claims, setClaims] = useState<Claim[]>([]);
@@ -39,48 +41,69 @@ export default function FinancialReportsPage() {
   useEffect(() => {
     if (!user) return;
     setClaims(claimsClient.getClaims(user));
+    return workspaceStore.subscribe(() => {
+      setClaims(claimsClient.getClaims(user));
+    });
   }, [user]);
 
-  const filtered = claims.filter((c) => {
-    if (selectedMinistry !== "ALL" && c.ministry_id !== selectedMinistry) return false;
-    if (startDate && c.claim_date < startDate) return false;
-    if (endDate && c.claim_date > endDate) return false;
-    if (selectedCostCentre !== "ALL") {
-      const hasCostCentre = (c.expenses || []).some(e => e.cost_centre_id === selectedCostCentre);
-      if (!hasCostCentre) return false;
-    }
-    return true;
-  });
+  const {
+    filtered,
+    totalClaimed,
+    paidClaims,
+    totalPaid,
+    averageClaim,
+    ministryChartData,
+    costCentreChartData,
+  } = useMemo(() => {
+    const costCentreById = new Map(costCentres.map(cc => [cc.id, `${cc.code} - ${cc.name}`]));
 
-  const totalClaimed = filtered.reduce((sum, c) => sum + Number(c.total_amount), 0);
-  const paidClaims = filtered.filter(c => c.status === "PAID");
-  const totalPaid = paidClaims.reduce((sum, c) => sum + Number(c.total_amount), 0);
-  const averageClaim = filtered.length > 0 ? totalClaimed / filtered.length : 0;
-
-  // Aggregate Spend by Ministry
-  const ministryDataMap: Record<string, number> = {};
-  filtered.forEach(c => {
-    const name = c.ministry?.name || "Other";
-    ministryDataMap[name] = (ministryDataMap[name] || 0) + Number(c.total_amount);
-  });
-  const ministryChartData = Object.entries(ministryDataMap).map(([name, total]) => ({ name, total }));
-
-  // Aggregate Spend by Cost Centre
-  const costCentreDataMap: Record<string, number> = {};
-  filtered.forEach(c => {
-    (c.expenses || []).forEach(e => {
-      const cc = costCentres.find(item => item.id === e.cost_centre_id);
-      const name = cc ? `${cc.code} - ${cc.name}` : "General";
-      costCentreDataMap[name] = (costCentreDataMap[name] || 0) + Number(e.amount);
+    const matching = claims.filter((c) => {
+      if (selectedMinistry !== "ALL" && c.ministry_id !== selectedMinistry) return false;
+      if (startDate && c.claim_date < startDate) return false;
+      if (endDate && c.claim_date > endDate) return false;
+      if (selectedCostCentre !== "ALL") {
+        const hasCostCentre = (c.expenses || []).some(e => e.cost_centre_id === selectedCostCentre);
+        if (!hasCostCentre) return false;
+      }
+      return true;
     });
-  });
-  const costCentreChartData = Object.entries(costCentreDataMap).map(([name, total]) => ({ name, total }));
 
-  const COLORS = ["#18181b", "#047857", "#2563eb", "#d97706", "#7c3aed", "#e11d48", "#71717a", "#059669"];
+    let claimedSum = 0;
+    let paidSum = 0;
+    const paidList: Claim[] = [];
+    const ministryDataMap: Record<string, number> = {};
+    const costCentreDataMap: Record<string, number> = {};
+
+    for (const c of matching) {
+      const amt = Number(c.total_amount);
+      claimedSum += amt;
+      if (c.status === "PAID") {
+        paidList.push(c);
+        paidSum += amt;
+      }
+      const mName = c.ministry?.name || "Other";
+      ministryDataMap[mName] = (ministryDataMap[mName] || 0) + amt;
+
+      for (const e of c.expenses || []) {
+        const ccName = (e.cost_centre_id && costCentreById.get(e.cost_centre_id)) || "General";
+        costCentreDataMap[ccName] = (costCentreDataMap[ccName] || 0) + Number(e.amount);
+      }
+    }
+
+    return {
+      filtered: matching,
+      totalClaimed: claimedSum,
+      paidClaims: paidList,
+      totalPaid: paidSum,
+      averageClaim: matching.length > 0 ? claimedSum / matching.length : 0,
+      ministryChartData: Object.entries(ministryDataMap).map(([name, total]) => ({ name, total })),
+      costCentreChartData: Object.entries(costCentreDataMap).map(([name, total]) => ({ name, total })),
+    };
+  }, [claims, costCentres, selectedMinistry, selectedCostCentre, startDate, endDate]);
 
   const handleExportCsv = () => {
     const csv = generateClaimsCsv(filtered);
-    downloadCsv(`NLCC_Expense_Report_${new Date().toISOString().split("T")[0]}.csv`, csv);
+    downloadCsv(`HG_Expense_Report_${new Date().toISOString().split("T")[0]}.csv`, csv);
   };
 
   return (
@@ -100,7 +123,7 @@ export default function FinancialReportsPage() {
           <Button
             onClick={handleExportCsv}
             size="sm"
-            className="h-8 bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-2xs text-xs font-medium"
+            className="h-8 bg-zinc-900 hover:bg-zinc-800 text-white gap-1.5 shadow-2xs text-xs font-medium"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span>Download CSV</span>

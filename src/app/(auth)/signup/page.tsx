@@ -222,12 +222,12 @@ function SignupContent() {
         <BrandLogo priority />
       </header>
       <main className="auth-content max-w-md">
-        <p className="text-sm font-medium text-emerald-700 mb-2">Account Registration</p>
+        <p className="text-sm font-medium text-zinc-600 mb-2">Account Registration</p>
         <h1 className="text-3xl font-semibold mb-6">Create Your Account</h1>
 
         {loadingInvite ? (
           <div className="py-12 flex flex-col items-center justify-center space-y-3 text-slate-500">
-            <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+            <Loader2 className="h-6 w-6 animate-spin text-zinc-900" />
             <p className="text-sm font-medium">Verifying invitation link...</p>
           </div>
         ) : !inviteData?.valid ? (
@@ -237,7 +237,7 @@ function SignupContent() {
               <div>
                 <h2 className="text-sm font-semibold text-amber-900">Invitation Required</h2>
                 <p className="text-xs text-amber-700 mt-1 leading-relaxed">
-                  {inviteData?.error || "Registration is by invitation only. Please contact an NLCC administrator to request an invitation link."}
+                  {inviteData?.error || "Registration is by invitation only. Please contact a Harvest Generation administrator to request an invitation link."}
                 </p>
               </div>
             </div>
@@ -254,11 +254,11 @@ function SignupContent() {
             {/* Invitation Details Banner */}
             <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2">
               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                <ShieldCheck className="h-4 w-4 text-zinc-900" />
                 <span>Invited System Role</span>
               </div>
               <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                <Badge className="bg-emerald-100 text-emerald-800 font-semibold hover:bg-emerald-100 px-2.5 py-1 text-xs">
+                <Badge className="bg-zinc-900 text-white font-semibold hover:bg-zinc-800 px-2.5 py-1 text-xs">
                   {roleLabels[inviteData.role_code || ""] || inviteData.role_code}
                 </Badge>
                 {inviteData.ministry_name && (
@@ -461,7 +461,7 @@ function SignupContent() {
                 type="submit"
                 loading={busy}
                 disabled={busy || !isFormValid}
-                className="w-full h-11 gap-2 mt-2 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-md"
+                className="w-full h-11 gap-2 mt-2 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-xs shadow-md"
               >
                 {!busy && (
                   <>
@@ -475,14 +475,14 @@ function SignupContent() {
 
             <p className="text-center text-xs text-slate-500 pt-2">
               Already have an account?{" "}
-              <Link href="/login" className="text-emerald-700 font-semibold hover:underline">
+              <Link href="/login" className="text-zinc-900 font-semibold hover:underline">
                 Sign in
               </Link>
             </p>
           </div>
         )}
       </main>
-      <footer className="auth-footer">New Life Community Church &middot; Expenses</footer>
+      <footer className="auth-footer">Harvest Generation &middot; Expenses</footer>
     </div>
   );
 }

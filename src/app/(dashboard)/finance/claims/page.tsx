@@ -226,7 +226,7 @@ function FinanceClaimsContent() {
                           <Button
                             size="sm"
                             onClick={() => setPaymentClaim(c)}
-                            className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1 shadow-2xs font-medium px-2.5"
+                            className="h-7 text-xs bg-zinc-900 hover:bg-zinc-800 text-white gap-1 shadow-2xs font-medium px-2.5"
                           >
                             <Banknote className="w-3 h-3" />
                             <span>Pay</span>

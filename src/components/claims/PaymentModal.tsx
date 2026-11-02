@@ -147,7 +147,7 @@ export function PaymentModal({
             <select
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
-              className="flex h-10 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-zinc-700 dark:bg-zinc-900"
+              className="flex h-10 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-900"
             >
               <option value="BANK_TRANSFER">Bank Online Transfer (IBG / DuitNow)</option>
               <option value="CHEQUE">Cheque</option>
@@ -197,7 +197,7 @@ export function PaymentModal({
           onClick={handleConfirm}
           loading={loading}
           disabled={loading || !paymentRef.trim()}
-          className="bg-emerald-700 hover:bg-emerald-800 text-white"
+          className="bg-zinc-900 hover:bg-zinc-800 text-white"
         >
           {loading ? "Processing..." : "Confirm & Mark as Paid"}
         </Button>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   Plus,
@@ -19,7 +19,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ClaimStatusBadge } from "@/components/claims/ClaimStatusBadge";
 import { MobileClaimList } from "@/components/claims/MobileClaimList";
 import { useAuth } from "@/lib/auth/context";
-import { claimsClient } from "@/lib/domains";
+import { claimsClient, workspaceStore } from "@/lib/domains";
 import { Claim } from "@/lib/types/database";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 
@@ -31,35 +31,65 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user) return;
     setClaims(claimsClient.getClaims(user));
+    return workspaceStore.subscribe(() => {
+      setClaims(claimsClient.getClaims(user));
+    });
   }, [user]);
 
-  // Status counts for user (submitted by user or user is claimant)
-  const myClaims = claims.filter(c => c.submitted_by_user_id === user?.id || c.claimant_id === user?.id);
-  const draftCount = myClaims.filter(c => c.status === "DRAFT").length;
-  const pendingCount = myClaims.filter(c =>
-    c.status.startsWith("PENDING_") || c.status === "SUBMITTED"
-  ).length;
-  const returnedCount = myClaims.filter(c => c.status === "RETURNED_FOR_CLARIFICATION").length;
-  const approvedCount = myClaims.filter(c => c.status === "APPROVED" || c.status === "APPROVED_FOR_PAYMENT").length;
-  const paidCount = myClaims.filter(c => c.status === "PAID").length;
-  const totalPaidAmount = myClaims
-    .filter(c => c.status === "PAID")
-    .reduce((sum, c) => sum + Number(c.total_amount), 0);
+  // Memoize user's claims and single-pass status aggregations
+  const {
+    myClaims,
+    draftCount,
+    pendingCount,
+    returnedCount,
+    approvedCount,
+    paidCount,
+    totalPaidAmount,
+  } = useMemo(() => {
+    const mine = claims.filter(c => c.submitted_by_user_id === user?.id || c.claimant_id === user?.id);
+    let drafts = 0;
+    let pending = 0;
+    let returned = 0;
+    let approved = 0;
+    let paid = 0;
+    let paidAmount = 0;
 
-  const filteredRecent = myClaims
-    .filter(c => {
-      if (!search.trim()) return true;
-      const q = search.toLowerCase();
-      return (
-        (c.claim_number && c.claim_number.toLowerCase().includes(q)) ||
-        (c.claimant_name && c.claimant_name.toLowerCase().includes(q)) ||
-        (c.claimant?.full_name && c.claimant.full_name.toLowerCase().includes(q)) ||
-        (c.submitted_by?.full_name && c.submitted_by.full_name.toLowerCase().includes(q)) ||
-        c.purpose.toLowerCase().includes(q) ||
-        (c.ministry?.name && c.ministry.name.toLowerCase().includes(q))
-      );
-    })
-    .slice(0, 8);
+    for (const c of mine) {
+      if (c.status === "DRAFT") drafts++;
+      else if (c.status.startsWith("PENDING_") || c.status === "SUBMITTED") pending++;
+      else if (c.status === "RETURNED_FOR_CLARIFICATION") returned++;
+      else if (c.status === "APPROVED" || c.status === "APPROVED_FOR_PAYMENT") approved++;
+      else if (c.status === "PAID") {
+        paid++;
+        paidAmount += Number(c.total_amount);
+      }
+    }
+
+    return {
+      myClaims: mine,
+      draftCount: drafts,
+      pendingCount: pending,
+      returnedCount: returned,
+      approvedCount: approved,
+      paidCount: paid,
+      totalPaidAmount: paidAmount,
+    };
+  }, [claims, user?.id]);
+
+  const filteredRecent = useMemo(() => {
+    const trimmed = search.trim().toLowerCase();
+    if (!trimmed) return myClaims.slice(0, 8);
+    return myClaims
+      .filter(c =>
+        (c.claim_number && c.claim_number.toLowerCase().includes(trimmed)) ||
+        (c.claimant_name && c.claimant_name.toLowerCase().includes(trimmed)) ||
+        (c.claimant?.full_name && c.claimant.full_name.toLowerCase().includes(trimmed)) ||
+        (c.submitted_by?.full_name && c.submitted_by.full_name.toLowerCase().includes(trimmed)) ||
+        c.purpose.toLowerCase().includes(trimmed) ||
+        (c.ministry?.name && c.ministry.name.toLowerCase().includes(trimmed))
+      )
+      .slice(0, 8);
+  }, [myClaims, search]);
 
   return (
     <AppLayout>
@@ -77,7 +107,7 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-2.5">
             <Link href="/claims/new">
-              <Button size="sm" className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-medium shadow-2xs gap-1.5 h-8">
+              <Button size="sm" className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-medium shadow-2xs gap-1.5 h-8">
                 <Plus className="w-3.5 h-3.5" />
                 <span>New Claim</span>
               </Button>
@@ -206,7 +236,7 @@ export default function DashboardPage() {
                 <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">No claims found</p>
                 <p className="text-[11px] text-zinc-400">Submit a new expense claim to get started.</p>
                 <Link href="/claims/new" className="inline-block mt-2">
-                  <Button size="sm" className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs h-7">
+                  <Button size="sm" className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs h-7">
                     Create Claim
                   </Button>
                 </Link>
@@ -229,7 +259,7 @@ export default function DashboardPage() {
                     {(filteredRecent || []).map((c) => (
                       <tr key={c.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-900/50 transition-colors">
                         <td className="py-3 px-4 font-mono font-medium text-zinc-900 dark:text-zinc-100">
-                          <Link href={`/claims/${c.id}`} className="hover:underline hover:text-emerald-700 dark:hover:text-emerald-400">
+                          <Link href={`/claims/${c.id}`} className="hover:underline hover:text-zinc-700 dark:hover:text-zinc-300">
                             {c.claim_number || "DRAFT"}
                           </Link>
                         </td>
