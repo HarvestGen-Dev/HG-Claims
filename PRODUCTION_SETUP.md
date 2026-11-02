@@ -1,9 +1,9 @@
 # Production Setup
 
-## Verified on 2026-09-10
+## Verified on 2026-11-03
 
-- Hosted project: `ybuxjzanmefqqgoyqqdq` (Singapore).
-- All five repository migrations applied to the previously empty project.
+- Hosted project: `qynumdarrnkqzctineiz` (HG-Claims).
+- All 13 repository migrations applied to the project.
 - All public application tables have RLS enabled; clients cannot insert claims directly.
 - The receipts bucket is private, and anonymous workspace access is denied.
 - Hosted database security advisor: no warnings or errors.

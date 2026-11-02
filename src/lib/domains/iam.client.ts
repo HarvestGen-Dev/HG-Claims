@@ -84,6 +84,26 @@ export class IamClient {
     });
     return this.getProfileById(id)!;
   }
+
+  async inviteUserByEmail(data: {
+    email: string;
+    full_name: string;
+    phone?: string;
+    roles: RoleCode[];
+    ministry_id?: string | null;
+  }): Promise<{ success: boolean; user_id?: string }> {
+    const response = await fetch("/api/users/invite", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(body.error || "Unable to send email invitation.");
+    }
+    await workspaceStore.refreshDomain("iam");
+    return body;
+  }
 }
 
 export const iamClient = new IamClient();

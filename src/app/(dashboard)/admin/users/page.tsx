@@ -23,7 +23,9 @@ import {
   Ban,
   Users,
   AlertCircle,
-  Trash2
+  Trash2,
+  Mail,
+  Send
 } from "lucide-react";
 import { showToast } from "@/lib/utils/toast";
 
@@ -39,7 +41,17 @@ export default function UserManagementPage() {
   const [selectedRoles, setSelectedRoles] = useState<RoleCode[]>([]);
   const [selectedMinistryId, setSelectedMinistryId] = useState<string>("");
 
-  // Create invitation modal state
+  // Email user creation / invitation modal state
+  const [creatingEmailUser, setCreatingEmailUser] = useState(false);
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPhone, setNewUserPhone] = useState("");
+  const [newUserRoles, setNewUserRoles] = useState<RoleCode[]>(["MINISTRY_LEADER"]);
+  const [newUserMinistryId, setNewUserMinistryId] = useState<string>("");
+  const [emailInviteError, setEmailInviteError] = useState("");
+  const [emailInviteBusy, setEmailInviteBusy] = useState(false);
+
+  // Create invitation link modal state
   const [creatingInvite, setCreatingInvite] = useState(false);
   const [deletingInvite, setDeletingInvite] = useState<SignupInvitation | null>(null);
   const [isDeletingInvite, setIsDeletingInvite] = useState(false);
@@ -189,6 +201,67 @@ export default function UserManagementPage() {
     }
   };
 
+  const resetEmailInviteModal = () => {
+    setCreatingEmailUser(false);
+    setNewUserName("");
+    setNewUserEmail("");
+    setNewUserPhone("");
+    setNewUserRoles(["MINISTRY_LEADER"]);
+    setNewUserMinistryId(ministries[0]?.id || "");
+    setEmailInviteError("");
+  };
+
+  const handleToggleNewUserRole = (role: RoleCode) => {
+    if (newUserRoles.includes(role)) {
+      if (newUserRoles.length === 1) return;
+      setNewUserRoles(newUserRoles.filter((r) => r !== role));
+    } else {
+      setNewUserRoles([...newUserRoles, role]);
+    }
+  };
+
+  const handleInviteUserByEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailInviteError("");
+
+    if (!newUserName.trim()) {
+      setEmailInviteError("Please enter the user's full name.");
+      return;
+    }
+    if (!newUserEmail.trim()) {
+      setEmailInviteError("Please enter a valid email address.");
+      return;
+    }
+    if (newUserRoles.includes("MINISTRY_LEADER") && !newUserMinistryId) {
+      setEmailInviteError("Please select an assigned ministry for the Ministry Leader.");
+      return;
+    }
+
+    setEmailInviteBusy(true);
+    try {
+      await iamClient.inviteUserByEmail({
+        email: newUserEmail.trim(),
+        full_name: newUserName.trim(),
+        phone: newUserPhone.trim() || undefined,
+        roles: newUserRoles,
+        ministry_id: newUserMinistryId || null,
+      });
+      setProfiles(iamClient.getProfiles());
+      resetEmailInviteModal();
+      setActiveTab("users");
+      showToast.success(
+        `Invitation email sent to ${newUserEmail.trim()}.`,
+        "User Created & Invited"
+      );
+    } catch (err: unknown) {
+      setEmailInviteError(
+        err instanceof Error ? err.message : "Unable to send email invitation."
+      );
+    } finally {
+      setEmailInviteBusy(false);
+    }
+  };
+
   const resetInviteModal = () => {
     setCreatingInvite(false);
     setGeneratedLink(null);
@@ -212,19 +285,30 @@ export default function UserManagementPage() {
               User & Invitation Management
             </h1>
             <p className="text-xs text-slate-500 mt-1">
-              Manage authorized Ministry Leaders, Finance Officers, and generate secure sign-up links.
+              Invite users directly by email, manage system roles, or generate shareable sign-up links.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
+              variant="outline"
               onClick={() => {
                 resetInviteModal();
                 setCreatingInvite(true);
               }}
-              className="gap-2 bg-zinc-900 hover:bg-zinc-800 text-white"
+              className="gap-2 text-xs"
             >
-              <Plus className="h-4 w-4" />
+              <Link2 className="h-4 w-4" />
               Create Sign-up Link
+            </Button>
+            <Button
+              onClick={() => {
+                resetEmailInviteModal();
+                setCreatingEmailUser(true);
+              }}
+              className="gap-2 bg-zinc-900 hover:bg-zinc-800 text-white text-xs"
+            >
+              <Mail className="h-4 w-4" />
+              Invite User by Email
             </Button>
           </div>
         </div>
@@ -235,7 +319,7 @@ export default function UserManagementPage() {
             onClick={() => setActiveTab("users")}
             className={`pb-3 px-4 text-sm font-semibold border-b-2 flex items-center gap-2 transition-colors ${
               activeTab === "users"
-                ? "border-emerald-700 text-emerald-800"
+                ? "border-zinc-900 text-zinc-900"
                 : "border-transparent text-slate-500 hover:text-slate-700"
             }`}
           >
@@ -246,7 +330,7 @@ export default function UserManagementPage() {
             onClick={() => setActiveTab("invitations")}
             className={`pb-3 px-4 text-sm font-semibold border-b-2 flex items-center gap-2 transition-colors ${
               activeTab === "invitations"
-                ? "border-emerald-700 text-emerald-800"
+                ? "border-zinc-900 text-zinc-900"
                 : "border-transparent text-slate-500 hover:text-slate-700"
             }`}
           >
@@ -671,6 +755,149 @@ export default function UserManagementPage() {
           </Card>
         )}
       </div>
+
+      {/* Invite User by Email Dialog */}
+      <Dialog open={creatingEmailUser} onOpenChange={(open) => !open && !emailInviteBusy && resetEmailInviteModal()}>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Mail className="w-5 h-5 text-zinc-900" />
+            Create & Invite User by Email
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleInviteUserByEmail} className="space-y-4 my-2 text-xs">
+          <p className="text-slate-500 leading-relaxed">
+            This provisions the user account immediately with the assigned roles and sends an invitation email so they can set their password.
+          </p>
+
+          <div className="space-y-1.5">
+            <label htmlFor="invite-full-name" className="font-semibold text-slate-700 block">
+              Full Name <span className="text-red-500">*</span>
+            </label>
+            <Input
+              id="invite-full-name"
+              placeholder="e.g. Sarah Tan"
+              value={newUserName}
+              onChange={(e) => setNewUserName(e.target.value)}
+              required
+              disabled={emailInviteBusy}
+              className="h-9"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label htmlFor="invite-email" className="font-semibold text-slate-700 block">
+                Email Address <span className="text-red-500">*</span>
+              </label>
+              <Input
+                id="invite-email"
+                type="email"
+                placeholder="user@harvestgen.org"
+                value={newUserEmail}
+                onChange={(e) => setNewUserEmail(e.target.value)}
+                required
+                disabled={emailInviteBusy}
+                className="h-9"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="invite-phone" className="font-semibold text-slate-700 block">
+                Mobile Phone <span className="text-slate-400 font-normal">(Optional)</span>
+              </label>
+              <Input
+                id="invite-phone"
+                type="tel"
+                placeholder="+60 12-345 6789"
+                value={newUserPhone}
+                onChange={(e) => setNewUserPhone(e.target.value)}
+                disabled={emailInviteBusy}
+                className="h-9"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="invite-ministry" className="font-semibold text-slate-700 flex items-center justify-between">
+              <span>
+                Assigned Ministry{" "}
+                {newUserRoles.includes("MINISTRY_LEADER") && <span className="text-red-500">*</span>}
+              </span>
+              <span className="text-[10px] text-slate-400 font-normal">
+                {newUserRoles.includes("MINISTRY_LEADER") ? "Required for Ministry Leader" : "Optional"}
+              </span>
+            </label>
+            <select
+              id="invite-ministry"
+              value={newUserMinistryId}
+              onChange={(e) => setNewUserMinistryId(e.target.value)}
+              required={newUserRoles.includes("MINISTRY_LEADER")}
+              disabled={emailInviteBusy}
+              className="w-full border border-slate-300 rounded-md p-2 text-xs bg-white h-9 focus:ring-1 focus:ring-zinc-900"
+            >
+              <option value="">-- Select a Ministry --</option>
+              {(ministries || []).map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name} ({m.code})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2 pt-1">
+            <label className="font-semibold text-slate-700 block">Assign System Role(s)</label>
+            <div className="grid grid-cols-1 gap-2">
+              {activeRoles.map((r) => {
+                const isChecked = newUserRoles.includes(r.code);
+                return (
+                  <label
+                    key={r.code}
+                    onClick={() => !emailInviteBusy && handleToggleNewUserRole(r.code)}
+                    className={`flex items-start justify-between p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                      isChecked
+                        ? "bg-zinc-100 border-zinc-900 text-zinc-950 font-semibold"
+                        : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100/60"
+                    }`}
+                  >
+                    <div>
+                      <div>{r.label}</div>
+                      <div className="text-[11px] font-normal text-slate-500 mt-0.5">{r.description}</div>
+                    </div>
+                    {isChecked && <CheckCircle2 className="w-4 h-4 text-zinc-900 shrink-0 mt-0.5" />}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {emailInviteError && (
+            <div className="p-2.5 bg-red-50 border border-red-200 rounded text-xs text-red-700 flex items-start gap-1.5">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
+              <span>{emailInviteError}</span>
+            </div>
+          )}
+
+          <DialogFooter className="mt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={resetEmailInviteModal}
+              disabled={emailInviteBusy}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              loading={emailInviteBusy}
+              disabled={emailInviteBusy}
+              className="bg-zinc-900 hover:bg-zinc-800 text-white gap-1.5"
+            >
+              {!emailInviteBusy && <Send className="w-3.5 h-3.5" />}
+              <span>{emailInviteBusy ? "Sending Invite..." : "Create & Send Email Invite"}</span>
+            </Button>
+          </DialogFooter>
+        </form>
+      </Dialog>
 
       {/* Create Sign-up Link Dialog */}
       <Dialog open={creatingInvite} onOpenChange={(open) => !open && resetInviteModal()}>

@@ -1,13 +1,13 @@
 -- ============================================================================
--- New Life Expense Claim Management System (NLCC) - Master Seed Data
+-- Harvest Generation Expense Claim Management System (HG) - Master Seed Data
 -- ============================================================================
 
 -- 1. Insert System Settings
 INSERT INTO public.system_settings (key, value, description)
 VALUES
-    ('claim_numbering', '{"prefix": "NLCC", "year_format": "YYYY", "digits": 6}'::jsonb, 'Configuration for sequential claim numbers'),
+    ('claim_numbering', '{"prefix": "HG", "year_format": "YYYY", "digits": 6}'::jsonb, 'Configuration for sequential claim numbers'),
     ('approval_thresholds', '{"final_approval_threshold": 500.00, "currency": "MYR"}'::jsonb, 'Thresholds requiring executive final approval'),
-    ('organization_profile', '{"name": "NewLife Community Church", "short_name": "NLCC", "address": "Jalan Universiti, 46200 Petaling Jaya, Selangor, Malaysia", "phone": "+60 3-7956 1234", "email": "finance@newlife.org.my"}'::jsonb, 'Church branding and contact details'),
+    ('organization_profile', '{"name": "Harvest Generation", "short_name": "HG", "address": "Petaling Jaya, Selangor, Malaysia", "phone": "+60 3-7956 1234", "email": "finance@harvestgeneration.org"}'::jsonb, 'Organization branding and contact details'),
     ('notification_settings', '{"email_enabled": true, "in_app_enabled": true, "notify_on_submit": true, "notify_on_approval": true, "notify_on_payment": true}'::jsonb, 'Global notification switches')
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 
@@ -50,5 +50,5 @@ SELECT code || '-GENERAL', name || ' General', id FROM public.ministries
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO public.system_settings (key, value) VALUES
-('claim_form_config', '{"declaration_text":"I confirm that these expenses were incurred for church ministry purposes, have not previously been reimbursed, and are supported by the attached receipts.","allow_claimant_change_ministry":true,"require_vendor_name":false,"require_receipt_for_all_expenses":true,"enable_internal_reference":true,"max_file_size_mb":10,"max_attachment_count":15,"allowed_payment_methods":[{"code":"PERSONAL_REIMBURSEMENT","label":"Personal reimbursement","enabled":true},{"code":"CHURCH_CARD","label":"Church card","enabled":true},{"code":"DIRECT_VENDOR_PAYMENT","label":"Direct vendor payment","enabled":true},{"code":"OTHER","label":"Other","enabled":true}]}')
+('claim_form_config', '{"declaration_text":"I confirm that these expenses were incurred for legitimate ministry purposes in accordance with Harvest Generation financial policies, have not previously been reimbursed, and are supported by the attached receipts.","allow_claimant_change_ministry":true,"require_vendor_name":false,"require_receipt_for_all_expenses":true,"enable_internal_reference":true,"max_file_size_mb":10,"max_attachment_count":15,"allowed_payment_methods":[{"code":"PERSONAL_REIMBURSEMENT","label":"Personal reimbursement","enabled":true},{"code":"CHURCH_CARD","label":"Church card","enabled":true},{"code":"DIRECT_VENDOR_PAYMENT","label":"Direct vendor payment","enabled":true},{"code":"OTHER","label":"Other","enabled":true}]}')
 ON CONFLICT (key) DO NOTHING;

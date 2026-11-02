@@ -2,23 +2,105 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-const schema = z.object({ email: z.string().email().max(254), full_name: z.string().trim().min(1).max(150) }).strict();
+
+const roleEnum = z.enum(["MINISTRY_LEADER", "FINANCE_OFFICER", "SYSTEM_ADMIN"]);
+
+const schema = z
+  .object({
+    email: z.string().email().max(254),
+    full_name: z.string().trim().min(1).max(150),
+    phone: z.string().trim().max(50).optional(),
+    role_code: roleEnum.optional(),
+    roles: z.array(roleEnum).min(1).optional(),
+    ministry_id: z.string().uuid().nullable().optional(),
+  })
+  .strict();
+
 export async function POST(request: NextRequest) {
-  if (request.headers.get("origin") !== request.nextUrl.origin) return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
+  if (request.headers.get("origin") !== request.nextUrl.origin) {
+    return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
+  }
   try {
     const client = await createClient();
-    const { data: { user } } = await client.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-    const { data, error } = await client.rpc("nlcc_snapshot");
+    const {
+      data: { user },
+    } = await client.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    }
+
+    let { data, error } = await client.rpc("nlcc_domain_snapshot", { p_domain: "iam" });
+    if (error && (error.code === "PGRST202" || error.message?.includes("nlcc_domain_snapshot"))) {
+      ({ data, error } = await client.rpc("nlcc_snapshot"));
+    }
+
     const profile = data?.profiles?.find((p: { id: string }) => p.id === user.id);
-    if (error || !profile?.roles?.includes("SYSTEM_ADMIN")) return NextResponse.json({ error: "Administrator access required." }, { status: 403 });
+    if (error || !profile?.roles?.includes("SYSTEM_ADMIN")) {
+      return NextResponse.json({ error: "Administrator access required." }, { status: 403 });
+    }
+
     const body = schema.parse(await request.json());
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-    if (!appUrl) return NextResponse.json({ error: "Application URL is not configured." }, { status: 503 });
-    const result = await createAdminClient().auth.admin.inviteUserByEmail(body.email, {
-      data: { full_name: body.full_name }, redirectTo: appUrl + "/auth/callback?next=/reset-password",
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+    if (!appUrl) {
+      return NextResponse.json({ error: "Application URL is not configured." }, { status: 503 });
+    }
+
+    const admin = createAdminClient();
+    const result = await admin.auth.admin.inviteUserByEmail(body.email, {
+      data: { full_name: body.full_name },
+      redirectTo: `${appUrl}/auth/callback?next=/reset-password`,
     });
-    if (result.error) return NextResponse.json({ error: "The invitation could not be sent. Check whether the account exists and that email delivery is configured." }, { status: 400 });
-    return NextResponse.json({ success: true }, { headers: { "Cache-Control": "no-store" } });
-  } catch { return NextResponse.json({ error: "Check the name and email address, then try again." }, { status: 400 }); }
+
+    if (result.error || !result.data?.user) {
+      return NextResponse.json(
+        {
+          error:
+            result.error?.message ||
+            "The invitation could not be sent. Check whether the account already exists and that email delivery is configured.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const invitedUserId = result.data.user.id;
+    const assignedRoles =
+      body.roles && body.roles.length > 0
+        ? body.roles
+        : [body.role_code || "MINISTRY_LEADER"];
+
+    // Provision profile and roles through the audited domain command
+    const { error: profileError } = await client.rpc("nlcc_command", {
+      action: "profile",
+      payload: {
+        id: invitedUserId,
+        data: {
+          full_name: body.full_name,
+          phone: body.phone || null,
+          ministry_id: body.ministry_id || null,
+          default_ministry_id: body.ministry_id || null,
+          status: "ACTIVE",
+          roles: assignedRoles,
+        },
+      },
+    });
+
+    if (profileError) {
+      return NextResponse.json({ error: profileError.message }, { status: 400 });
+    }
+
+    await admin
+      .from("profiles")
+      .update({ onboarding_completed_at: new Date().toISOString() })
+      .eq("id", invitedUserId);
+
+    return NextResponse.json(
+      { success: true, user_id: invitedUserId },
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  } catch {
+    return NextResponse.json(
+      { error: "Check the name, email address, and role details, then try again." },
+      { status: 400 }
+    );
+  }
 }
