@@ -43,10 +43,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
   useEffect(() => {
     let cancelled = false;
+    let redirecting = false;
     let unsubscribe = () => {};
     async function restore() {
       try {
+        const rawHash = typeof window !== "undefined" ? window.location.hash : "";
         const client = createClient();
+        if (rawHash.includes("access_token=")) {
+          const hashParams = new URLSearchParams(rawHash.replace(/^#/, ""));
+          const accessToken = hashParams.get("access_token");
+          const refreshToken = hashParams.get("refresh_token");
+          const hashType = hashParams.get("type");
+          if (accessToken && refreshToken) {
+            await client.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            window.history.replaceState(
+              null,
+              "",
+              window.location.pathname + window.location.search
+            );
+            if (hashType === "invite" && window.location.pathname !== "/onboarding") {
+              redirecting = true;
+              window.location.replace("/onboarding?invite=1");
+              return;
+            }
+            if (hashType === "recovery" && window.location.pathname !== "/reset-password") {
+              redirecting = true;
+              window.location.replace("/reset-password");
+              return;
+            }
+          }
+        }
         const { data: { user: authenticated } } = await client.auth.getUser();
         if (authenticated && !cancelled) await refreshUser();
         const { data } = client.auth.onAuthStateChange(event => {
@@ -54,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         unsubscribe = () => data.subscription.unsubscribe();
       } catch (cause) { if (!cancelled) setError(cause instanceof Error ? cause.message : "Unable to load your account."); }
-      finally { if (!cancelled) setIsLoading(false); }
+      finally { if (!cancelled && !redirecting) setIsLoading(false); }
     }
     void restore();
     return () => { cancelled = true; unsubscribe(); };
@@ -76,7 +105,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoading || !user) return;
     const onboarded = isOnboardingCompleted(user);
-    if (onboarded && pathname === "/onboarding") {
+    const isInviteFlow =
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("invite") === "1";
+    if (!onboarded && pathname !== "/onboarding" && pathname !== "/reset-password") {
+      window.location.assign("/onboarding");
+    } else if (onboarded && pathname === "/onboarding" && !isInviteFlow) {
       window.location.assign("/dashboard");
     }
   }, [user, pathname, isLoading]);

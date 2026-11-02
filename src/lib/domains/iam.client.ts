@@ -87,7 +87,7 @@ export class IamClient {
 
   async inviteUserByEmail(data: {
     email: string;
-    full_name: string;
+    full_name?: string;
     phone?: string;
     roles: RoleCode[];
     ministry_id?: string | null;

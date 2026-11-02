@@ -8,7 +8,7 @@ const roleEnum = z.enum(["MINISTRY_LEADER", "FINANCE_OFFICER", "SYSTEM_ADMIN"]);
 const schema = z
   .object({
     email: z.string().email().max(254),
-    full_name: z.string().trim().min(1).max(150),
+    full_name: z.string().trim().max(150).optional(),
     phone: z.string().trim().max(50).optional(),
     role_code: roleEnum.optional(),
     roles: z.array(roleEnum).min(1).optional(),
@@ -45,10 +45,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Application URL is not configured." }, { status: 503 });
     }
 
+    const fallbackName =
+      body.full_name && body.full_name.trim().length > 0
+        ? body.full_name.trim()
+        : body.email.split("@")[0];
+
     const admin = createAdminClient();
     const result = await admin.auth.admin.inviteUserByEmail(body.email, {
-      data: { full_name: body.full_name },
-      redirectTo: `${appUrl}/auth/callback?next=/reset-password`,
+      data: { full_name: fallbackName },
+      redirectTo: `${appUrl}/onboarding?invite=1`,
     });
 
     if (result.error || !result.data?.user) {
@@ -74,7 +79,7 @@ export async function POST(request: NextRequest) {
       payload: {
         id: invitedUserId,
         data: {
-          full_name: body.full_name,
+          full_name: fallbackName,
           phone: body.phone || null,
           ministry_id: body.ministry_id || null,
           default_ministry_id: body.ministry_id || null,
@@ -90,7 +95,7 @@ export async function POST(request: NextRequest) {
 
     await admin
       .from("profiles")
-      .update({ onboarding_completed_at: new Date().toISOString() })
+      .update({ onboarding_completed_at: null })
       .eq("id", invitedUserId);
 
     return NextResponse.json(

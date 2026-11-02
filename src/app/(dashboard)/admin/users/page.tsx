@@ -224,10 +224,6 @@ export default function UserManagementPage() {
     e.preventDefault();
     setEmailInviteError("");
 
-    if (!newUserName.trim()) {
-      setEmailInviteError("Please enter the user's full name.");
-      return;
-    }
     if (!newUserEmail.trim()) {
       setEmailInviteError("Please enter a valid email address.");
       return;
@@ -241,7 +237,7 @@ export default function UserManagementPage() {
     try {
       await iamClient.inviteUserByEmail({
         email: newUserEmail.trim(),
-        full_name: newUserName.trim(),
+        full_name: newUserName.trim() || undefined,
         phone: newUserPhone.trim() || undefined,
         roles: newUserRoles,
         ministry_id: newUserMinistryId || null,
@@ -766,18 +762,19 @@ export default function UserManagementPage() {
         </DialogHeader>
         <form onSubmit={handleInviteUserByEmail} className="space-y-4 my-2 text-xs">
           <p className="text-slate-500 leading-relaxed">
-            This provisions the user account immediately with the assigned roles and sends an invitation email so they can set their password.
+            Sends an invitation email with a registration link where the user will enter their full name, mobile number, and password.
           </p>
 
           <div className="space-y-1.5">
-            <label htmlFor="invite-full-name" className="font-semibold text-slate-700 block">
-              Full Name <span className="text-red-500">*</span>
+            <label htmlFor="invite-email" className="font-semibold text-slate-700 block">
+              Email Address <span className="text-red-500">*</span>
             </label>
             <Input
-              id="invite-full-name"
-              placeholder="e.g. Sarah Tan"
-              value={newUserName}
-              onChange={(e) => setNewUserName(e.target.value)}
+              id="invite-email"
+              type="email"
+              placeholder="user@harvestgen.org"
+              value={newUserEmail}
+              onChange={(e) => setNewUserEmail(e.target.value)}
               required
               disabled={emailInviteBusy}
               className="h-9"
@@ -786,16 +783,14 @@ export default function UserManagementPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label htmlFor="invite-email" className="font-semibold text-slate-700 block">
-                Email Address <span className="text-red-500">*</span>
+              <label htmlFor="invite-full-name" className="font-semibold text-slate-700 block">
+                Full Name <span className="text-slate-400 font-normal">(Optional — user can edit)</span>
               </label>
               <Input
-                id="invite-email"
-                type="email"
-                placeholder="user@harvestgen.org"
-                value={newUserEmail}
-                onChange={(e) => setNewUserEmail(e.target.value)}
-                required
+                id="invite-full-name"
+                placeholder="e.g. Sarah Tan"
+                value={newUserName}
+                onChange={(e) => setNewUserName(e.target.value)}
                 disabled={emailInviteBusy}
                 className="h-9"
               />

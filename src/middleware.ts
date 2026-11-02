@@ -33,7 +33,7 @@ export async function middleware(request: NextRequest) {
     },
   } });
   const { data: { user } } = await client.auth.getUser();
-  const publicPath = ["/", "/login", "/signup", "/forgot-password", "/reset-password", "/auth/callback", "/api/health"].includes(request.nextUrl.pathname);
+  const publicPath = ["/", "/login", "/signup", "/ onboarding", "/onboarding", "/forgot-password", "/reset-password", "/auth/callback", "/api/health"].includes(request.nextUrl.pathname);
   if (!user && !publicPath && !request.nextUrl.pathname.startsWith("/api/")) {
     const login = request.nextUrl.clone();
     login.pathname = "/login";

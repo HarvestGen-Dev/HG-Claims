@@ -3,20 +3,28 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
+import { isOnboardingCompleted } from "@/lib/auth/permissions";
 
 export default function HomePage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash.includes("access_token=")) {
+      return;
+    }
     if (!isLoading) {
       if (isAuthenticated) {
-        router.replace("/dashboard");
+        if (!isOnboardingCompleted(user)) {
+          router.replace("/onboarding?invite=1");
+        } else {
+          router.replace("/dashboard");
+        }
       } else {
         router.replace("/login");
       }
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, router, user]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950">
