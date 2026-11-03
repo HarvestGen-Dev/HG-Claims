@@ -26,7 +26,7 @@ import {
   Cell
 } from "recharts";
 
-const COLORS = ["#d95f3b", "#6b94b8", "#5b6c32", "#d4a44b", "#a3bfd9", "#a0482c", "#889957", "#3a3a3a"];
+const COLORS = ["#D95F3B", "#A3BFD9", "#5B6C32", "#3A3A3A", "#FDF6EF"];
 
 export default function FinancialReportsPage() {
   const { user } = useAuth();

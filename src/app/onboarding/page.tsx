@@ -544,7 +544,7 @@ function OnboardingContent() {
 
             <Button
               disabled={busy}
-              className="w-full h-11 gap-2 mt-4 bg-zinc-900 hover:bg-zinc-800 text-white"
+              className="w-full h-11 gap-2 mt-4"
               type="submit"
             >
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
