@@ -23,13 +23,9 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
   CartesianGrid
 } from "recharts";
 
-const COLORS = ["#18181b", "#3f3f46", "#52525b", "#71717a", "#2563eb", "#d97706", "#7c3aed", "#a1a1aa"];
 
 export default function FinanceDashboardPage() {
   const { user } = useAuth();
@@ -138,7 +134,7 @@ export default function FinanceDashboardPage() {
         {/* Analytics Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Spend by Ministry */}
-          <Card className="lg:col-span-7 border-zinc-200/80 shadow-2xs">
+          <Card className="lg:col-span-12 border-zinc-200/80 shadow-2xs">
             <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800 flex flex-row items-center justify-between">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                 Expenditure by Ministry
@@ -163,41 +159,7 @@ export default function FinanceDashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Spend by Cost Centre */}
-          <Card className="lg:col-span-5 border-zinc-200/80 shadow-2xs">
-            <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800 flex flex-row items-center justify-between">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                Cost Centre Distribution
-              </CardTitle>
-              <span className="text-[10px] text-zinc-400">By total spend</span>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="h-60 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={stats?.byCostCentre || []}
-                      dataKey="total"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={48}
-                      outerRadius={76}
-                      paddingAngle={3}
-                    >
-                      {(stats?.byCostCentre || []).map((_: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(val: any) => [`RM ${Number(val).toFixed(2)}`, "Amount"]}
-                      contentStyle={{ borderRadius: '8px', fontSize: '11px', border: '1px solid #e4e4e7', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+
         </div>
       </div>
     </AppLayout>

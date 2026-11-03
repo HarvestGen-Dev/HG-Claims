@@ -552,7 +552,6 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                       </div>
 
                       <div className="flex items-center justify-between text-[11px] text-zinc-500 pt-1">
-                        <span>Cost Centre: <strong className="text-zinc-700 dark:text-zinc-300 font-mono">{exp.cost_centre?.code || "-"}</strong></span>
                         {exp.vendor && <span>Merchant: <strong className="text-zinc-700 dark:text-zinc-300">{exp.vendor}</strong></span>}
                       </div>
 
@@ -580,7 +579,6 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                     <tr className="bg-zinc-50/50 border-b border-zinc-100 dark:bg-zinc-900/50 dark:border-zinc-800 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
                       <th className="py-2 px-4 w-8">#</th>
                       <th className="py-2 px-4 w-24">Date</th>
-                      <th className="py-2 px-4 w-36">Cost Centre</th>
                       <th className="py-2 px-4">Description</th>
                       <th className="py-2 px-4 w-28">Merchant</th>
                       <th className="py-2 px-4 w-24 text-center">Receipt</th>
@@ -594,9 +592,6 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                         <tr key={exp.id || idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/40">
                           <td className="py-2.5 px-4 text-zinc-400 font-mono text-[11px]">{idx + 1}</td>
                           <td className="py-2.5 px-4 text-zinc-500 font-mono text-[11px]">{formatDate(exp.expense_date)}</td>
-                          <td className="py-2.5 px-4 font-mono text-[11px] text-zinc-600 dark:text-zinc-400">
-                            {exp.cost_centre?.code || "-"}
-                          </td>
                           <td className="py-2.5 px-4 text-zinc-900 dark:text-zinc-100">
                             <span>{exp.description}</span>
                             {exp.notes && (

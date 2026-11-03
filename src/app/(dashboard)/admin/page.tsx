@@ -30,12 +30,6 @@ export default function AdminOverviewPage() {
       href: "/admin/ministries",
     },
     {
-      title: "Budget Cost Centres",
-      desc: "Define budget line codes and link them to respective church ministries.",
-      icon: <PieChart className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />,
-      href: "/admin/cost-centres",
-    },
-    {
       title: "Approval Workflows",
       desc: "View the direct Finance Review and payment process.",
       icon: <GitBranch className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />,

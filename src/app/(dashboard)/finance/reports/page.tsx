@@ -20,23 +20,17 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-  PieChart,
-  Pie,
-  Cell
 } from "recharts";
 
-const COLORS = ["#18181b", "#3f3f46", "#52525b", "#71717a", "#2563eb", "#d97706", "#7c3aed", "#a1a1aa"];
 
 export default function FinancialReportsPage() {
   const { user } = useAuth();
   const [claims, setClaims] = useState<Claim[]>([]);
   const [selectedMinistry, setSelectedMinistry] = useState("ALL");
-  const [selectedCostCentre, setSelectedCostCentre] = useState("ALL");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
   const ministries = masterDataClient.getMinistries();
-  const costCentres = masterDataClient.getCostCentres();
 
   useEffect(() => {
     if (!user) return;
@@ -53,18 +47,12 @@ export default function FinancialReportsPage() {
     totalPaid,
     averageClaim,
     ministryChartData,
-    costCentreChartData,
   } = useMemo(() => {
-    const costCentreById = new Map(costCentres.map(cc => [cc.id, `${cc.code} - ${cc.name}`]));
 
     const matching = claims.filter((c) => {
       if (selectedMinistry !== "ALL" && c.ministry_id !== selectedMinistry) return false;
       if (startDate && c.claim_date < startDate) return false;
       if (endDate && c.claim_date > endDate) return false;
-      if (selectedCostCentre !== "ALL") {
-        const hasCostCentre = (c.expenses || []).some(e => e.cost_centre_id === selectedCostCentre);
-        if (!hasCostCentre) return false;
-      }
       return true;
     });
 
@@ -72,7 +60,6 @@ export default function FinancialReportsPage() {
     let paidSum = 0;
     const paidList: Claim[] = [];
     const ministryDataMap: Record<string, number> = {};
-    const costCentreDataMap: Record<string, number> = {};
 
     for (const c of matching) {
       const amt = Number(c.total_amount);
@@ -84,10 +71,6 @@ export default function FinancialReportsPage() {
       const mName = c.ministry?.name || "Other";
       ministryDataMap[mName] = (ministryDataMap[mName] || 0) + amt;
 
-      for (const e of c.expenses || []) {
-        const ccName = (e.cost_centre_id && costCentreById.get(e.cost_centre_id)) || "General";
-        costCentreDataMap[ccName] = (costCentreDataMap[ccName] || 0) + Number(e.amount);
-      }
     }
 
     return {
@@ -97,9 +80,8 @@ export default function FinancialReportsPage() {
       totalPaid: paidSum,
       averageClaim: matching.length > 0 ? claimedSum / matching.length : 0,
       ministryChartData: Object.entries(ministryDataMap).map(([name, total]) => ({ name, total })),
-      costCentreChartData: Object.entries(costCentreDataMap).map(([name, total]) => ({ name, total })),
     };
-  }, [claims, costCentres, selectedMinistry, selectedCostCentre, startDate, endDate]);
+  }, [claims, selectedMinistry, startDate, endDate]);
 
   const handleExportCsv = () => {
     const csv = generateClaimsCsv(filtered);
@@ -146,19 +128,7 @@ export default function FinancialReportsPage() {
             </select>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">Cost Centre</label>
-            <select
-              value={selectedCostCentre}
-              onChange={(e) => setSelectedCostCentre(e.target.value)}
-              className="h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
-            >
-              <option value="ALL">All Cost Centres</option>
-              {costCentres.map((cc) => (
-                <option key={cc.id} value={cc.id}>{cc.code} - {cc.name}</option>
-              ))}
-            </select>
-          </div>
+
 
           <div className="space-y-1">
             <label className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">From Date</label>
@@ -210,7 +180,7 @@ export default function FinancialReportsPage() {
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <Card className="lg:col-span-7 border-zinc-200/80 shadow-2xs">
+          <Card className="lg:col-span-12 border-zinc-200/80 shadow-2xs">
             <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                 Expenditure by Ministry
@@ -231,36 +201,7 @@ export default function FinancialReportsPage() {
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-5 border-zinc-200/80 shadow-2xs">
-            <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                Cost Centre Distribution
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="h-64 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={costCentreChartData}
-                      dataKey="total"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      innerRadius={45}
-                      paddingAngle={3}
-                    >
-                      {costCentreChartData.map((_, idx) => (
-                        <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(val: any) => [`RM ${Number(val).toFixed(2)}`, "Spend"]} contentStyle={{ borderRadius: "8px", fontSize: "11px", border: "1px solid #e4e4e7" }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+
         </div>
       </div>
     </AppLayout>

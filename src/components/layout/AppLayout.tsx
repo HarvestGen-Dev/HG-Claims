@@ -78,9 +78,9 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col antialiased font-sans">
-      <div className="flex h-screen overflow-hidden">
+      <div className="flex h-dvh overflow-hidden">
         {/* Desktop Fixed Sidebar */}
-        <div className="hidden lg:flex lg:w-64 lg:flex-col lg:inset-y-0 z-30">
+        <div className="hidden lg:flex lg:w-[249px] lg:flex-col lg:inset-y-0 z-30">
           <Sidebar />
         </div>
 
@@ -105,7 +105,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         {/* Main Content Area */}
         <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
           <TopHeader onToggleMobileMenu={() => setMobileMenuOpen(true)} mobileMenuOpen={mobileMenuOpen} />
-          <main id="main-content" className="workspace-content flex-1 min-w-0 p-3.5 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24 lg:pb-8">
+          <main id="main-content" className="workspace-content flex-1 min-w-0 p-4 sm:p-7 lg:px-11 lg:py-9 max-w-[1490px] w-full mx-auto pb-24 lg:pb-8">
             {(pathname.startsWith("/admin") && !hasRole("SYSTEM_ADMIN")) ||
              (pathname.startsWith("/finance") && !hasRole("FINANCE_OFFICER")) ||
              (pathname.startsWith("/approvals") && !hasRole("FINANCE_OFFICER") && !hasRole("SYSTEM_ADMIN"))

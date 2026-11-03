@@ -4,7 +4,7 @@ import React, { useState, useRef } from "react";
 import { Plus, Trash2, Copy, UploadCloud, FileText, Image as ImageIcon, File, Eye, X, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CostCentre, ClaimAttachment } from "@/lib/types/database";
+import { ClaimAttachment } from "@/lib/types/database";
 import { formatCurrency, formatFileSize } from "@/lib/utils/formatters";
 import { calculateTotalAmount } from "@/lib/utils/calculations";
 import { ReceiptViewerModal } from "./ReceiptViewerModal";
@@ -39,8 +39,6 @@ export interface ExpenseItemDraft {
 interface ExpenseItemsEditorProps {
   expenses: ExpenseItemDraft[];
   categories?: any[];
-  costCentres: CostCentre[];
-  ministryId?: string;
   userId: string;
   onChange: (items: ExpenseItemDraft[]) => void;
   disabled?: boolean;
@@ -50,8 +48,6 @@ interface ExpenseItemsEditorProps {
 export function ExpenseItemsEditor({
   expenses,
   categories: _categories,
-  costCentres,
-  ministryId,
   userId,
   onChange,
   disabled = false,
@@ -63,13 +59,10 @@ export function ExpenseItemsEditor({
   const [uploadErrors, setUploadErrors] = useState<Record<number, string>>({});
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
-  const availableCostCentres = (costCentres || []).filter(
-    (cc) => !ministryId || !cc.ministry_id || cc.ministry_id === ministryId
-  );
 
   const addReceipt = () => {
     const today = new Date().toISOString().split("T")[0];
-    const defaultCostCentre = availableCostCentres[0]?.id || costCentres[0]?.id || "";
+    const defaultCostCentre = "";
     const newItem: ExpenseItemDraft = {
       temp_id: crypto.randomUUID(),
       expense_date: today,
@@ -205,7 +198,7 @@ export function ExpenseItemsEditor({
             Receipts & Invoices ({(expenses || []).length})
           </h3>
           <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-            Each receipt row has its own cost centre and supporting document attachment.
+            Add the amount and supporting document for each receipt.
           </p>
         </div>
 
@@ -288,28 +281,6 @@ export function ExpenseItemsEditor({
                   className="h-8 text-xs bg-zinc-50/50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 font-mono"
                   required
                 />
-              </div>
-
-              {/* Cost Centre (Per Receipt) */}
-              <div className="md:col-span-5 space-y-1">
-                <label htmlFor={`receipt-${idx}-cost-centre`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-                  Cost Centre *
-                </label>
-                <select
-                  id={`receipt-${idx}-cost-centre`}
-                  value={item.cost_centre_id}
-                  disabled={disabled}
-                  onChange={(e) => updateField(idx, "cost_centre_id", e.target.value)}
-                  className="flex h-8 w-full rounded-lg border border-zinc-200 bg-zinc-50/50 px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 font-sans"
-                  required
-                >
-                  <option value="" disabled>Select Cost Centre</option>
-                  {availableCostCentres.map((cc) => (
-                    <option key={cc.id} value={cc.id}>
-                      {cc.code} - {cc.name}
-                    </option>
-                  ))}
-                </select>
               </div>
 
               {/* Amount (RM) */}

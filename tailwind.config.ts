@@ -9,7 +9,8 @@ const config: Config = {
   ],
   theme: {
     fontFamily: {
-      sans: ["Helvetica Neue", "Helvetica", "Arial", "ui-sans-serif", "system-ui", "sans-serif"],
+      sans: ["var(--font-inter)", "Arial", "sans-serif"],
+      heading: ["var(--font-heading)", "Arial", "sans-serif"],
     },
     container: {
       center: true,

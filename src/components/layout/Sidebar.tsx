@@ -13,7 +13,6 @@ import {
   Settings,
   Users,
   Layers,
-  PieChart,
   GitBranch,
   History,
   Bell,
@@ -76,14 +75,14 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         aria-current={isActive ? "page" : undefined}
         onClick={onNavigate}
         className={cn(
-          "flex min-h-10 items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors group",
+          "flex min-h-11 items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors group",
           isActive
-            ? "bg-zinc-900 text-white font-medium shadow-2xs dark:bg-zinc-100 dark:text-zinc-900"
+            ? "bg-[#eeede9] text-[#262d28] font-semibold dark:bg-zinc-800 dark:text-zinc-100"
             : "text-zinc-600 hover:bg-zinc-100/80 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/80 dark:hover:text-zinc-100"
         )}
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className={cn("transition-colors shrink-0", isActive ? "text-white dark:text-zinc-900" : "text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100")}>
+          <span className={cn("transition-colors shrink-0", isActive ? "text-primary dark:text-zinc-200" : "text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100")}>
             {icon}
           </span>
           <span className="truncate">{label}</span>
@@ -93,8 +92,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             className={cn(
               "px-1.5 py-0.2 text-[10px] font-semibold tabular-nums rounded-md shrink-0",
               isActive
-                ? "bg-white/20 text-white dark:bg-zinc-900/20 dark:text-zinc-900"
-                : "bg-rose-500 text-white"
+                ? "bg-[#faeae4] text-[#924c39] dark:bg-zinc-700 dark:text-zinc-100"
+                : "bg-[#faeae4] text-[#924c39]"
             )}
           >
             {badge}
@@ -105,9 +104,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   };
 
   return (
-    <aside className="flex flex-col h-full bg-white dark:bg-zinc-950 border-r border-zinc-200/80 dark:border-zinc-800/80 p-3 select-none">
+    <aside className="flex flex-col h-full bg-[#fbfaf8] dark:bg-zinc-950 border-r border-zinc-200/80 dark:border-zinc-800/80 px-4 py-6 select-none">
       {/* Brand Header */}
-      <div className="px-2 py-2.5 mb-3 flex items-start justify-between">
+      <div className="px-3 py-2 mb-6 flex items-start justify-between">
         <div>
           <Link href="/dashboard" onClick={onNavigate} aria-label="Harvest Generation dashboard" className="block w-fit">
             <BrandLogo priority />
@@ -132,7 +131,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           <Link
             href="/claims/new"
             onClick={onNavigate}
-            className="flex min-h-10 items-center justify-center gap-1.5 w-full py-2 px-3 rounded-md bg-primary hover:brightness-90 text-primary-foreground text-sm font-medium transition-colors"
+            className="flex min-h-11 items-center justify-center gap-1.5 w-full py-2 px-3 rounded-md bg-primary hover:brightness-90 text-primary-foreground text-sm font-medium transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Submit Claim</span>
@@ -183,7 +182,6 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             {navItem("/admin", "Overview", <ShieldCheck className="w-4 h-4" />, undefined, true)}
             {navItem("/admin/users", "Users & Roles", <Users className="w-4 h-4" />)}
             {navItem("/admin/ministries", "Ministries", <Building2 className="w-4 h-4" />)}
-            {navItem("/admin/cost-centres", "Cost Centres", <PieChart className="w-4 h-4" />)}
             {navItem("/admin/workflows", "Workflows", <GitBranch className="w-4 h-4" />)}
             {navItem("/admin/audit", "Audit Trail", <History className="w-4 h-4" />)}
             {navItem("/admin/settings", "Form & Settings", <Settings className="w-4 h-4" />)}
@@ -202,7 +200,6 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       {/* Footer Org Info */}
       <div className="pt-3 mt-auto border-t border-zinc-100 dark:border-zinc-800 px-2 flex items-center justify-between text-[11px] text-zinc-400">
         <span className="truncate">{user?.full_name}</span>
-        <span className="font-mono text-[10px] text-zinc-400">v1.0</span>
       </div>
     </aside>
   );

@@ -50,14 +50,13 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   const { user } = useAuth();
 
   const ministries = masterDataClient.getMinistries();
-  const costCentres = masterDataClient.getCostCentres();
   const formConfig = masterDataClient.getSetting("claim_form_config") || {
     declaration_text: "I confirm that these expenses were incurred for legitimate ministry purposes in accordance with Harvest Generation financial policies, have not previously been claimed or reimbursed from any other source, and are supported by the authentic receipts and documents provided.",
     allow_claimant_change_ministry: true,
     require_vendor_name: false,
     require_receipt_for_all_expenses: true,
     enable_internal_reference: true,
-    form_guidance_banner: "Please ensure each receipt card has an attached receipt file and cost centre before submitting for approval.",
+    form_guidance_banner: "Please ensure each receipt card has an attached receipt file before submitting for approval.",
     max_file_size_mb: 10,
     max_attachment_count: 15,
   };
@@ -131,7 +130,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   const [internalRef, setInternalRef] = useState(initialClaim?.internal_reference || "");
 
   // 03: Receipts State
-  const defaultCostCentre = costCentres[0]?.id || "";
+  const defaultCostCentre = "";
   const [expenses, setExpenses] = useState<ExpenseItemDraft[]>(
     initialClaim?.expenses && initialClaim.expenses.length > 0
       ? initialClaim.expenses.map((e) => {
@@ -368,7 +367,6 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
     for (let i = 0; i < expenses.length; i++) {
       const e = expenses[i];
       if (!e.expense_date) return `Receipt #${i + 1}: Date is required.`;
-      if (!e.cost_centre_id) return `Receipt #${i + 1}: Cost centre is required.`;
       if (!e.description.trim()) return `Receipt #${i + 1}: Item description is required.`;
       const amountCents = moneyToCents(e.amount);
       if (amountCents === null || amountCents <= 0) return `Receipt #${i + 1}: Enter a positive amount with at most two decimal places.`;
@@ -424,7 +422,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           temp_id: e.temp_id,
           expense_date: e.expense_date,
           expense_category_id: e.expense_category_id,
-          cost_centre_id: e.cost_centre_id,
+          cost_centre_id: e.cost_centre_id || undefined,
           vendor: e.vendor || undefined,
           description: e.description || "Draft receipt",
           amount: parseMoneyInput(e.amount),
@@ -500,7 +498,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           temp_id: e.temp_id,
           expense_date: e.expense_date,
           expense_category_id: e.expense_category_id,
-          cost_centre_id: e.cost_centre_id,
+          cost_centre_id: e.cost_centre_id || undefined,
           vendor: e.vendor || undefined,
           description: e.description.trim(),
           amount: parseMoneyInput(e.amount),
@@ -1073,8 +1071,6 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         <CardContent className="p-4">
           <ExpenseItemsEditor
             expenses={expenses}
-            costCentres={costCentres}
-            ministryId={ministryId}
             userId={user?.id || "u-sarah-02"}
             maxFileSizeMb={formConfig.max_file_size_mb}
             onChange={(items) => {

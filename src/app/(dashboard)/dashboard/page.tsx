@@ -96,10 +96,10 @@ export default function DashboardPage() {
     <AppLayout>
       <div className="space-y-6">
         {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-zinc-200/80 dark:border-zinc-800">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
           <div>
             <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-              Overview
+              My Overview
             </h1>
             <p className="text-xs text-zinc-500 mt-0.5">
               Track your claims and their current status.

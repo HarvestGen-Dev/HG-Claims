@@ -80,7 +80,7 @@ check(!!(await outsider.client.storage.from("receipts").download(path)).error, "
 const payload = {
   request_key: randomUUID(), ministry_id: ministry.id, claimant_name: "Integration Claimant",
   claim_date: "2026-09-10", purpose: "Transport", payment_method: "PERSONAL_REIMBURSEMENT", declaration_accepted: true,
-  expenses: [{ temp_id: "receipt-1", cost_centre_id: costCentre.id, expense_date: "2026-09-10", expense_category_id: category.id, description: "Travel", amount: 25.50, sort_order: 1 }],
+  expenses: [{ temp_id: "receipt-1", expense_date: "2026-09-10", expense_category_id: category.id, description: "Travel", amount: 25.50, sort_order: 1 }],
   attachments: [{ expense_temp_id: "receipt-1", storage_path: path, original_filename: "receipt.png", file_category: "RECEIPT" }],
 };
 await denied(claimant.client, "submit_claim", { ...payload, attachments: [] });

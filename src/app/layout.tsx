@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Bricolage_Grotesque, Inter } from "next/font/google";
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+const headings = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-heading", display: "swap" });
 export const dynamic = "force-dynamic";
 import { AuthProvider } from "@/lib/auth/context";
 import { TopProgressBar } from "@/components/layout/TopProgressBar";
@@ -17,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="font-sans">
+      <body className={`${inter.variable} ${headings.variable} font-sans`}>
         <AuthProvider>
           <TopProgressBar />
           <WorkspaceFeedback />
