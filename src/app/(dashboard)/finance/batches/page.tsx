@@ -254,30 +254,30 @@ export default function FinanceBatchesPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-zinc-200">
+        <div className="flex border-b border-zinc-200 overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => setActiveTab("queue")}
-            className={`pb-2.5 px-4 text-xs font-semibold border-b-2 flex items-center gap-2 transition-colors ${
+            className={`pb-2.5 px-3 sm:px-4 text-xs font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-colors ${
               activeTab === "queue"
                 ? "border-zinc-900 text-zinc-900"
                 : "border-transparent text-zinc-500 hover:text-zinc-800"
             }`}
           >
-            <Layers className="w-3.5 h-3.5" />
-            Approved — Awaiting Reimbursement ({eligibleClaims.length})
+            <Layers className="w-3.5 h-3.5 shrink-0" />
+            <span>Approved — Awaiting Reimbursement ({eligibleClaims.length})</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("batches")}
-            className={`pb-2.5 px-4 text-xs font-semibold border-b-2 flex items-center gap-2 transition-colors ${
+            className={`pb-2.5 px-3 sm:px-4 text-xs font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-colors ${
               activeTab === "batches"
                 ? "border-zinc-900 text-zinc-900"
                 : "border-transparent text-zinc-500 hover:text-zinc-800"
             }`}
           >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            Reimbursement Batches ({batches.length})
+            <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
+            <span>Reimbursement Batches ({batches.length})</span>
           </button>
         </div>
 
@@ -384,7 +384,7 @@ export default function FinanceBatchesPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -411,7 +411,7 @@ export default function FinanceBatchesPage() {
                   }}
                   className="h-8 bg-zinc-900 hover:bg-zinc-800 text-white text-xs gap-1.5"
                 >
-                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
                   <span>
                     Generate &amp; Download .xls ({preview.totalSelectedClaims} Claims &rarr;{" "}
                     {preview.totalTransfers} Transfers)
@@ -436,8 +436,79 @@ export default function FinanceBatchesPage() {
                     No unbatched approved claims awaiting reimbursement match your filter.
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
+                  <>
+                    {/* Mobile Card View for Eligible Claims */}
+                    <div className="sm:hidden divide-y divide-zinc-200/80">
+                      {filteredClaims.map((claim) => {
+                        const ev = evalByClaimId.get(claim.id)!;
+                        const isSelected = selectedIds.includes(claim.id);
+                        return (
+                          <div
+                            key={claim.id}
+                            onClick={() => ev.eligible && handleToggleClaim(claim.id)}
+                            className={`p-3.5 space-y-2 transition-colors ${
+                              !ev.eligible
+                                ? "bg-rose-50/40"
+                                : isSelected
+                                ? "bg-zinc-50/90"
+                                : "opacity-75"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  disabled={!ev.eligible}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={() => handleToggleClaim(claim.id)}
+                                  className="rounded border-zinc-300 shrink-0"
+                                />
+                                <Link
+                                  href={`/finance/claims/${claim.id}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="font-mono font-semibold text-xs text-zinc-900 hover:underline truncate"
+                                >
+                                  {claim.claim_number}
+                                </Link>
+                              </div>
+                              <span className="font-mono font-bold text-sm text-zinc-900 tabular-nums shrink-0">
+                                {formatCurrency(claim.total_amount)}
+                              </span>
+                            </div>
+
+                            <div className="text-xs space-y-1 pl-6">
+                              <p className="font-medium text-zinc-900 truncate">
+                                {ev.beneficiaryName || claim.claimant_name}
+                              </p>
+                              <p className="text-[11px] text-zinc-600 truncate">
+                                {claim.ministry?.name} &middot; {claim.purpose}
+                              </p>
+                              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                                <span className="font-mono text-[11px] text-zinc-700">
+                                  {ev.bankCode ? `${ev.bankCode} (${ev.paymentMode})` : ev.bankName || "Missing Bank"} &middot; {ev.maskedAccountNumber}
+                                </span>
+                                {ev.eligible ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    Eligible
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-800 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-full">
+                                    <AlertTriangle className="w-3 h-3" />
+                                    Blocked
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Desktop Table View for Eligible Claims */}
+                    <div className="hidden sm:block overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
                       <thead>
                         <tr className="bg-zinc-50/40 border-b border-zinc-100 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
                           <th className="py-2.5 px-3 w-10 text-center">
@@ -560,6 +631,7 @@ export default function FinanceBatchesPage() {
                       </tbody>
                     </table>
                   </div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -697,8 +769,82 @@ export default function FinanceBatchesPage() {
                   No reimbursement batches have been finalized yet.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
+                <>
+                  {/* Mobile Card View for Batches */}
+                  <div className="sm:hidden divide-y divide-zinc-200/80">
+                    {batches.map((b) => (
+                      <div key={b.id} className="p-3.5 space-y-2.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <Link
+                              href={`/finance/batches/${b.id}`}
+                              className="font-mono font-bold text-xs text-zinc-900 hover:underline block"
+                            >
+                              {b.batch_number}
+                            </Link>
+                            <span className="text-[11px] text-zinc-500">
+                              {formatDate(b.created_at)} &middot; {b.claim_count} claims &rarr; {b.transfer_count} transfers
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-mono font-bold text-sm text-zinc-900 tabular-nums block">
+                              {formatCurrency(b.total_amount)}
+                            </span>
+                            <Badge
+                              className={`text-[10px] mt-0.5 ${
+                                b.status === "SETTLED"
+                                  ? "bg-emerald-600 text-white"
+                                  : b.status === "VOIDED" || b.status === "REJECTED"
+                                  ? "bg-rose-600 text-white"
+                                  : "bg-amber-100 text-amber-900 border border-amber-300"
+                              }`}
+                            >
+                              {b.status === "SETTLED"
+                                ? "Disbursed"
+                                : b.status === "VOIDED" || b.status === "REJECTED"
+                                ? b.status
+                                : "XLS File Created"}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-zinc-100">
+                          {b.status !== "VOIDED" && (
+                            <a
+                              href={`/api/v1/finance/batches/${b.id}/export`}
+                              className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-800"
+                            >
+                              <Download className="w-3 h-3" />
+                              <span>Download .xls</span>
+                            </a>
+                          )}
+                          {!["SETTLED", "VOIDED", "REJECTED"].includes(b.status) && (
+                            <Button
+                              size="sm"
+                              loading={disbursingBatchId === b.id}
+                              disabled={disbursingBatchId === b.id}
+                              onClick={() => handleMarkBatchDisbursed(b)}
+                              className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1 font-semibold"
+                            >
+                              {disbursingBatchId !== b.id && (
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                              )}
+                              <span>Mark Disbursed</span>
+                            </Button>
+                          )}
+                          <Link href={`/finance/batches/${b.id}`} className="ml-auto">
+                            <Button variant="outline" size="sm" className="h-7 text-xs">
+                              Details
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Desktop Table View for Batches */}
+                  <div className="hidden sm:block overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
                     <thead>
                       <tr className="bg-zinc-50/60 border-b border-zinc-100 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
                         <th className="py-2.5 px-4">Batch #</th>
@@ -792,6 +938,7 @@ export default function FinanceBatchesPage() {
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
             </CardContent>
           </Card>

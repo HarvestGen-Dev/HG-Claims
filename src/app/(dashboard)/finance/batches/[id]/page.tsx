@@ -373,7 +373,106 @@ export default function FinanceBatchDetailPage() {
             </span>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            {/* Mobile Card View for Frozen Instructions */}
+            <div className="sm:hidden divide-y divide-zinc-200/80">
+              {(batch.instructions || []).map((inst) => (
+                <div key={inst.id} className="p-3.5 space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-mono text-xs text-zinc-400">#{inst.line_order}</span>
+                        <span className="inline-flex items-center gap-1 bg-zinc-100 px-2 py-0.5 rounded font-mono font-bold text-xs text-zinc-900">
+                          <Hash className="w-3 h-3 text-zinc-400" />
+                          {inst.payment_description}
+                        </span>
+                        <span
+                          className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded ${
+                            inst.payment_mode === "LIP"
+                              ? "bg-blue-50 text-blue-800 border border-blue-200"
+                              : "bg-zinc-100 text-zinc-800 border border-zinc-200"
+                          }`}
+                        >
+                          {inst.payment_mode}
+                        </span>
+                      </div>
+                      <p className="font-semibold text-xs text-zinc-900">{inst.beneficiary_name}</p>
+                      <p className="font-mono text-[11px] text-zinc-600">
+                        {inst.beneficiary_bank_code} &middot; {maskBankAccountNumber(inst.beneficiary_account_number)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-mono font-bold text-sm text-zinc-900 tabular-nums block">
+                        {formatCurrency(inst.amount)}
+                      </span>
+                      <Badge
+                        className={`text-[10px] mt-0.5 ${
+                          inst.status === "PAID"
+                            ? "bg-emerald-600 text-white"
+                            : inst.status === "FAILED" || inst.status === "VOIDED"
+                            ? "bg-rose-600 text-white"
+                            : "bg-zinc-800 text-white"
+                        }`}
+                      >
+                        {inst.status}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {(inst.claims || []).length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-0.5">
+                      {(inst.claims || []).map((ic) => (
+                        <Link
+                          key={ic.id}
+                          href={`/finance/claims/${ic.claim_id}`}
+                          className="inline-flex items-center px-1.5 py-0.5 rounded bg-zinc-100 hover:bg-zinc-200 font-mono text-[10px] text-zinc-800"
+                        >
+                          {ic.claim?.claim_number || ic.claim_id.slice(0, 8)}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+
+                  {!["PAID", "FAILED", "VOIDED"].includes(inst.status) && batch.status !== "VOIDED" && (
+                    <div className="flex items-center gap-2 pt-2 border-t border-zinc-100">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setActionError("");
+                          setBankReference("");
+                          setReconcileTarget({
+                            instruction: inst,
+                            outcome: "PAID",
+                          });
+                        }}
+                        className="flex-1 h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Mark Paid</span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setActionError("");
+                          setFailureReason("");
+                          setReconcileTarget({
+                            instruction: inst,
+                            outcome: "FAILED",
+                          });
+                        }}
+                        className="flex-1 h-8 text-xs text-rose-600 border-rose-200 hover:bg-rose-50 gap-1"
+                      >
+                        <XCircle className="w-3.5 h-3.5" />
+                        <span>Failed</span>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View for Frozen Instructions */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-zinc-50/40 border-b border-zinc-100 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">

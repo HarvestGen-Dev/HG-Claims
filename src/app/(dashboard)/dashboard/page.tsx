@@ -25,9 +25,10 @@ import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 import { moneyToCents } from "@/lib/utils/calculations";
 
 export default function DashboardPage() {
-  const { user, canCreateClaim } = useAuth();
+  const { user, canCreateClaim, hasRole } = useAuth();
   const [claims, setClaims] = useState<Claim[]>([]);
   const [search, setSearch] = useState("");
+  const isFinanceOrAdmin = hasRole("FINANCE_OFFICER") || hasRole("SYSTEM_ADMIN");
 
   useEffect(() => {
     if (!user) return;
@@ -46,6 +47,8 @@ export default function DashboardPage() {
     approvedCount,
     paidCount,
     totalPaidAmount,
+    approverActionCount,
+    awaitingPayoutCount,
   } = useMemo(() => {
     const mine = claims.filter(c => c.submitted_by_user_id === user?.id || c.claimant_id === user?.id);
     let drafts = 0;
@@ -54,6 +57,8 @@ export default function DashboardPage() {
     let approved = 0;
     let paid = 0;
     let paidAmount = 0;
+    let approverNeedsAction = 0;
+    let awaitingPayout = 0;
 
     for (const c of mine) {
       if (c.status === "DRAFT") drafts++;
@@ -66,6 +71,20 @@ export default function DashboardPage() {
       }
     }
 
+    if (isFinanceOrAdmin) {
+      for (const c of claims) {
+        if (
+          c.status === "PENDING_FINANCE_REVIEW" &&
+          c.submitted_by_user_id !== user?.id &&
+          c.claimant_id !== user?.id
+        ) {
+          approverNeedsAction++;
+        } else if (c.status === "APPROVED_FOR_PAYMENT") {
+          awaitingPayout++;
+        }
+      }
+    }
+
     return {
       myClaims: mine,
       draftCount: drafts,
@@ -74,8 +93,10 @@ export default function DashboardPage() {
       approvedCount: approved,
       paidCount: paid,
       totalPaidAmount: paidAmount / 100,
+      approverActionCount: approverNeedsAction,
+      awaitingPayoutCount: awaitingPayout,
     };
-  }, [claims, user?.id]);
+  }, [claims, user?.id, isFinanceOrAdmin]);
 
   const filteredRecent = useMemo(() => {
     const trimmed = search.trim().toLowerCase();
@@ -118,7 +139,7 @@ export default function DashboardPage() {
 
         {/* Action Required: Returned for Clarification */}
         {returnedCount > 0 && (
-          <div className="flex items-center justify-between p-3.5 rounded-xl bg-rose-50/70 border border-rose-200/80 text-rose-950 dark:bg-rose-950/20 dark:border-rose-900/50">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-rose-50/70 border border-rose-200/80 text-rose-950 dark:bg-rose-950/20 dark:border-rose-900/50">
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-lg bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 flex items-center justify-center shrink-0">
                 <RotateCcw className="w-4 h-4" />
@@ -132,11 +153,46 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
-            <Link href="/claims?status=RETURNED_FOR_CLARIFICATION">
+            <Link href="/claims?status=RETURNED_FOR_CLARIFICATION" className="self-start sm:self-auto">
               <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-rose-700 border-rose-200 hover:bg-rose-50 dark:bg-zinc-900 dark:border-rose-900">
                 Review Claims
               </Button>
             </Link>
+          </div>
+        )}
+
+        {/* Role Action Queue: Finance & Approvals */}
+        {isFinanceOrAdmin && (approverActionCount > 0 || awaitingPayoutCount > 0) && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-amber-50/60 border border-amber-200/80 text-amber-950 dark:bg-amber-950/20 dark:border-amber-900/50">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0">
+                <Banknote className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                  Finance &amp; Approval Queue: {approverActionCount} awaiting approval, {awaitingPayoutCount} ready for reimbursement
+                </p>
+                <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
+                  Verify receipts, approve submitted ministry claims, or prepare an Alliance Bank .xls batch.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {approverActionCount > 0 && (
+                <Link href="/approvals">
+                  <Button size="sm" className="h-7 text-xs bg-zinc-900 hover:bg-zinc-800 text-white">
+                    Review Approvals ({approverActionCount})
+                  </Button>
+                </Link>
+              )}
+              {awaitingPayoutCount > 0 && (
+                <Link href="/finance/batches">
+                  <Button size="sm" variant="outline" className="h-7 text-xs bg-white border-zinc-200 text-zinc-800 hover:bg-zinc-50">
+                    Prepare Bank Batch ({awaitingPayoutCount})
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
         )}
 

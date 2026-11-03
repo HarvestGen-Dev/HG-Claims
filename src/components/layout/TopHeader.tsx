@@ -69,8 +69,11 @@ export function TopHeader({ onToggleMobileMenu, mobileMenuOpen = false }: TopHea
           <Menu className="w-5 h-5" />
         </button>
 
-        <Link href="/dashboard" className="flex items-center gap-2 lg:hidden py-1">
-          <BrandLogo compact />
+        <Link href="/dashboard" className="flex flex-col leading-none lg:hidden py-1 min-w-0">
+          <BrandLogo compact className="truncate" />
+          <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+            Claims Management
+          </span>
         </Link>
 
         {/* Global Search */}

@@ -6,7 +6,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/context";
-import { notificationClient } from "@/lib/domains";
+import { notificationClient, workspaceStore } from "@/lib/domains";
 import { Notification } from "@/lib/types/database";
 import { formatDateTime } from "@/lib/utils/formatters";
 import { Bell, CheckCheck, Clock, ArrowRight } from "lucide-react";
@@ -22,7 +22,9 @@ export default function NotificationsPage() {
   };
 
   useEffect(() => {
+    if (!user) return;
     loadNotifs();
+    return workspaceStore.subscribeDomains(["notifications"], loadNotifs);
   }, [user]);
 
   const handleMarkAll = async () => {
@@ -45,13 +47,13 @@ export default function NotificationsPage() {
   return (
     <AppLayout>
       <div className="space-y-6 max-w-4xl mx-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-zinc-200/80 dark:border-zinc-800">
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <Bell className="w-6 h-6 text-emerald-700" />
+            <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight flex items-center gap-2">
+              <Bell className="w-5 h-5 text-zinc-900 dark:text-zinc-100" />
               Notifications Center
             </h1>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-zinc-500 mt-0.5">
               Real-time updates regarding claim approvals, clarification requests, and payment transactions.
             </p>
           </div>
