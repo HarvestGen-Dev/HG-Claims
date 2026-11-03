@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -167,7 +168,7 @@ function ClaimsContent() {
         {/* Search Box */}
         <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
         <div className="relative w-full md:w-64">
-          <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-zinc-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none w-3.5 h-3.5 text-zinc-400" />
           <input
             type="text"
             aria-label="Filter my claims"
@@ -177,12 +178,12 @@ function ClaimsContent() {
             className="h-7 w-full pl-8 pr-2.5 text-xs rounded-lg border border-zinc-200 bg-zinc-50/70 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-900"
           />
         </div>
-        <select aria-label="Sort claims" value={sort} onChange={(event) => setSort(event.target.value as typeof sort)} className="h-10 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
+        <Select aria-label="Sort claims" value={sort} onChange={(event) => setSort(event.target.value as typeof sort)} className="w-full sm:w-auto">
           <option value="newest">Newest first</option>
           <option value="oldest">Oldest first</option>
           <option value="amount-high">Highest amount</option>
           <option value="amount-low">Lowest amount</option>
-        </select>
+        </Select>
         </div>
       </div>
 

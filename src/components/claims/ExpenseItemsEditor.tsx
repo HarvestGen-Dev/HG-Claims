@@ -303,7 +303,7 @@ export function ExpenseItemsEditor({
                   Amount (RM) *
                 </label>
                 <div className="relative">
-                  <span className="absolute left-2.5 top-2 text-[11px] font-semibold text-zinc-400">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[11px] font-semibold text-zinc-400">
                     RM
                   </span>
                   <Input

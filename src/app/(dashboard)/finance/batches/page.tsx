@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -344,15 +345,15 @@ export default function FinanceBatchesPage() {
 
             {/* Filters + Action Bar */}
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 flex-1 max-w-xl">
+              <div className="filter-bar grid grid-cols-1 sm:grid-cols-2 gap-2.5 flex-1 max-w-xl">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">
+                  <label htmlFor="batches-select-1" className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">
                     Filter Ministry
                   </label>
-                  <select
+                  <Select id="batches-select-1"
                     value={selectedMinistry}
                     onChange={(e) => setSelectedMinistry(e.target.value)}
-                    className="h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs"
+                    className="w-full"
                   >
                     <option value="ALL">All Ministries</option>
                     {ministries.map((m) => (
@@ -360,7 +361,7 @@ export default function FinanceBatchesPage() {
                         {m.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
 
                 <div className="space-y-1">
@@ -368,7 +369,7 @@ export default function FinanceBatchesPage() {
                     Search Eligible Claims
                   </label>
                   <div className="relative">
-                    <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-zinc-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none w-3.5 h-3.5 text-zinc-400" />
                     <input
                       type="text"
                       placeholder="Claim #, claimant, bank, purpose..."

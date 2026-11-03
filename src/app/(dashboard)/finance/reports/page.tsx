@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import React, { useState, useEffect, useMemo } from "react";
 import {
   FileSpreadsheet
@@ -21,7 +22,6 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-
 
 export default function FinancialReportsPage() {
   const { user } = useAuth();
@@ -113,26 +113,25 @@ export default function FinancialReportsPage() {
         </div>
 
         {/* Filter Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+        <div className="filter-bar grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           <div className="space-y-1">
-            <label className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">Ministry</label>
-            <select
+            <label htmlFor="reports-select-1" className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">Ministry</label>
+            <Select id="reports-select-1"
               value={selectedMinistry}
               onChange={(e) => setSelectedMinistry(e.target.value)}
-              className="h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+              className="w-full"
             >
               <option value="ALL">All Ministries</option>
               {ministries.map((m) => (
                 <option key={m.id} value={m.id}>{m.name}</option>
               ))}
-            </select>
+            </Select>
           </div>
 
-
-
           <div className="space-y-1">
-            <label className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">From Date</label>
+            <label htmlFor="report-start-date" className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">From Date</label>
             <input
+              id="report-start-date"
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
@@ -141,8 +140,9 @@ export default function FinancialReportsPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">To Date</label>
+            <label htmlFor="report-end-date" className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">To Date</label>
             <input
+              id="report-end-date"
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
@@ -152,7 +152,7 @@ export default function FinancialReportsPage() {
         </div>
 
         {/* 4 Reporting Metric Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="report-metrics grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="p-3.5 rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-900/80 shadow-2xs">
             <span className="text-[11px] font-medium text-zinc-500 block mb-1">Total Claims</span>
             <p className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 tabular-nums">{filtered.length}</p>
@@ -194,7 +194,7 @@ export default function FinancialReportsPage() {
                     <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#71717a" }} interval={0} angle={-25} textAnchor="end" axisLine={{ stroke: "#e4e4e7" }} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: "#71717a" }} axisLine={{ stroke: "#e4e4e7" }} tickLine={false} />
                     <Tooltip formatter={(val: any) => [`RM ${Number(val).toFixed(2)}`, "Total"]} contentStyle={{ borderRadius: "8px", fontSize: "11px", border: "1px solid #e4e4e7" }} />
-                    <Bar dataKey="total" fill="#18181b" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="total" fill="#d95f3b" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

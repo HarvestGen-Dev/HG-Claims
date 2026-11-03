@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth/context";
 import { iamClient } from "@/lib/domains";
@@ -280,7 +281,7 @@ export function NamePromptDialog() {
               >
                 Beneficiary Bank *
               </label>
-              <select
+              <Select
                 id="modal-bank-code"
                 value={bankCode}
                 onChange={(e) => {
@@ -289,7 +290,7 @@ export function NamePromptDialog() {
                 }}
                 required={!isMultiUser}
                 disabled={isSaving}
-                className="flex h-9 w-full rounded-md border border-slate-300 bg-white px-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                className="w-full"
               >
                 <option value="" disabled>
                   Select Bank from Directory...
@@ -299,7 +300,7 @@ export function NamePromptDialog() {
                     {bank.name} ({bank.swiftCode})
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

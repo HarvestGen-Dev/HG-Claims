@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -795,7 +796,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
 
               {/* Direct Dropdown Select for Quick Selection */}
               <div>
-                <select
+                <Select
                   id="claimantProfileSelect"
                   aria-label="Select Claimant Bank Profile"
                   value={selectedPayeeProfileId}
@@ -812,7 +813,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                       setSelectedPayeeProfileId("");
                     }
                   }}
-                  className="flex h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                  className="w-full"
                 >
                   <option value="">-- Choose Saved Claimant Profile --</option>
                   {(profiles || [])
@@ -828,7 +829,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                       );
                     })}
                   <option value="__ADD_NEW__">+ Add New Claimant Bank Profile...</option>
-                </select>
+                </Select>
               </div>
             </div>
           </div>
@@ -902,7 +903,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                 <label htmlFor="bankNameSelect" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                   Beneficiary Bank *
                 </label>
-                <select
+                <Select
                   id="bankNameSelect"
                   value={resolveCanonicalBank(bankCode || bankName)?.swiftCode || ""}
                   onChange={(e) => {
@@ -913,7 +914,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                     }
                     setDirty(true);
                   }}
-                  className="flex h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                  className="w-full"
                 >
                   <option value="" disabled>
                     Select Bank from Directory...
@@ -923,7 +924,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                       {bank.name} ({bank.swiftCode})
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               <div className="space-y-1">
@@ -986,12 +987,12 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                   </span>
                 )}
               </label>
-              <select
+              <Select
                 id="ministryId"
                 value={ministryId}
                 onChange={(e) => setMinistryId(e.target.value)}
                 disabled={!formConfig.allow_claimant_change_ministry}
-                className="flex h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 disabled:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                className="w-full"
                 required
               >
                 {ministries.map((m) => (
@@ -999,7 +1000,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                     {m.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             {/* Claim Date */}
@@ -1215,12 +1216,12 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
             <label htmlFor="newProfileBankCode" className="font-semibold text-zinc-700 block">
               Beneficiary Bank (SBP Directory) <span className="text-red-500">*</span>
             </label>
-            <select
+            <Select
               id="newProfileBankCode"
               value={newProfileBankCode}
               onChange={(e) => setNewProfileBankCode(e.target.value)}
               disabled={isSavingProfile}
-              className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900"
+              className="w-full"
               required
             >
               {MALAYSIAN_BANKS.map((bank) => (
@@ -1228,7 +1229,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                   {bank.name} ({bank.swiftCode} · {bank.paymentMode})
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
