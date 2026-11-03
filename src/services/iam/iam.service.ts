@@ -8,6 +8,7 @@ import {
 export const IAM_ACTIONS = [
   "complete_onboarding",
   "profile",
+  "create_payee_profile",
   "create_invitation",
   "revoke_invitation",
   "delete_invitation",

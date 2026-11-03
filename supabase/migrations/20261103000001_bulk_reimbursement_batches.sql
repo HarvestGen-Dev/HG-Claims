@@ -115,8 +115,16 @@ BEGIN
   RETURN NULL;
 END $$;
 
--- 2. Extend public.profiles with structured payee bank details
+-- 2. Extend public.profiles with structured payee bank details & multi-user / payee profile support
 ALTER TABLE public.profiles
+  DROP CONSTRAINT IF EXISTS profiles_auth_user,
+  DROP CONSTRAINT IF EXISTS profiles_email_key;
+
+ALTER TABLE public.profiles
+  ALTER COLUMN id SET DEFAULT gen_random_uuid(),
+  ADD COLUMN IF NOT EXISTS is_multi_user BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS is_payee_only BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS created_by_user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS bank_code TEXT,
   ADD COLUMN IF NOT EXISTS bank_account_holder_name TEXT,
   ADD COLUMN IF NOT EXISTS beneficiary_new_ic TEXT,
@@ -125,6 +133,38 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS beneficiary_others TEXT,
   ADD COLUMN IF NOT EXISTS beneficiary_address TEXT,
   ADD COLUMN IF NOT EXISTS bank_updated_at TIMESTAMPTZ;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_unique_auth_email
+  ON public.profiles (lower(email))
+  WHERE COALESCE(is_payee_only, FALSE) = FALSE;
+
+ALTER TABLE public.signup_invitations
+  ADD COLUMN IF NOT EXISTS is_multi_user BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE OR REPLACE FUNCTION public.nlcc_redeem_invitation(token_hash text, user_id uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE invitation public.signup_invitations; role_id uuid;
+BEGIN
+  SELECT * INTO invitation FROM public.signup_invitations i WHERE i.token_hash=nlcc_redeem_invitation.token_hash FOR UPDATE;
+  IF invitation.id IS NULL OR NOT invitation.is_active OR invitation.expires_at<=now() OR invitation.use_count>=invitation.max_uses THEN
+    RAISE EXCEPTION 'This invitation is invalid, expired, or fully used';
+  END IF;
+  SELECT id INTO STRICT role_id FROM public.roles WHERE code=invitation.role_code;
+  UPDATE public.profiles SET
+    ministry_id=invitation.ministry_id,
+    default_ministry_id=invitation.ministry_id,
+    is_multi_user=COALESCE(invitation.is_multi_user, FALSE),
+    onboarding_completed_at=NULL,
+    updated_at=now()
+  WHERE id=user_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Account profile is unavailable'; END IF;
+  DELETE FROM public.user_roles ur WHERE ur.user_id=nlcc_redeem_invitation.user_id;
+  INSERT INTO public.user_roles(user_id,role_id) VALUES(user_id,role_id);
+  UPDATE public.signup_invitations SET use_count=use_count+1,last_used_at=now(),
+    is_active=use_count+1<max_uses WHERE id=invitation.id;
+END $$;
+REVOKE ALL ON FUNCTION public.nlcc_redeem_invitation(text,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.nlcc_redeem_invitation(text,uuid) TO service_role;
 
 -- Backfill profiles.bank_code and bank_account_holder_name where bank_name exists
 UPDATE public.profiles
@@ -317,6 +357,7 @@ DECLARE
   v_total_cents bigint; v_batch_num text; v_digest text; v_line_order integer;
   v_pay_desc text; v_inst_id uuid; v_group record;
   v_unsettled_count integer; v_paid_count integer; v_failed_count integer;
+  v_claimant_id uuid; v_payee_prof public.profiles%ROWTYPE;
 BEGIN
   IF NOT private.active_user() THEN RAISE EXCEPTION 'Active account required' USING ERRCODE='42501'; END IF;
   uid=auth.uid(); admin=private.has_role('SYSTEM_ADMIN'); finance=private.has_role('FINANCE_OFFICER');
@@ -360,26 +401,53 @@ BEGIN
     IF jsonb_typeof(payload->'expenses') IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'Invalid receipt list'; END IF;
     IF jsonb_array_length(payload->'expenses')>100 THEN RAISE EXCEPTION 'Invalid receipt list'; END IF;
 
-    v_bank_code := private.resolve_canonical_swift_code(COALESCE(NULLIF(trim(payload->>'bank_code'),''), payload->>'bank_name'));
+    -- Resolve linked Claimant / Payee Profile if selected from dropdown
+    v_claimant_id := uid;
+    IF NULLIF(trim(COALESCE(payload->>'payee_profile_id', '')), '') IS NOT NULL THEN
+      SELECT * INTO v_payee_prof FROM public.profiles WHERE id = (payload->>'payee_profile_id')::uuid AND status = 'ACTIVE';
+      IF v_payee_prof.id IS NOT NULL THEN
+        v_claimant_id := v_payee_prof.id;
+      END IF;
+    ELSIF NULLIF(trim(COALESCE(payload->>'claimant_id', '')), '') IS NOT NULL THEN
+      SELECT * INTO v_payee_prof FROM public.profiles WHERE id = (payload->>'claimant_id')::uuid AND status = 'ACTIVE';
+      IF v_payee_prof.id IS NOT NULL AND (v_payee_prof.id = uid OR COALESCE(v_payee_prof.is_payee_only, FALSE) = TRUE) THEN
+        v_claimant_id := v_payee_prof.id;
+      END IF;
+    END IF;
+    IF v_payee_prof.id IS NULL THEN
+      SELECT * INTO v_payee_prof FROM public.profiles WHERE id = v_claimant_id;
+    END IF;
+
+    v_bank_code := private.resolve_canonical_swift_code(COALESCE(
+      NULLIF(trim(payload->>'bank_code'),''),
+      NULLIF(trim(payload->>'bank_name'),''),
+      v_payee_prof.bank_code,
+      v_payee_prof.bank_name
+    ));
     IF v_bank_code IS NOT NULL THEN
       SELECT bank_name INTO v_bank_name FROM public.bank_directory WHERE swift_code = v_bank_code;
     ELSE
-      v_bank_name := NULLIF(trim(COALESCE(payload->>'bank_name','')),'');
+      v_bank_name := COALESCE(NULLIF(trim(COALESCE(payload->>'bank_name','')),''), v_payee_prof.bank_name);
     END IF;
-    v_holder_name := COALESCE(NULLIF(trim(COALESCE(payload->>'bank_account_holder_name','')),''), NULLIF(trim(COALESCE(payload->>'claimant_name','')),''));
-    v_acct := NULLIF(regexp_replace(trim(COALESCE(payload->>'bank_account_number','')), '[\s\-]', '', 'g'), '');
+    v_holder_name := COALESCE(
+      NULLIF(trim(COALESCE(payload->>'bank_account_holder_name','')),''),
+      NULLIF(trim(COALESCE(v_payee_prof.bank_account_holder_name,'')),''),
+      NULLIF(trim(COALESCE(payload->>'claimant_name','')),''),
+      v_payee_prof.full_name
+    );
+    v_acct := COALESCE(
+      NULLIF(regexp_replace(trim(COALESCE(payload->>'bank_account_number','')), '[\s\-]', '', 'g'), ''),
+      NULLIF(regexp_replace(trim(COALESCE(v_payee_prof.bank_account_number,'')), '[\s\-]', '', 'g'), '')
+    );
 
     IF action='submit_claim' THEN
       IF NOT COALESCE((payload->>'declaration_accepted')::boolean,false) OR
-        length(trim(COALESCE(payload->>'claimant_name','')))=0 OR length(trim(COALESCE(payload->>'purpose','')))=0 OR
+        length(trim(COALESCE(payload->>'claimant_name', v_payee_prof.full_name, '')))=0 OR length(trim(COALESCE(payload->>'purpose','')))=0 OR
         jsonb_array_length(payload->'expenses')=0 THEN
         RAISE EXCEPTION 'Complete the claimant name, purpose, receipts, and accept the declaration';
       END IF;
-      IF v_bank_code IS NULL THEN
-        RAISE EXCEPTION 'Select a supported bank from the Harvest Generation bank directory for reimbursement';
-      END IF;
-      IF v_acct IS NULL OR v_acct !~ '^[0-9]{6,20}$' THEN
-        RAISE EXCEPTION 'Enter a valid bank account number (6 to 20 digits)';
+      IF v_acct IS NOT NULL AND v_acct !~ '^[A-Za-z0-9]{5,34}$' THEN
+        RAISE EXCEPTION 'Enter a valid bank account number (5 to 34 characters)';
       END IF;
     END IF;
 
@@ -392,15 +460,15 @@ BEGIN
         ministry_id, claim_date, purpose, internal_reference, request_key
       )
       VALUES(
-        uid, uid, trim(COALESCE(payload->>'claimant_name','')),
-        NULLIF(trim(COALESCE(payload->>'claimant_email','')),''),
-        NULLIF(trim(COALESCE(payload->>'claimant_phone','')),''),
+        uid, v_claimant_id, COALESCE(NULLIF(trim(COALESCE(payload->>'claimant_name','')),''), v_payee_prof.full_name, ''),
+        COALESCE(NULLIF(trim(COALESCE(payload->>'claimant_email','')),''), v_payee_prof.email),
+        COALESCE(NULLIF(trim(COALESCE(payload->>'claimant_phone','')),''), v_payee_prof.phone),
         v_bank_name, v_bank_code, v_holder_name, v_acct,
-        NULLIF(trim(COALESCE(payload->>'beneficiary_new_ic','')),''),
-        NULLIF(trim(COALESCE(payload->>'beneficiary_old_ic','')),''),
-        NULLIF(trim(COALESCE(payload->>'beneficiary_business_reg','')),''),
-        NULLIF(trim(COALESCE(payload->>'beneficiary_others','')),''),
-        NULLIF(trim(COALESCE(payload->>'beneficiary_address','')),''),
+        COALESCE(NULLIF(trim(COALESCE(payload->>'beneficiary_new_ic','')),''), v_payee_prof.beneficiary_new_ic),
+        COALESCE(NULLIF(trim(COALESCE(payload->>'beneficiary_old_ic','')),''), v_payee_prof.beneficiary_old_ic),
+        COALESCE(NULLIF(trim(COALESCE(payload->>'beneficiary_business_reg','')),''), v_payee_prof.beneficiary_business_reg),
+        COALESCE(NULLIF(trim(COALESCE(payload->>'beneficiary_others','')),''), v_payee_prof.beneficiary_others),
+        COALESCE(NULLIF(trim(COALESCE(payload->>'beneficiary_address','')),''), v_payee_prof.beneficiary_address),
         (payload->>'ministry_id')::uuid,
         (payload->>'claim_date')::date,
         trim(payload->>'purpose'),
@@ -411,18 +479,19 @@ BEGIN
     ELSE
       UPDATE public.claims SET
         submitted_by_user_id=COALESCE(c.submitted_by_user_id, uid),
-        claimant_name=COALESCE(NULLIF(trim(COALESCE(payload->>'claimant_name','')),''), c.claimant_name),
-        claimant_email=NULLIF(trim(COALESCE(payload->>'claimant_email','')),''),
-        claimant_phone=NULLIF(trim(COALESCE(payload->>'claimant_phone','')),''),
+        claimant_id=v_claimant_id,
+        claimant_name=COALESCE(NULLIF(trim(COALESCE(payload->>'claimant_name','')),''), v_payee_prof.full_name, c.claimant_name),
+        claimant_email=COALESCE(NULLIF(trim(COALESCE(payload->>'claimant_email','')),''), v_payee_prof.email),
+        claimant_phone=COALESCE(NULLIF(trim(COALESCE(payload->>'claimant_phone','')),''), v_payee_prof.phone),
         bank_name=v_bank_name,
         bank_code=v_bank_code,
         bank_account_holder_name=v_holder_name,
         bank_account_number=v_acct,
-        beneficiary_new_ic=NULLIF(trim(COALESCE(payload->>'beneficiary_new_ic','')),''),
-        beneficiary_old_ic=NULLIF(trim(COALESCE(payload->>'beneficiary_old_ic','')),''),
-        beneficiary_business_reg=NULLIF(trim(COALESCE(payload->>'beneficiary_business_reg','')),''),
-        beneficiary_others=NULLIF(trim(COALESCE(payload->>'beneficiary_others','')),''),
-        beneficiary_address=NULLIF(trim(COALESCE(payload->>'beneficiary_address','')),''),
+        beneficiary_new_ic=COALESCE(NULLIF(trim(COALESCE(payload->>'beneficiary_new_ic','')),''), v_payee_prof.beneficiary_new_ic),
+        beneficiary_old_ic=COALESCE(NULLIF(trim(COALESCE(payload->>'beneficiary_old_ic','')),''), v_payee_prof.beneficiary_old_ic),
+        beneficiary_business_reg=COALESCE(NULLIF(trim(COALESCE(payload->>'beneficiary_business_reg','')),''), v_payee_prof.beneficiary_business_reg),
+        beneficiary_others=COALESCE(NULLIF(trim(COALESCE(payload->>'beneficiary_others','')),''), v_payee_prof.beneficiary_others),
+        beneficiary_address=COALESCE(NULLIF(trim(COALESCE(payload->>'beneficiary_address','')),''), v_payee_prof.beneficiary_address),
         ministry_id=(payload->>'ministry_id')::uuid,
         claim_date=(payload->>'claim_date')::date,
         purpose=trim(payload->>'purpose'),
@@ -1115,6 +1184,7 @@ BEGIN
     UPDATE public.profiles SET
       full_name = trim(payload->>'full_name'),
       phone = NULLIF(trim(COALESCE(payload->>'phone','')),''),
+      is_multi_user = CASE WHEN payload ? 'is_multi_user' THEN COALESCE((payload->>'is_multi_user')::boolean, false) ELSE is_multi_user END,
       bank_name = COALESCE(v_bank_name, bank_name),
       bank_code = COALESCE(v_bank_code, bank_code),
       bank_account_holder_name = COALESCE(v_holder_name, bank_account_holder_name),
@@ -1126,6 +1196,72 @@ BEGIN
       updated_at = now()
     WHERE id = uid;
     RETURN jsonb_build_object('id',uid);
+  END IF;
+
+  IF action = 'create_payee_profile' THEN
+    IF length(trim(COALESCE(payload->>'full_name', ''))) NOT BETWEEN 1 AND 150 THEN
+      RAISE EXCEPTION 'Claimant full name is required (maximum 150 characters)';
+    END IF;
+    v_bank_code := private.resolve_canonical_swift_code(COALESCE(NULLIF(trim(payload->>'bank_code'), ''), payload->>'bank_name'));
+    IF v_bank_code IS NULL THEN
+      RAISE EXCEPTION 'Select a valid bank from the 31-bank Alliance Bank directory';
+    END IF;
+    SELECT bank_name INTO STRICT v_bank_name FROM public.bank_directory WHERE swift_code = v_bank_code;
+    v_acct := NULLIF(regexp_replace(trim(COALESCE(payload->>'bank_account_number', '')), '[\s\-]', '', 'g'), '');
+    IF v_acct IS NULL OR v_acct !~ '^[A-Za-z0-9]{5,34}$' THEN
+      RAISE EXCEPTION 'Enter a valid bank account / DuitNow ID number (5 to 34 alphanumeric characters)';
+    END IF;
+    v_holder_name := COALESCE(NULLIF(trim(COALESCE(payload->>'bank_account_holder_name', '')), ''), trim(payload->>'full_name'));
+
+    IF NULLIF(trim(COALESCE(payload->>'id', '')), '') IS NOT NULL THEN
+      row_id := (payload->>'id')::uuid;
+      UPDATE public.profiles SET
+        full_name = trim(payload->>'full_name'),
+        email = COALESCE(NULLIF(trim(COALESCE(payload->>'email', '')), ''), email),
+        phone = COALESCE(NULLIF(trim(COALESCE(payload->>'phone', '')), ''), phone),
+        ministry_id = COALESCE(NULLIF(trim(COALESCE(payload->>'ministry_id', '')), '')::uuid, ministry_id),
+        bank_name = v_bank_name,
+        bank_code = v_bank_code,
+        bank_account_holder_name = v_holder_name,
+        bank_account_number = v_acct,
+        beneficiary_new_ic = COALESCE(NULLIF(trim(COALESCE(payload->>'beneficiary_new_ic', '')), ''), beneficiary_new_ic),
+        beneficiary_address = COALESCE(NULLIF(trim(COALESCE(payload->>'beneficiary_address', '')), ''), beneficiary_address),
+        bank_updated_at = now(),
+        updated_at = now()
+      WHERE id = row_id AND (id = uid OR COALESCE(is_payee_only, FALSE) = TRUE OR created_by_user_id = uid OR admin OR finance);
+      IF NOT FOUND THEN
+        RAISE EXCEPTION 'Unable to update this bank profile' USING ERRCODE = '42501';
+      END IF;
+    ELSE
+      INSERT INTO public.profiles (
+        email, full_name, phone, ministry_id, default_ministry_id,
+        status, is_multi_user, is_payee_only, created_by_user_id,
+        bank_name, bank_code, bank_account_holder_name, bank_account_number,
+        beneficiary_new_ic, beneficiary_address, bank_updated_at, onboarding_completed_at
+      ) VALUES (
+        COALESCE(NULLIF(trim(COALESCE(payload->>'email', '')), ''), 'payee-' || substring(gen_random_uuid()::text, 1, 8) || '@harvestgen.org'),
+        trim(payload->>'full_name'),
+        NULLIF(trim(COALESCE(payload->>'phone', '')), ''),
+        NULLIF(trim(COALESCE(payload->>'ministry_id', '')), '')::uuid,
+        NULLIF(trim(COALESCE(payload->>'ministry_id', '')), '')::uuid,
+        'ACTIVE', FALSE, TRUE, uid,
+        v_bank_name, v_bank_code, v_holder_name, v_acct,
+        NULLIF(trim(COALESCE(payload->>'beneficiary_new_ic', '')), ''),
+        NULLIF(trim(COALESCE(payload->>'beneficiary_address', '')), ''),
+        now(), now()
+      ) RETURNING id INTO row_id;
+    END IF;
+
+    INSERT INTO public.audit_logs (actor_id, action, entity_type, entity_id, after_data)
+    VALUES (
+      uid,
+      'UPSERT_PAYEE_BANK_PROFILE',
+      'profiles',
+      row_id::text,
+      jsonb_build_object('full_name', trim(payload->>'full_name'), 'bank_code', v_bank_code)
+    );
+
+    RETURN jsonb_build_object('id', row_id);
   END IF;
 
   IF action='profile' THEN
@@ -1158,6 +1294,7 @@ BEGIN
     UPDATE public.profiles SET
       full_name=CASE WHEN entity ? 'full_name' THEN trim(entity->>'full_name') ELSE full_name END,
       phone=COALESCE(entity->>'phone',phone),
+      is_multi_user=CASE WHEN entity ? 'is_multi_user' THEN COALESCE((entity->>'is_multi_user')::boolean, false) ELSE is_multi_user END,
       bank_name=CASE WHEN entity ? 'bank_name' OR entity ? 'bank_code' THEN v_bank_name ELSE bank_name END,
       bank_code=CASE WHEN entity ? 'bank_name' OR entity ? 'bank_code' THEN v_bank_code ELSE bank_code END,
       bank_account_holder_name=CASE WHEN entity ? 'bank_account_holder_name' THEN NULLIF(trim(entity->>'bank_account_holder_name'),'') ELSE bank_account_holder_name END,
@@ -1190,9 +1327,10 @@ BEGIN
     IF payload->>'role_code'='MINISTRY_LEADER' AND NOT EXISTS (
       SELECT 1 FROM public.ministries WHERE id=NULLIF(payload->>'ministry_id','')::uuid AND is_active
     ) THEN RAISE EXCEPTION 'Choose an active ministry for the Ministry Leader'; END IF;
-    INSERT INTO public.signup_invitations(token_hash,role_code,ministry_id,created_by,description,expires_at,max_uses)
+    INSERT INTO public.signup_invitations(token_hash,role_code,ministry_id,created_by,description,expires_at,max_uses,is_multi_user)
     VALUES(payload->>'token_hash',payload->>'role_code',CASE WHEN payload->>'role_code'='MINISTRY_LEADER' THEN (payload->>'ministry_id')::uuid END,
-      uid,NULLIF(trim(payload->>'description'),''),now()+make_interval(days=>(payload->>'expires_in_days')::integer),(payload->>'max_uses')::integer)
+      uid,NULLIF(trim(payload->>'description'),''),now()+make_interval(days=>(payload->>'expires_in_days')::integer),(payload->>'max_uses')::integer,
+      COALESCE((payload->>'is_multi_user')::boolean, false))
     RETURNING id INTO row_id;
     RETURN jsonb_build_object('id',row_id);
   END IF;
@@ -1287,7 +1425,7 @@ BEGIN
   SELECT jsonb_build_object(
     'user_id',auth.uid(),
     'profiles',COALESCE((SELECT jsonb_agg(
-      (CASE WHEN p.id=auth.uid() OR admin OR finance THEN to_jsonb(p) ELSE to_jsonb(p)-'bank_name'-'bank_code'-'bank_account_holder_name'-'bank_account_number'-'beneficiary_new_ic'-'beneficiary_old_ic'-'beneficiary_business_reg'-'beneficiary_others'-'beneficiary_address'-'phone'-'email' END) ||
+      (CASE WHEN p.id=auth.uid() OR admin OR finance OR COALESCE(p.is_payee_only, false) = true OR p.created_by_user_id = auth.uid() THEN to_jsonb(p) ELSE to_jsonb(p)-'bank_name'-'bank_code'-'bank_account_holder_name'-'bank_account_number'-'beneficiary_new_ic'-'beneficiary_old_ic'-'beneficiary_business_reg'-'beneficiary_others'-'beneficiary_address'-'phone'-'email' END) ||
       jsonb_build_object('roles',COALESCE((SELECT jsonb_agg(r.code) FROM public.user_roles ur JOIN public.roles r ON r.id=ur.role_id WHERE ur.user_id=p.id),'[]'))
     ) FROM public.profiles p),'[]'),
     'ministries',COALESCE((SELECT jsonb_agg(to_jsonb(m) ORDER BY name) FROM public.ministries m),'[]'),
@@ -1363,7 +1501,7 @@ BEGIN
       'user_id', uid,
       'profiles', COALESCE((
         SELECT jsonb_agg(
-          (CASE WHEN p.id = uid OR admin OR finance
+          (CASE WHEN p.id = uid OR admin OR finance OR COALESCE(p.is_payee_only, false) = true OR p.created_by_user_id = uid
             THEN to_jsonb(p)
             ELSE to_jsonb(p) - 'bank_name' - 'bank_code' - 'bank_account_holder_name' - 'bank_account_number' - 'beneficiary_new_ic' - 'beneficiary_old_ic' - 'beneficiary_business_reg' - 'beneficiary_others' - 'beneficiary_address' - 'phone' - 'email'
           END) ||

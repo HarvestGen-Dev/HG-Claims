@@ -48,6 +48,7 @@ export default function UserManagementPage() {
   const [newUserPhone, setNewUserPhone] = useState("");
   const [newUserRoles, setNewUserRoles] = useState<RoleCode[]>(["MINISTRY_LEADER"]);
   const [newUserMinistryId, setNewUserMinistryId] = useState<string>("");
+  const [newUserIsMultiUser, setNewUserIsMultiUser] = useState(false);
   const [emailInviteError, setEmailInviteError] = useState("");
   const [emailInviteBusy, setEmailInviteBusy] = useState(false);
 
@@ -61,6 +62,7 @@ export default function UserManagementPage() {
   const [inviteMaxUses, setInviteMaxUses] = useState<number>(5);
   const [inviteExpiresDays, setInviteExpiresDays] = useState<number>(7);
   const [inviteDescription, setInviteDescription] = useState<string>("");
+  const [inviteIsMultiUser, setInviteIsMultiUser] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [inviteError, setInviteError] = useState("");
@@ -113,6 +115,7 @@ export default function UserManagementPage() {
         default_ministry_id: selectedMinistryId || null,
         status: editingUser.status,
         roles: selectedRoles,
+        is_multi_user: Boolean(editingUser.is_multi_user),
       });
       setProfiles(iamClient.getProfiles());
       setEditingUser(null);
@@ -153,6 +156,7 @@ export default function UserManagementPage() {
         max_uses: maxUses,
         expires_in_days: Number(inviteExpiresDays) || 7,
         description: inviteDescription || undefined,
+        is_multi_user: inviteIsMultiUser,
       });
 
       const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -208,6 +212,7 @@ export default function UserManagementPage() {
     setNewUserPhone("");
     setNewUserRoles(["MINISTRY_LEADER"]);
     setNewUserMinistryId(ministries[0]?.id || "");
+    setNewUserIsMultiUser(false);
     setEmailInviteError("");
   };
 
@@ -241,6 +246,7 @@ export default function UserManagementPage() {
         phone: newUserPhone.trim() || undefined,
         roles: newUserRoles,
         ministry_id: newUserMinistryId || null,
+        is_multi_user: newUserIsMultiUser,
       });
       setProfiles(iamClient.getProfiles());
       resetEmailInviteModal();
@@ -266,6 +272,7 @@ export default function UserManagementPage() {
     setInviteRole("MINISTRY_LEADER");
     setInviteMinistryId(ministries[0]?.id || "");
     setInviteUsageType("single");
+    setInviteIsMultiUser(false);
     setCopied(false);
     setInvitations(iamClient.getSignupInvitations());
   };
@@ -441,8 +448,18 @@ export default function UserManagementPage() {
                       return (
                         <tr key={u.id} className="hover:bg-slate-50/70">
                           <td className="py-3.5 px-4">
-                            <div className="font-bold text-slate-900">
+                            <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
                               {u.full_name || <span className="italic text-slate-400">Uncompleted Setup</span>}
+                              {u.is_multi_user && (
+                                <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-semibold">
+                                  Multi-User
+                                </span>
+                              )}
+                              {u.is_payee_only && (
+                                <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-semibold">
+                                  Claimant Profile
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td className="py-3.5 px-4 text-slate-600">
@@ -865,6 +882,26 @@ export default function UserManagementPage() {
             </div>
           </div>
 
+            <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70">
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={newUserIsMultiUser}
+                  onChange={(e) => setNewUserIsMultiUser(e.target.checked)}
+                  disabled={emailInviteBusy}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-zinc-900 focus:ring-zinc-900 accent-zinc-900"
+                />
+                <div className="text-xs">
+                  <span className="font-semibold text-slate-900 block">
+                    Multi-User / Shared Ministry Account
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    When enabled, this account will not be prompted for personal bank details upon sign-in; claimant bank profiles are selected or added directly on the Claim Form.
+                  </span>
+                </div>
+              </label>
+            </div>
+
           {emailInviteError && (
             <div className="p-2.5 bg-red-50 border border-red-200 rounded text-xs text-red-700 flex items-start gap-1.5">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
@@ -1019,6 +1056,26 @@ export default function UserManagementPage() {
               />
             </div>
 
+            <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70">
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={inviteIsMultiUser}
+                  onChange={(e) => setInviteIsMultiUser(e.target.checked)}
+                  disabled={inviteBusy}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-zinc-900 focus:ring-zinc-900 accent-zinc-900"
+                />
+                <div className="text-xs">
+                  <span className="font-semibold text-slate-900 block">
+                    Multi-User / Shared Ministry Account
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    Skip personal bank prompt during onboarding; claimants select or add bank profiles during claim submission.
+                  </span>
+                </div>
+              </label>
+            </div>
+
             {inviteError && (
               <div className="p-2.5 bg-red-50 border border-red-200 rounded text-xs text-red-700 flex items-start gap-1.5">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
@@ -1081,6 +1138,26 @@ export default function UserManagementPage() {
                   <option key={m.id} value={m.id}>{m.name} ({m.code})</option>
                 ))}
               </select>
+            </div>
+
+            <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70">
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={Boolean(editingUser.is_multi_user)}
+                  onChange={(e) => setEditingUser({ ...editingUser, is_multi_user: e.target.checked })}
+                  disabled={userSaving}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-zinc-900 focus:ring-zinc-900 accent-zinc-900"
+                />
+                <div className="text-xs">
+                  <span className="font-semibold text-slate-900 block">
+                    Multi-User / Shared Ministry Account
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    Do not prompt for a single personal bank account on login; select or add claimant bank profiles on the Claim Form.
+                  </span>
+                </div>
+              </label>
             </div>
 
             <div className="space-y-2 pt-2">

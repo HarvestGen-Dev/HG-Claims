@@ -14,7 +14,11 @@ import {
   UserCheck,
   Building2,
   Receipt,
-  Landmark
+  Landmark,
+  Plus,
+  Search,
+  Users,
+  CheckCircle2
 } from "lucide-react";
 import {
   MALAYSIAN_BANKS,
@@ -28,9 +32,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { ExpenseItemsEditor, ExpenseItemDraft } from "./ExpenseItemsEditor";
 import { useAuth } from "@/lib/auth/context";
-import { claimsClient, masterDataClient } from "@/lib/domains";
-import { Claim, Ministry, CostCentre } from "@/lib/types/database";
-import { Dialog, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { claimsClient, iamClient, masterDataClient, workspaceStore } from "@/lib/domains";
+import { Claim, Ministry, CostCentre, Profile } from "@/lib/types/database";
+import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/utils/formatters";
 import { showToast } from "@/lib/utils/toast";
 
@@ -59,9 +63,31 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
 
   const today = new Date().toISOString().split("T")[0];
 
-  // 01: Claimant Details State
+  // 01: Claimant Details & Saved Bank Profile State
+  const [profiles, setProfiles] = useState<Profile[]>(() => iamClient.getProfiles());
+  const [selectedPayeeProfileId, setSelectedPayeeProfileId] = useState<string>(
+    initialClaim?.claimant_id || (user && !user.is_multi_user ? user.id : "")
+  );
+  const [profileSearchQuery, setProfileSearchQuery] = useState("");
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Add New Claimant Bank Profile Modal State
+  const [isAddBankProfileOpen, setIsAddBankProfileOpen] = useState(false);
+  const [newProfileName, setNewProfileName] = useState("");
+  const [newProfileEmail, setNewProfileEmail] = useState("");
+  const [newProfilePhone, setNewProfilePhone] = useState("");
+  const [newProfileBankCode, setNewProfileBankCode] = useState("MBBEMYKL");
+  const [newProfileHolderName, setNewProfileHolderName] = useState("");
+  const [newProfileAccountNumber, setNewProfileAccountNumber] = useState("");
+  const [newProfileError, setNewProfileError] = useState<string | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
   const [claimantName, setClaimantName] = useState(
-    initialClaim?.claimant_name || initialClaim?.claimant?.full_name || user?.full_name || ""
+    initialClaim?.claimant_name ||
+      initialClaim?.claimant?.full_name ||
+      (user?.is_multi_user ? "" : user?.full_name) ||
+      ""
   );
   const [claimantEmail, setClaimantEmail] = useState(
     initialClaim?.claimant_email || initialClaim?.claimant?.email || user?.email || ""
@@ -72,14 +98,13 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   const initialResolvedBank = resolveCanonicalBank(
     initialClaim?.bank_code ||
       initialClaim?.bank_name ||
-      user?.bank_code ||
-      user?.bank_name ||
+      (user?.is_multi_user ? undefined : user?.bank_code || user?.bank_name) ||
       "MBBEMYKL"
   );
   const [bankName, setBankName] = useState(
     initialResolvedBank?.name ||
       initialClaim?.bank_name ||
-      user?.bank_name ||
+      (user?.is_multi_user ? undefined : user?.bank_name) ||
       "Maybank / Malayan Banking Berhad"
   );
   const [bankCode, setBankCode] = useState(
@@ -87,13 +112,13 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   );
   const [bankAccountHolderName, setBankAccountHolderName] = useState(
     initialClaim?.bank_account_holder_name ||
-      user?.bank_account_holder_name ||
+      (user?.is_multi_user ? "" : user?.bank_account_holder_name) ||
       initialClaim?.claimant_name ||
-      user?.full_name ||
+      (user?.is_multi_user ? "" : user?.full_name) ||
       ""
   );
   const [bankAccountNumber, setBankAccountNumber] = useState(
-    initialClaim?.bank_account_number || user?.bank_account_number || ""
+    initialClaim?.bank_account_number || (user?.is_multi_user ? "" : user?.bank_account_number) || ""
   );
 
   // 02: Claim Details State
@@ -192,14 +217,118 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   }, [dirty]);
 
   useEffect(() => {
+    const unsub = workspaceStore.subscribe(() => {
+      setProfiles(iamClient.getProfiles());
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        profileDropdownRef.current &&
+        !profileDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
     if (error) {
       errorRef.current?.focus();
       errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [error]);
 
+  const handleSelectClaimantProfile = (profile: Profile) => {
+    setSelectedPayeeProfileId(profile.id);
+    setClaimantName(profile.full_name || "");
+    setClaimantEmail(profile.email || user?.email || "");
+    setClaimantPhone(profile.phone || user?.phone || "+60 12-345 6789");
+    const resolved = resolveCanonicalBank(profile.bank_code || profile.bank_name);
+    if (resolved) {
+      setBankName(resolved.name);
+      setBankCode(resolved.swiftCode);
+    } else if (profile.bank_name) {
+      setBankName(profile.bank_name);
+    }
+    setBankAccountHolderName(
+      profile.bank_account_holder_name || profile.full_name || ""
+    );
+    if (profile.bank_account_number) {
+      setBankAccountNumber(profile.bank_account_number);
+    }
+    setProfileSearchQuery(profile.full_name || "");
+    setIsProfileDropdownOpen(false);
+    setDirty(true);
+  };
+
+  const handleOpenAddBankProfile = (prefillName?: string) => {
+    const nameToUse = (prefillName ?? profileSearchQuery ?? claimantName).trim();
+    setNewProfileName(nameToUse);
+    setNewProfileHolderName(nameToUse);
+    setNewProfileEmail(claimantEmail || user?.email || "");
+    setNewProfilePhone(claimantPhone || user?.phone || "+60 12-345 6789");
+    setNewProfileBankCode(bankCode || "MBBEMYKL");
+    setNewProfileAccountNumber("");
+    setNewProfileError(null);
+    setIsProfileDropdownOpen(false);
+    setIsAddBankProfileOpen(true);
+  };
+
+  const handleSaveNewBankProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setNewProfileError(null);
+    if (!newProfileName.trim()) {
+      setNewProfileError("Please enter the claimant's full name.");
+      return;
+    }
+    const resolvedBank = resolveCanonicalBank(newProfileBankCode);
+    if (!resolvedBank) {
+      setNewProfileError("Please select a valid bank from the SBP directory.");
+      return;
+    }
+    const acctValidation = validateBankAccountString(newProfileAccountNumber);
+    if (!acctValidation.valid) {
+      setNewProfileError(acctValidation.error || "Please enter a valid bank account number.");
+      return;
+    }
+
+    setIsSavingProfile(true);
+    try {
+      const savedProfile = await iamClient.saveClaimantBankProfile({
+        full_name: newProfileName.trim(),
+        email: newProfileEmail.trim() || user?.email || undefined,
+        phone: newProfilePhone.trim() || undefined,
+        bank_name: resolvedBank.name,
+        bank_code: resolvedBank.swiftCode,
+        bank_account_holder_name:
+          newProfileHolderName.trim() || newProfileName.trim(),
+        bank_account_number: acctValidation.normalized,
+        ministry_id: ministryId || user?.ministry_id || null,
+      });
+      setProfiles(iamClient.getProfiles());
+      handleSelectClaimantProfile(savedProfile);
+      setIsAddBankProfileOpen(false);
+      showToast.success(
+        `${savedProfile.full_name}'s bank profile saved and linked to this claim.`,
+        "Bank Profile Added"
+      );
+    } catch (err: any) {
+      setNewProfileError(
+        err instanceof Error ? err.message : "Failed to save claimant bank profile."
+      );
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
   const handleFillMyDetails = () => {
     if (user) {
+      setSelectedPayeeProfileId(user.id);
       setClaimantName(user.full_name);
       setClaimantEmail(user.email);
       setClaimantPhone(user.phone || "+60 12-345 6789");
@@ -210,6 +339,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
       }
       setBankAccountHolderName(user.bank_account_holder_name || user.full_name);
       if (user.bank_account_number) setBankAccountNumber(user.bank_account_number);
+      setProfileSearchQuery(user.full_name || "");
       setDirty(true);
     }
   };
@@ -275,7 +405,8 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
       const claimData = {
         id: isEditMode && initialClaim?.id ? initialClaim.id : undefined,
         submitted_by_user_id: user?.id || "u-sarah-02",
-        claimant_id: initialClaim?.claimant_id || user?.id || "u-sarah-02",
+        claimant_id: selectedPayeeProfileId || initialClaim?.claimant_id || user?.id || "u-sarah-02",
+        payee_profile_id: selectedPayeeProfileId || undefined,
         claimant_name: claimantName.trim() || user?.full_name || "Unknown Claimant",
         claimant_email: claimantEmail.trim() || user?.email || "",
         claimant_phone: claimantPhone.trim() || user?.phone || "",
@@ -349,7 +480,8 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
       const claimData = {
         id: isEditMode && initialClaim?.id ? initialClaim.id : undefined,
         submitted_by_user_id: user?.id || "u-sarah-02",
-        claimant_id: initialClaim?.claimant_id || user?.id || "u-sarah-02",
+        claimant_id: selectedPayeeProfileId || initialClaim?.claimant_id || user?.id || "u-sarah-02",
+        payee_profile_id: selectedPayeeProfileId || undefined,
         claimant_name: claimantName.trim(),
         claimant_email: claimantEmail.trim(),
         claimant_phone: claimantPhone.trim(),
@@ -512,10 +644,203 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                 {user?.full_name || "Ministry Head"}
               </span>
               <span className="text-[10px] text-zinc-400">({user?.email})</span>
+              {user?.is_multi_user && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  Multi-User Account
+                </span>
+              )}
             </div>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-200/70 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
               Ministry Submitter
             </span>
+          </div>
+
+          {/* Saved Claimant / Payee Bank Profile Lookup & Quick-Add */}
+          <div className="p-3 rounded-lg bg-slate-50/90 dark:bg-zinc-900/80 border border-zinc-200/90 dark:border-zinc-800 space-y-2.5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-zinc-800 dark:text-zinc-200" />
+                  <span className="text-[11px] font-semibold text-zinc-900 dark:text-zinc-100">
+                    Select Saved Claimant Bank Profile
+                  </span>
+                  {selectedPayeeProfileId && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Linked to Saved Profile
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-zinc-500 mt-0.5">
+                  Search or select a claimant&apos;s name to automatically link their bank account and disbursement details. If their name is not listed, click <strong>+ Add Bank Profile</strong>.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleOpenAddBankProfile()}
+                className="h-8 text-xs border-zinc-300 bg-white hover:bg-zinc-100 text-zinc-900 font-semibold shrink-0 gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Bank Profile</span>
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Searchable Combobox for Claimant Profiles */}
+              <div ref={profileDropdownRef} className="relative">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Input
+                    type="text"
+                    id="claimantProfileSearch"
+                    placeholder="Search claimant name or bank account..."
+                    value={profileSearchQuery}
+                    onFocus={() => setIsProfileDropdownOpen(true)}
+                    onChange={(e) => {
+                      setProfileSearchQuery(e.target.value);
+                      setIsProfileDropdownOpen(true);
+                    }}
+                    className="h-8 pl-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
+                  />
+                </div>
+
+                {isProfileDropdownOpen && (
+                  <div className="absolute z-30 mt-1 w-full max-h-60 overflow-y-auto rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-950 divide-y divide-zinc-100 dark:divide-zinc-800 text-xs">
+                    {(() => {
+                      const q = profileSearchQuery.trim().toLowerCase();
+                      const selectableProfiles = (profiles || []).filter(
+                        (p) =>
+                          p.status !== "INACTIVE" &&
+                          Boolean(p.full_name?.trim()) &&
+                          (!q ||
+                            p.full_name.toLowerCase().includes(q) ||
+                            (p.email || "").toLowerCase().includes(q) ||
+                            (p.bank_name || "").toLowerCase().includes(q) ||
+                            (p.bank_account_number || "").toLowerCase().includes(q))
+                      );
+
+                      if (selectableProfiles.length === 0) {
+                        return (
+                          <div className="p-3 text-center space-y-2">
+                            <p className="text-zinc-500 text-[11px]">
+                              No saved bank profile matching{" "}
+                              <strong className="text-zinc-900 dark:text-zinc-100">
+                                &ldquo;{profileSearchQuery}&rdquo;
+                              </strong>
+                            </p>
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => handleOpenAddBankProfile(profileSearchQuery)}
+                              className="h-7 text-[11px] bg-zinc-900 hover:bg-zinc-800 text-white gap-1"
+                            >
+                              <Plus className="w-3 h-3" />
+                              <span>
+                                Add &ldquo;{profileSearchQuery.trim() || "New Claimant"}&rdquo; Bank Profile
+                              </span>
+                            </Button>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <>
+                          {selectableProfiles.map((p) => {
+                            const bankEntry = resolveCanonicalBank(p.bank_code || p.bank_name);
+                            const isSelected = selectedPayeeProfileId === p.id;
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => handleSelectClaimantProfile(p)}
+                                className={`w-full text-left px-3 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-900 flex items-center justify-between gap-2 transition-colors ${
+                                  isSelected ? "bg-emerald-50/60 dark:bg-emerald-950/30" : ""
+                                }`}
+                              >
+                                <div className="min-w-0">
+                                  <div className="font-semibold text-zinc-900 dark:text-zinc-100 truncate flex items-center gap-1.5">
+                                    <span>{p.full_name}</span>
+                                    {p.is_payee_only && (
+                                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-zinc-100 text-zinc-600 font-normal">
+                                        Saved Payee
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-zinc-500 truncate">
+                                    {bankEntry
+                                      ? `${bankEntry.swiftCode} · ${bankEntry.name}`
+                                      : p.bank_name || "No bank linked yet"}
+                                    {p.bank_account_number
+                                      ? ` · Acct ${p.bank_account_number}`
+                                      : ""}
+                                  </div>
+                                </div>
+                                {isSelected && (
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                )}
+                              </button>
+                            );
+                          })}
+                          <div className="p-2 bg-zinc-50/80 dark:bg-zinc-900/60 flex items-center justify-between">
+                            <span className="text-[10px] text-zinc-500">
+                              Claimant not in list?
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAddBankProfile(profileSearchQuery)}
+                              className="text-[11px] font-semibold text-zinc-900 hover:underline inline-flex items-center gap-1 dark:text-zinc-100"
+                            >
+                              <Plus className="w-3 h-3" />
+                              <span>Add New Bank Profile</span>
+                            </button>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+
+              {/* Direct Dropdown Select for Quick Selection */}
+              <div>
+                <select
+                  id="claimantProfileSelect"
+                  aria-label="Select Claimant Bank Profile"
+                  value={selectedPayeeProfileId}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "__ADD_NEW__") {
+                      handleOpenAddBankProfile();
+                      return;
+                    }
+                    const found = (profiles || []).find((p) => p.id === val);
+                    if (found) {
+                      handleSelectClaimantProfile(found);
+                    } else {
+                      setSelectedPayeeProfileId("");
+                    }
+                  }}
+                  className="flex h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                >
+                  <option value="">-- Choose Saved Claimant Profile --</option>
+                  {(profiles || [])
+                    .filter((p) => p.status !== "INACTIVE" && Boolean(p.full_name?.trim()))
+                    .map((p) => {
+                      const bankEntry = resolveCanonicalBank(p.bank_code || p.bank_name);
+                      return (
+                        <option key={p.id} value={p.id}>
+                          {p.full_name}
+                          {bankEntry ? ` — ${bankEntry.swiftCode}` : ""}
+                          {p.bank_account_number ? ` (${p.bank_account_number})` : " (No bank yet)"}
+                        </option>
+                      );
+                    })}
+                  <option value="__ADD_NEW__">+ Add New Claimant Bank Profile...</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           {/* Claimant Snapshot Inputs */}
@@ -824,6 +1149,163 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           </div>
         </CardContent>
       </Card>
+
+      {/* Add New Claimant Bank Profile Modal */}
+      <Dialog
+        open={isAddBankProfileOpen}
+        onOpenChange={(open) => {
+          if (!open && !isSavingProfile) setIsAddBankProfileOpen(false);
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-sm">
+            <Landmark className="w-4 h-4 text-zinc-900" />
+            <span>Add Claimant Bank Account Profile</span>
+          </DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSaveNewBankProfile} className="space-y-3.5 my-2 text-xs">
+          <p className="text-zinc-500 leading-relaxed">
+            Save a claimant&apos;s bank account details to the directory. Once saved, selecting their name automatically links future reimbursement claims to their disbursement account.
+          </p>
+
+          <div className="space-y-1">
+            <label htmlFor="newProfileName" className="font-semibold text-zinc-700 block">
+              Claimant Full Name <span className="text-red-500">*</span>
+            </label>
+            <Input
+              id="newProfileName"
+              type="text"
+              placeholder="e.g. Hannah Wong"
+              value={newProfileName}
+              onChange={(e) => {
+                const val = e.target.value;
+                setNewProfileName(val);
+                if (!newProfileHolderName || newProfileHolderName === newProfileName) {
+                  setNewProfileHolderName(val);
+                }
+              }}
+              disabled={isSavingProfile}
+              className="h-9 text-xs"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label htmlFor="newProfileEmail" className="font-semibold text-zinc-700 block">
+                Email Address <span className="text-zinc-400 font-normal">(Optional)</span>
+              </label>
+              <Input
+                id="newProfileEmail"
+                type="email"
+                placeholder="claimant@harvestgen.org"
+                value={newProfileEmail}
+                onChange={(e) => setNewProfileEmail(e.target.value)}
+                disabled={isSavingProfile}
+                className="h-9 text-xs"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="newProfilePhone" className="font-semibold text-zinc-700 block">
+                Mobile Phone <span className="text-zinc-400 font-normal">(Optional)</span>
+              </label>
+              <Input
+                id="newProfilePhone"
+                type="tel"
+                placeholder="+60 12-345 6789"
+                value={newProfilePhone}
+                onChange={(e) => setNewProfilePhone(e.target.value)}
+                disabled={isSavingProfile}
+                className="h-9 text-xs font-mono"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="newProfileBankCode" className="font-semibold text-zinc-700 block">
+              Beneficiary Bank (SBP Directory) <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="newProfileBankCode"
+              value={newProfileBankCode}
+              onChange={(e) => setNewProfileBankCode(e.target.value)}
+              disabled={isSavingProfile}
+              className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900"
+              required
+            >
+              {MALAYSIAN_BANKS.map((bank) => (
+                <option key={bank.swiftCode} value={bank.swiftCode}>
+                  {bank.name} ({bank.swiftCode} · {bank.paymentMode})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label htmlFor="newProfileHolderName" className="font-semibold text-zinc-700 block">
+                Beneficiary Legal Name <span className="text-red-500">*</span>
+              </label>
+              <Input
+                id="newProfileHolderName"
+                type="text"
+                placeholder="Exact legal name on bank account"
+                value={newProfileHolderName}
+                onChange={(e) => setNewProfileHolderName(e.target.value)}
+                disabled={isSavingProfile}
+                className="h-9 text-xs"
+                required
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="newProfileAccountNumber" className="font-semibold text-zinc-700 block">
+                Bank Account Number <span className="text-red-500">*</span>
+              </label>
+              <Input
+                id="newProfileAccountNumber"
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 514012345678"
+                value={newProfileAccountNumber}
+                onChange={(e) => setNewProfileAccountNumber(e.target.value)}
+                disabled={isSavingProfile}
+                className="h-9 text-xs font-mono tracking-wider"
+                required
+              />
+            </div>
+          </div>
+
+          {newProfileError && (
+            <div className="p-2.5 rounded bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-1.5">
+              <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+              <span>{newProfileError}</span>
+            </div>
+          )}
+
+          <DialogFooter className="mt-4 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsAddBankProfileOpen(false)}
+              disabled={isSavingProfile}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              loading={isSavingProfile}
+              disabled={isSavingProfile}
+              className="bg-zinc-900 hover:bg-zinc-800 text-white gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{isSavingProfile ? "Saving Profile..." : "Save & Link Bank Profile"}</span>
+            </Button>
+          </DialogFooter>
+        </form>
+      </Dialog>
 
       <Dialog
         open={leaveHref !== null}

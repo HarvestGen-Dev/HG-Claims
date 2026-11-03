@@ -559,4 +559,135 @@ describe("BIFF8 .xls Generation, Round-Trip Verification, Leading Zeroes & Secur
     expect(db.getClaimById(c3.id)?.reimbursement_status).toBe("RELEASED");
     expect(db.getClaimById(c3.id)?.active_batch_id).toBeUndefined();
   });
+
+  it("supports Multi-User Accounts, adding Claimant Bank Profiles during claim workflow, and automatic profile-to-claim disbursement linking", () => {
+    const financeActor = db
+      .getProfiles()
+      .find((p) => p.roles?.includes("FINANCE_OFFICER"))!;
+    const leaderProfile = db
+      .getProfiles()
+      .find((p) => p.roles?.includes("MINISTRY_LEADER"))!;
+
+    // 1. Complete onboarding for a Multi-User shared ministry account without requiring personal bank details
+    const sharedLeader = db.completeOnboarding(leaderProfile.id, {
+      full_name: "Youth Ministry Shared Desk",
+      phone: "+60 12-555 0100",
+      is_multi_user: true,
+    });
+    expect(sharedLeader.is_multi_user).toBe(true);
+    expect(sharedLeader.onboarding_completed_at).toBeTruthy();
+
+    // 2. During the Claim Form workflow, add a new Claimant Bank Profile for a volunteer ("Hannah Wong")
+    const hannahProfile = db.saveClaimantBankProfile({
+      actor_id: sharedLeader.id,
+      full_name: "Hannah Wong",
+      email: "hannah.wong@harvestgen.org",
+      phone: "+60 17-222 8899",
+      bank_name: "Public Bank",
+      bank_code: "PBBEMYKL",
+      bank_account_holder_name: "HANNAH WONG MEI LING",
+      bank_account_number: "003198765432",
+      ministry_id: "m-youth-01",
+    });
+
+    expect(hannahProfile.id).toBeTruthy();
+    expect(hannahProfile.is_payee_only).toBe(true);
+    expect(hannahProfile.bank_code).toBe("PBBEMYKL");
+    expect(hannahProfile.bank_account_number).toBe("003198765432");
+
+    // 3. Submit two claims by selecting Hannah's profile ID (without manually re-entering bank account numbers)
+    const hannahClaim1 = db.submitClaim({
+      submitted_by_user_id: sharedLeader.id,
+      claimant_id: hannahProfile.id,
+      payee_profile_id: hannahProfile.id,
+      claimant_name: "",
+      claimant_email: "",
+      claimant_phone: "",
+      ministry_id: "m-youth-01",
+      claim_date: "2026-10-10",
+      purpose: "Youth camp craft supplies",
+      declaration_accepted: true,
+      expenses: [
+        {
+          temp_id: "h1",
+          expense_date: "2026-10-10",
+          expense_category_id: "cat-meals-02",
+          cost_centre_id: "cc-youth-01",
+          description: "Stationery & markers",
+          amount: 45.5,
+          sort_order: 1,
+        },
+      ],
+      attachments: [
+        {
+          temp_id: "h1",
+          original_filename: "markers.pdf",
+          storage_path: "receipts/markers.pdf",
+          file_size: 1024,
+          mime_type: "application/pdf",
+          file_category: "RECEIPT",
+          uploaded_by: sharedLeader.id,
+        },
+      ],
+    });
+
+    const hannahClaim2 = db.submitClaim({
+      submitted_by_user_id: sharedLeader.id,
+      claimant_id: hannahProfile.id,
+      payee_profile_id: hannahProfile.id,
+      claimant_name: "",
+      claimant_email: "",
+      claimant_phone: "",
+      ministry_id: "m-youth-01",
+      claim_date: "2026-10-11",
+      purpose: "Youth camp snacks",
+      declaration_accepted: true,
+      expenses: [
+        {
+          temp_id: "h2",
+          expense_date: "2026-10-11",
+          expense_category_id: "cat-meals-02",
+          cost_centre_id: "cc-youth-01",
+          description: "Biscuits",
+          amount: 54.5,
+          sort_order: 1,
+        },
+      ],
+      attachments: [
+        {
+          temp_id: "h2",
+          original_filename: "snacks.pdf",
+          storage_path: "receipts/snacks.pdf",
+          file_size: 1024,
+          mime_type: "application/pdf",
+          file_category: "RECEIPT",
+          uploaded_by: sharedLeader.id,
+        },
+      ],
+    });
+
+    // Verify automatic disbursement linking from the saved Claimant Bank Profile
+    expect(hannahClaim1.claimant_id).toBe(hannahProfile.id);
+    expect(hannahClaim1.claimant_name).toBe("Hannah Wong");
+    expect(hannahClaim1.bank_code).toBe("PBBEMYKL");
+    expect(hannahClaim1.bank_account_holder_name).toBe("HANNAH WONG MEI LING");
+    expect(hannahClaim1.bank_account_number).toBe("003198765432");
+
+    // 4. Approve both claims and batch them -> consolidates into 1 transfer row for Hannah Wong
+    db.approveStep(hannahClaim1.id, financeActor, "Approved");
+    db.approveStep(hannahClaim2.id, financeActor, "Approved");
+
+    const hannahBatch = db.createReimbursementBatch({
+      actor_id: financeActor.id,
+      claim_ids: [hannahClaim1.id, hannahClaim2.id],
+      batch_name: "Hannah Consolidated Batch",
+    });
+
+    expect(hannahBatch.claim_count).toBe(2);
+    expect(hannahBatch.transfer_count).toBe(1);
+    expect(hannahBatch.total_amount).toBe(100.0);
+    expect(hannahBatch.instructions?.[0]?.beneficiary_user_id).toBe(hannahProfile.id);
+    expect(hannahBatch.instructions?.[0]?.beneficiary_bank_code).toBe("PBBEMYKL");
+    expect(hannahBatch.instructions?.[0]?.beneficiary_account_number).toBe("003198765432");
+  });
 });

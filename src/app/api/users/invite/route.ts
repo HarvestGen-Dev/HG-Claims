@@ -13,6 +13,7 @@ const schema = z
     role_code: roleEnum.optional(),
     roles: z.array(roleEnum).min(1).optional(),
     ministry_id: z.string().uuid().nullable().optional(),
+    is_multi_user: z.boolean().optional(),
   })
   .strict();
 
@@ -83,6 +84,7 @@ export async function POST(request: NextRequest) {
           phone: body.phone || null,
           ministry_id: body.ministry_id || null,
           default_ministry_id: body.ministry_id || null,
+          is_multi_user: Boolean(body.is_multi_user),
           status: "ACTIVE",
           roles: assignedRoles,
         },

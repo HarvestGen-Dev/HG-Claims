@@ -66,6 +66,7 @@ export interface SignupInvitation {
   max_uses: number;
   use_count: number;
   is_active: boolean;
+  is_multi_user?: boolean;
   created_at: string;
   last_used_at?: string | null;
   raw_token?: string;
@@ -80,6 +81,9 @@ export interface Profile {
   ministry_id?: string | null;
   default_ministry_id?: string | null;
   status: UserStatus;
+  is_multi_user?: boolean;
+  is_payee_only?: boolean;
+  created_by_user_id?: string | null;
   onboarding_completed_at?: string | null;
   bank_name?: string | null;
   bank_code?: string | null;

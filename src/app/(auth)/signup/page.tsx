@@ -15,6 +15,7 @@ import {
   User,
   Mail,
   Lock,
+  Users,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
 import { Button } from "@/components/ui/button";
@@ -35,11 +36,13 @@ function SignupContent() {
     role_code?: string;
     ministry_name?: string | null;
     description?: string | null;
+    is_multi_user?: boolean;
     error?: string;
   } | null>(null);
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [isMultiUser, setIsMultiUser] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -67,6 +70,7 @@ function SignupContent() {
         const data = await res.json();
         if (res.ok && data.valid) {
           setInviteData(data);
+          setIsMultiUser(Boolean(data.is_multi_user));
         } else {
           setInviteData({ valid: false, error: data.error || "This invitation link is invalid or has expired." });
         }
@@ -188,6 +192,7 @@ function SignupContent() {
           email: email.trim(),
           password,
           fullName: fullName.trim(),
+          is_multi_user: isMultiUser,
         }),
       });
 
@@ -274,6 +279,28 @@ function SignupContent() {
             </div>
 
             <form className="space-y-4" onSubmit={handleSignup}>
+              {/* Multi-User Account Toggle */}
+              <label className="flex items-start justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50/80 cursor-pointer hover:bg-slate-100/70 transition-colors">
+                <div className="flex items-start gap-2.5">
+                  <Users className="h-4 w-4 text-zinc-900 mt-0.5 shrink-0" />
+                  <div>
+                    <div className="text-xs font-semibold text-slate-900">
+                      Multi-User Account (Shared by Multiple Claimants)
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                      Enable if multiple people use this account. You won&apos;t be prompted for a personal bank account after creation — bank profiles are selected or added on the Claim page.
+                    </div>
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={isMultiUser}
+                  onChange={(e) => setIsMultiUser(e.target.checked)}
+                  disabled={busy}
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-zinc-900 focus:ring-zinc-900 accent-zinc-900 shrink-0"
+                />
+              </label>
+
               {/* Full Name */}
               <div className="space-y-1.5">
                 <label htmlFor="full-name" className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">

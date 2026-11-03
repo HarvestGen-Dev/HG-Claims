@@ -45,6 +45,7 @@ export class IamClient {
     max_uses?: number;
     expires_in_days?: number;
     description?: string;
+    is_multi_user?: boolean;
   }) {
     return workspaceStore.dispatchDomainCommand(
       IAM_ENDPOINT,
@@ -72,6 +73,7 @@ export class IamClient {
   async completeOnboarding(data: {
     full_name: string;
     phone?: string;
+    is_multi_user?: boolean;
     bank_name?: string;
     bank_code?: string;
     bank_account_holder_name?: string;
@@ -84,6 +86,27 @@ export class IamClient {
       "complete_onboarding",
       data
     );
+  }
+
+  async saveClaimantBankProfile(data: {
+    id?: string;
+    full_name: string;
+    email?: string;
+    phone?: string;
+    ministry_id?: string | null;
+    bank_name?: string;
+    bank_code: string;
+    bank_account_holder_name?: string;
+    bank_account_number: string;
+    beneficiary_new_ic?: string;
+    beneficiary_address?: string;
+  }): Promise<Profile> {
+    const result = await workspaceStore.dispatchDomainCommand(
+      IAM_ENDPOINT,
+      "create_payee_profile",
+      data
+    );
+    return this.getProfileById(result.id)!;
   }
 
   async updateProfile(id: string, data: Partial<Profile>): Promise<Profile> {
@@ -100,6 +123,7 @@ export class IamClient {
     phone?: string;
     roles: RoleCode[];
     ministry_id?: string | null;
+    is_multi_user?: boolean;
   }): Promise<{ success: boolean; user_id?: string }> {
     const response = await fetch("/api/users/invite", {
       method: "POST",

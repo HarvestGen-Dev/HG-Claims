@@ -602,6 +602,7 @@ class DatabaseRepository {
     id?: string;
     submitted_by_user_id?: string;
     claimant_id?: string;
+    payee_profile_id?: string;
     claimant_name: string;
     claimant_email: string;
     claimant_phone: string;
@@ -622,7 +623,13 @@ class DatabaseRepository {
     const total_amount = calculateTotalAmount(params.expenses);
     const now = new Date().toISOString();
     const submitterId = params.submitted_by_user_id || params.claimant_id || "u-sarah-02";
-    const resolvedBank = resolveCanonicalBank(params.bank_code || params.bank_name);
+    const linkedProfile = this.getProfileById(params.claimant_id || submitterId);
+    const resolvedBank = resolveCanonicalBank(
+      params.bank_code ||
+        params.bank_name ||
+        linkedProfile?.bank_code ||
+        linkedProfile?.bank_name
+    );
 
     if (params.id) {
       const idx = this.claims.findIndex(c => c.id === params.id);
@@ -641,13 +648,13 @@ class DatabaseRepository {
           ...existing,
           submitted_by_user_id: submitterId,
           claimant_id: params.claimant_id || existing.claimant_id || submitterId,
-          claimant_name: params.claimant_name,
-          claimant_email: params.claimant_email,
-          claimant_phone: params.claimant_phone,
-          bank_name: params.bank_name || resolvedBank?.name || existing.bank_name,
-          bank_code: resolvedBank?.swiftCode || params.bank_code || existing.bank_code,
-          bank_account_holder_name: params.bank_account_holder_name || existing.bank_account_holder_name || params.claimant_name,
-          bank_account_number: params.bank_account_number || existing.bank_account_number,
+          claimant_name: params.claimant_name || linkedProfile?.full_name || existing.claimant_name,
+          claimant_email: params.claimant_email || linkedProfile?.email || existing.claimant_email,
+          claimant_phone: params.claimant_phone || linkedProfile?.phone || existing.claimant_phone,
+          bank_name: params.bank_name || resolvedBank?.name || linkedProfile?.bank_name || existing.bank_name,
+          bank_code: resolvedBank?.swiftCode || params.bank_code || linkedProfile?.bank_code || existing.bank_code,
+          bank_account_holder_name: params.bank_account_holder_name || linkedProfile?.bank_account_holder_name || existing.bank_account_holder_name || params.claimant_name,
+          bank_account_number: params.bank_account_number || linkedProfile?.bank_account_number || existing.bank_account_number,
           ministry_id: params.ministry_id,
           claim_date: params.claim_date,
           purpose: params.purpose,
@@ -689,13 +696,13 @@ class DatabaseRepository {
       claim_number: null,
       submitted_by_user_id: submitterId,
       claimant_id: params.claimant_id || submitterId,
-      claimant_name: params.claimant_name,
-      claimant_email: params.claimant_email,
-      claimant_phone: params.claimant_phone,
-      bank_name: params.bank_name || resolvedBank?.name,
-      bank_code: resolvedBank?.swiftCode || params.bank_code,
-      bank_account_holder_name: params.bank_account_holder_name || params.claimant_name,
-      bank_account_number: params.bank_account_number,
+      claimant_name: params.claimant_name || linkedProfile?.full_name || "",
+      claimant_email: params.claimant_email || linkedProfile?.email || "",
+      claimant_phone: params.claimant_phone || linkedProfile?.phone || "",
+      bank_name: params.bank_name || resolvedBank?.name || linkedProfile?.bank_name,
+      bank_code: resolvedBank?.swiftCode || params.bank_code || linkedProfile?.bank_code,
+      bank_account_holder_name: params.bank_account_holder_name || linkedProfile?.bank_account_holder_name || params.claimant_name || linkedProfile?.full_name,
+      bank_account_number: params.bank_account_number || linkedProfile?.bank_account_number,
       ministry_id: params.ministry_id,
       claim_date: params.claim_date,
       purpose: params.purpose,
@@ -722,6 +729,7 @@ class DatabaseRepository {
     id?: string;
     submitted_by_user_id?: string;
     claimant_id?: string;
+    payee_profile_id?: string;
     claimant_name: string;
     claimant_email: string;
     claimant_phone: string;
@@ -814,16 +822,24 @@ class DatabaseRepository {
       };
     });
 
-    const resolvedBank = resolveCanonicalBank(params.bank_code || params.bank_name || claim.bank_code || claim.bank_name);
+    const linkedProfile = this.getProfileById(params.claimant_id || submitterId);
+    const resolvedBank = resolveCanonicalBank(
+      params.bank_code ||
+        params.bank_name ||
+        claim.bank_code ||
+        claim.bank_name ||
+        linkedProfile?.bank_code ||
+        linkedProfile?.bank_name
+    );
     claim.submitted_by_user_id = submitterId;
     claim.claimant_id = params.claimant_id || submitterId;
-    claim.claimant_name = params.claimant_name;
-    claim.claimant_email = params.claimant_email;
-    claim.claimant_phone = params.claimant_phone;
-    claim.bank_name = params.bank_name || resolvedBank?.name || claim.bank_name;
-    claim.bank_code = resolvedBank?.swiftCode || params.bank_code || claim.bank_code;
-    claim.bank_account_holder_name = params.bank_account_holder_name || claim.bank_account_holder_name || params.claimant_name;
-    claim.bank_account_number = params.bank_account_number || claim.bank_account_number;
+    claim.claimant_name = params.claimant_name || linkedProfile?.full_name || claim.claimant_name;
+    claim.claimant_email = params.claimant_email || linkedProfile?.email || claim.claimant_email;
+    claim.claimant_phone = params.claimant_phone || linkedProfile?.phone || claim.claimant_phone;
+    claim.bank_name = params.bank_name || resolvedBank?.name || linkedProfile?.bank_name || claim.bank_name;
+    claim.bank_code = resolvedBank?.swiftCode || params.bank_code || linkedProfile?.bank_code || claim.bank_code;
+    claim.bank_account_holder_name = params.bank_account_holder_name || linkedProfile?.bank_account_holder_name || claim.bank_account_holder_name || claim.claimant_name;
+    claim.bank_account_number = params.bank_account_number || linkedProfile?.bank_account_number || claim.bank_account_number;
     claim.ministry_id = params.ministry_id;
     claim.claim_date = params.claim_date;
     claim.purpose = params.purpose;
@@ -1558,6 +1574,7 @@ class DatabaseRepository {
     max_uses?: number;
     expires_in_days?: number;
     description?: string;
+    is_multi_user?: boolean;
     created_by: string;
   }): { invitation: SignupInvitation; raw_token: string; signup_url: string } {
     if (params.role_code === "MINISTRY_LEADER" && !params.ministry_id) {
@@ -1581,6 +1598,7 @@ class DatabaseRepository {
       max_uses: params.max_uses && params.max_uses > 0 ? params.max_uses : 1,
       use_count: 0,
       is_active: true,
+      is_multi_user: Boolean(params.is_multi_user),
       created_at: now.toISOString(),
       raw_token,
       signup_url: `/signup?invite=${raw_token}`,
@@ -1652,6 +1670,7 @@ class DatabaseRepository {
       roles: [validation.invitation.role_code],
       ministry_id: validation.invitation.ministry_id || null,
       default_ministry_id: validation.invitation.ministry_id || null,
+      is_multi_user: Boolean(validation.invitation.is_multi_user),
     });
 
     this.logAudit({
@@ -1710,13 +1729,37 @@ class DatabaseRepository {
   }
 
   // --- Onboarding Management ---
-  public completeOnboarding(userId: string, data: { full_name: string; phone?: string }): Profile {
+  public completeOnboarding(
+    userId: string,
+    data: {
+      full_name: string;
+      phone?: string;
+      is_multi_user?: boolean;
+      bank_name?: string;
+      bank_code?: string;
+      bank_account_holder_name?: string;
+      bank_account_number?: string;
+    }
+  ): Profile {
     if (!data.full_name || data.full_name.trim().length === 0) {
       throw new Error("Full name is required to complete onboarding.");
     }
+    const resolved = resolveCanonicalBank(data.bank_code || data.bank_name);
     const updated = this.updateProfile(userId, {
       full_name: data.full_name.trim(),
       phone: data.phone?.trim() || null,
+      ...(typeof data.is_multi_user === "boolean"
+        ? { is_multi_user: data.is_multi_user }
+        : {}),
+      ...(resolved
+        ? { bank_name: resolved.name, bank_code: resolved.swiftCode }
+        : {}),
+      ...(data.bank_account_holder_name
+        ? { bank_account_holder_name: data.bank_account_holder_name.trim() }
+        : {}),
+      ...(data.bank_account_number
+        ? { bank_account_number: data.bank_account_number.replace(/[\s\-]/g, "") }
+        : {}),
       onboarding_completed_at: new Date().toISOString(),
     });
     this.logAudit({
@@ -1724,9 +1767,99 @@ class DatabaseRepository {
       action: "COMPLETE_ONBOARDING",
       entity_type: "PROFILE",
       entity_id: userId,
-      after_data: { full_name: data.full_name.trim(), phone: data.phone },
+      after_data: {
+        full_name: data.full_name.trim(),
+        phone: data.phone,
+        is_multi_user: updated.is_multi_user,
+        bank_code: updated.bank_code,
+      },
     });
     return updated;
+  }
+
+  public saveClaimantBankProfile(params: {
+    id?: string;
+    actor_id: string;
+    full_name: string;
+    email?: string;
+    phone?: string;
+    ministry_id?: string | null;
+    bank_code: string;
+    bank_name?: string;
+    bank_account_holder_name?: string;
+    bank_account_number: string;
+    beneficiary_new_ic?: string;
+    beneficiary_address?: string;
+  }): Profile {
+    const trimmedName = (params.full_name || "").trim();
+    if (!trimmedName) {
+      throw new Error("Claimant full name is required.");
+    }
+    const resolved = resolveCanonicalBank(params.bank_code || params.bank_name);
+    if (!resolved) {
+      throw new Error("Please select a valid bank from the 31-bank directory.");
+    }
+    const cleanAccount = (params.bank_account_number || "").replace(/[\s\-]/g, "");
+    if (!/^[A-Za-z0-9]{5,34}$/.test(cleanAccount)) {
+      throw new Error("Please enter a valid bank account number (5 to 34 alphanumeric characters).");
+    }
+    const holderName = (params.bank_account_holder_name || "").trim() || trimmedName;
+    const now = new Date().toISOString();
+
+    if (params.id) {
+      return this.updateProfile(params.id, {
+        full_name: trimmedName,
+        ...(params.email ? { email: params.email.trim() } : {}),
+        ...(params.phone ? { phone: params.phone.trim() } : {}),
+        ...(params.ministry_id !== undefined ? { ministry_id: params.ministry_id } : {}),
+        bank_name: resolved.name,
+        bank_code: resolved.swiftCode,
+        bank_account_holder_name: holderName,
+        bank_account_number: cleanAccount,
+        beneficiary_new_ic: params.beneficiary_new_ic?.trim() || null,
+        beneficiary_address: params.beneficiary_address?.trim() || null,
+        bank_updated_at: now,
+      });
+    }
+
+    const newProfile: Profile = {
+      id: `payee-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      email:
+        params.email?.trim() ||
+        `payee.${Date.now().toString(36)}@harvestgen.org`,
+      full_name: trimmedName,
+      phone: params.phone?.trim() || null,
+      ministry_id: params.ministry_id || null,
+      default_ministry_id: params.ministry_id || null,
+      status: "ACTIVE",
+      is_multi_user: false,
+      is_payee_only: true,
+      created_by_user_id: params.actor_id,
+      bank_name: resolved.name,
+      bank_code: resolved.swiftCode,
+      bank_account_holder_name: holderName,
+      bank_account_number: cleanAccount,
+      beneficiary_new_ic: params.beneficiary_new_ic?.trim() || null,
+      beneficiary_address: params.beneficiary_address?.trim() || null,
+      bank_updated_at: now,
+      onboarding_completed_at: now,
+      roles: [],
+      created_at: now,
+      updated_at: now,
+    };
+    this.profiles.push(newProfile);
+    this.logAudit({
+      actor_id: params.actor_id,
+      action: "UPSERT_PAYEE_BANK_PROFILE",
+      entity_type: "PROFILE",
+      entity_id: newProfile.id,
+      after_data: {
+        full_name: newProfile.full_name,
+        bank_code: newProfile.bank_code,
+      },
+    });
+    this.persist();
+    return newProfile;
   }
 
   // --- Bulk Reimbursement Batch Management ---

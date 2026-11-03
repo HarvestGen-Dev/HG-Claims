@@ -7,6 +7,7 @@ const signupSchema = z.object({
   token: z.string().min(1).max(256), email: z.string().email().max(254),
   password: z.string().min(8, "Password must be at least 8 characters long").max(128),
   fullName: z.string().trim().max(150).optional(), name: z.string().trim().max(150).optional(),
+  is_multi_user: z.boolean().optional(),
 }).strict();
 const headers = { "Cache-Control": "private, no-store" };
 export async function POST(request: NextRequest) {
@@ -40,6 +41,9 @@ export async function POST(request: NextRequest) {
       const cleanup = await admin.auth.admin.deleteUser(data.user.id);
       if (cleanup.error) console.error("Invitation account cleanup failed", { userId: data.user.id, code: cleanup.error.code });
       return NextResponse.json({ error: "Account setup could not be completed. Check the invitation and try again." }, { status: 400, headers });
+    }
+    if (typeof body.is_multi_user === "boolean") {
+      await admin.from("profiles").update({ is_multi_user: body.is_multi_user }).eq("id", data.user.id);
     }
     return NextResponse.json({ success: true, email: body.email }, { headers });
   } catch {

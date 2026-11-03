@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Landmark,
   CreditCard,
+  Users,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
 import { iamClient } from "@/lib/domains";
@@ -39,6 +40,7 @@ function OnboardingContent() {
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [isMultiUser, setIsMultiUser] = useState(false);
   const [bankCode, setBankCode] = useState("");
   const [bankAccountHolderName, setBankAccountHolderName] = useState("");
   const [bankAccountNumber, setBankAccountNumber] = useState("");
@@ -74,6 +76,7 @@ function OnboardingContent() {
         if (user.phone) {
           setPhone(user.phone);
         }
+        setIsMultiUser(Boolean(user.is_multi_user));
         const resolved = resolveCanonicalBank(user.bank_code || user.bank_name);
         if (resolved) {
           setBankCode(resolved.swiftCode);
@@ -100,21 +103,27 @@ function OnboardingContent() {
       return;
     }
 
-    if (!selectedBank) {
-      setError("Please select your reimbursement bank from the directory.");
-      return;
-    }
+    let normalizedAccount = "";
+    let holderName = "";
 
-    const acctCheck = validateBankAccountString(bankAccountNumber);
-    if (!acctCheck.valid) {
-      setError(acctCheck.error || "Please enter a valid bank account number.");
-      return;
-    }
+    if (!isMultiUser) {
+      if (!selectedBank) {
+        setError("Please select your reimbursement bank from the directory.");
+        return;
+      }
 
-    const holderName = (bankAccountHolderName.trim() || trimmed);
-    if (!holderName) {
-      setError("Please enter the legal account-holder name as registered with your bank.");
-      return;
+      const acctCheck = validateBankAccountString(bankAccountNumber);
+      if (!acctCheck.valid) {
+        setError(acctCheck.error || "Please enter a valid bank account number.");
+        return;
+      }
+
+      holderName = bankAccountHolderName.trim() || trimmed;
+      if (!holderName) {
+        setError("Please enter the legal account-holder name as registered with your bank.");
+        return;
+      }
+      normalizedAccount = acctCheck.normalized;
     }
 
     if (isInviteFlow || password.length > 0) {
@@ -146,12 +155,17 @@ function OnboardingContent() {
       await iamClient.completeOnboarding({
         full_name: trimmed,
         phone: phone.trim() || undefined,
-        bank_name: selectedBank.name,
-        bank_code: selectedBank.swiftCode,
-        bank_account_holder_name: holderName,
-        bank_account_number: acctCheck.normalized,
-        beneficiary_new_ic: beneficiaryNewIc.trim() || undefined,
-        beneficiary_address: beneficiaryAddress.trim() || undefined,
+        is_multi_user: isMultiUser,
+        ...(selectedBank && !isMultiUser
+          ? {
+              bank_name: selectedBank.name,
+              bank_code: selectedBank.swiftCode,
+              bank_account_holder_name: holderName,
+              bank_account_number: normalizedAccount,
+              beneficiary_new_ic: beneficiaryNewIc.trim() || undefined,
+              beneficiary_address: beneficiaryAddress.trim() || undefined,
+            }
+          : {}),
       });
 
       // 3. Refresh auth context so user state is updated
@@ -238,6 +252,31 @@ function OnboardingContent() {
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
+            {/* Multi-User Account Toggle */}
+            <label className="flex items-start justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50/80 cursor-pointer hover:bg-slate-100/70 transition-colors">
+              <div className="flex items-start gap-2.5">
+                <Users className="h-4 w-4 text-zinc-900 mt-0.5 shrink-0" />
+                <div>
+                  <div className="text-xs font-semibold text-slate-900">
+                    Multi-User Account (Shared by Multiple Claimants)
+                  </div>
+                  <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                    Enable if multiple people use this account. Personal bank details will not be required here — you can select or add each person&apos;s bank profile during the Claim page workflow.
+                  </div>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={isMultiUser}
+                onChange={(e) => {
+                  setIsMultiUser(e.target.checked);
+                  setError("");
+                }}
+                disabled={busy}
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-zinc-900 focus:ring-zinc-900 accent-zinc-900 shrink-0"
+              />
+            </label>
+
             {/* Section 1: Personal Details */}
             <div className="space-y-3">
               <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
@@ -294,7 +333,8 @@ function OnboardingContent() {
               </div>
             </div>
 
-            {/* Section 2: Reimbursement Bank Details */}
+            {/* Section 2: Reimbursement Bank Details (Only required for single-user accounts) */}
+            {!isMultiUser && (
             <div className="pt-3 border-t border-slate-100 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
@@ -319,7 +359,7 @@ function OnboardingContent() {
                   id="bankCode"
                   value={bankCode}
                   onChange={(e) => setBankCode(e.target.value)}
-                  required
+                  required={!isMultiUser}
                   disabled={busy}
                   className="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900"
                 >
@@ -346,7 +386,7 @@ function OnboardingContent() {
                     placeholder="Exact name on bank account"
                     value={bankAccountHolderName}
                     onChange={(e) => setBankAccountHolderName(e.target.value)}
-                    required
+                    required={!isMultiUser}
                     disabled={busy}
                     className="h-9 text-xs"
                   />
@@ -367,7 +407,7 @@ function OnboardingContent() {
                     placeholder="e.g. 514012345678"
                     value={bankAccountNumber}
                     onChange={(e) => setBankAccountNumber(e.target.value)}
-                    required
+                    required={!isMultiUser}
                     disabled={busy}
                     className="h-9 text-xs font-mono tracking-wider"
                   />
@@ -410,13 +450,14 @@ function OnboardingContent() {
                         value={beneficiaryAddress}
                         onChange={(e) => setBeneficiaryAddress(e.target.value)}
                         disabled={busy}
-                        className="h-8 text-xs bg-white"
+                        className="h-8 text-xs"
                       />
                     </div>
                   </div>
                 )}
               </div>
             </div>
+            )}
 
             {/* Section 3: Password Setup */}
             <div className="pt-3 border-t border-slate-100 space-y-3">
