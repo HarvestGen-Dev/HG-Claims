@@ -37,6 +37,7 @@ export async function executeRpcCommand(
 }
 
 export type DomainSnapshotScope =
+  | "bootstrap"
   | "iam"
   | "master-data"
   | "claims"

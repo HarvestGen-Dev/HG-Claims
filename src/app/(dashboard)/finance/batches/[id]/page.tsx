@@ -60,7 +60,7 @@ export default function FinanceBatchDetailPage() {
       setBatch(financeClient.getReimbursementBatchById(batchId));
     };
     sync();
-    return workspaceStore.subscribe(sync);
+    return workspaceStore.subscribeDomains(["finance", "claims", "iam"], sync);
   }, [user, batchId]);
 
   const handleDownloadXls = async () => {

@@ -215,7 +215,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   }, [dirty]);
 
   useEffect(() => {
-    const unsub = workspaceStore.subscribe(() => {
+    const unsub = workspaceStore.subscribeDomains(["iam", "master-data"], () => {
       setProfiles(iamClient.getProfiles());
     });
     return unsub;

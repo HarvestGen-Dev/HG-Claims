@@ -71,7 +71,7 @@ export default function UserManagementPage() {
   const [userSaving, setUserSaving] = useState(false);
 
   useEffect(() => {
-    const unsub = workspaceStore.subscribe(() => {
+    const unsub = workspaceStore.subscribeDomains(["iam", "master-data"], () => {
       setProfiles(iamClient.getProfiles());
       setMinistries(masterDataClient.getMinistries());
       setInvitations(iamClient.getSignupInvitations());

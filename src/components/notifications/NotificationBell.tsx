@@ -21,7 +21,7 @@ export function NotificationBell() {
       setNotifications(items);
     };
     loadNotifs();
-    return workspaceStore.subscribe(loadNotifs);
+    return workspaceStore.subscribeDomains(["notifications"], loadNotifs);
   }, [user]);
 
   // Click outside to close

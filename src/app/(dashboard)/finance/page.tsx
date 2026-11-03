@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   Wallet,
   BarChart3,
@@ -16,15 +17,16 @@ import { claimsClient, financeClient, workspaceStore } from "@/lib/domains";
 import { Claim } from "@/lib/types/database";
 import { formatCurrency } from "@/lib/utils/formatters";
 import { generateClaimsCsv, downloadCsv } from "@/lib/utils/export-csv";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid
-} from "recharts";
+
+const FinanceOverviewChart = dynamic(
+  () => import("@/components/finance/FinanceOverviewChart"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full w-full rounded-lg bg-zinc-50 dark:bg-zinc-900/40 animate-pulse" />
+    ),
+  }
+);
 
 
 export default function FinanceDashboardPage() {
@@ -39,7 +41,7 @@ export default function FinanceDashboardPage() {
       setClaims(claimsClient.getClaims(user));
     };
     sync();
-    return workspaceStore.subscribe(sync);
+    return workspaceStore.subscribeDomains(["claims", "master-data", "iam"], sync);
   }, [user]);
 
   const handleExport = () => {
@@ -143,18 +145,7 @@ export default function FinanceDashboardPage() {
             </CardHeader>
             <CardContent className="p-4">
               <div className="h-60 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stats?.byMinistry || []} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#f4f4f5" />
-                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#71717a' }} interval={0} axisLine={{ stroke: '#e4e4e7' }} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: '#71717a' }} axisLine={{ stroke: '#e4e4e7' }} tickLine={false} />
-                    <Tooltip
-                      formatter={(val: any) => [`RM ${Number(val).toFixed(2)}`, "Total Spend"]}
-                      contentStyle={{ borderRadius: '8px', fontSize: '11px', border: '1px solid #e4e4e7', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
-                    />
-                    <Bar dataKey="total" fill="#18181b" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <FinanceOverviewChart data={stats?.byMinistry || []} />
               </div>
             </CardContent>
           </Card>

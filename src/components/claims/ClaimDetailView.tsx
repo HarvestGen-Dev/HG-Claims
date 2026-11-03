@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -27,13 +28,27 @@ import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui
 import { ClaimStatusBadge } from "./ClaimStatusBadge";
 import { ClaimTimeline } from "./ClaimTimeline";
 import { ClaimComments } from "./ClaimComments";
-import { ReturnClarificationModal } from "./ReturnClarificationModal";
-import { RejectModal } from "./RejectModal";
-import { PaymentModal } from "./PaymentModal";
-import { AdminCorrectionModal } from "./AdminCorrectionModal";
-import { ReceiptViewerModal } from "./ReceiptViewerModal";
 
-
+const ReturnClarificationModal = dynamic(
+  () => import("./ReturnClarificationModal").then((m) => m.ReturnClarificationModal),
+  { ssr: false }
+);
+const RejectModal = dynamic(
+  () => import("./RejectModal").then((m) => m.RejectModal),
+  { ssr: false }
+);
+const PaymentModal = dynamic(
+  () => import("./PaymentModal").then((m) => m.PaymentModal),
+  { ssr: false }
+);
+const AdminCorrectionModal = dynamic(
+  () => import("./AdminCorrectionModal").then((m) => m.AdminCorrectionModal),
+  { ssr: false }
+);
+const ReceiptViewerModal = dynamic(
+  () => import("./ReceiptViewerModal").then((m) => m.ReceiptViewerModal),
+  { ssr: false }
+);
 
 import { useAuth } from "@/lib/auth/context";
 import { claimsClient, financeClient, workspaceStore } from "@/lib/domains";
@@ -51,7 +66,10 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
   const router = useRouter();
   const { user, canApprove, canEdit, canPay, canVerify, hasRole } = useAuth();
   const [claim, setClaim] = useState<Claim>(initialClaim);
-  useEffect(() => workspaceStore.subscribe(() => {
+  useEffect(() => {
+    setClaim(initialClaim);
+  }, [initialClaim]);
+  useEffect(() => workspaceStore.subscribeDomains(["claims", "master-data", "iam"], () => {
     const latest = claimsClient.getClaimById(initialClaim.id);
     if (latest) setClaim(latest);
   }), [initialClaim.id]);
@@ -746,42 +764,52 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
       )}
 
       {/* Modals */}
-      <ReturnClarificationModal
-        open={showReturnModal}
-        claimNumber={claim.claim_number}
-        onConfirm={handleReturnConfirm}
-        onCancel={() => setShowReturnModal(false)}
-        loading={loadingAction}
-      />
+      {showReturnModal && (
+        <ReturnClarificationModal
+          open={showReturnModal}
+          claimNumber={claim.claim_number}
+          onConfirm={handleReturnConfirm}
+          onCancel={() => setShowReturnModal(false)}
+          loading={loadingAction}
+        />
+      )}
 
-      <RejectModal
-        open={showRejectModal}
-        claimNumber={claim.claim_number}
-        onConfirm={handleRejectConfirm}
-        onCancel={() => setShowRejectModal(false)}
-        loading={loadingAction}
-      />
+      {showRejectModal && (
+        <RejectModal
+          open={showRejectModal}
+          claimNumber={claim.claim_number}
+          onConfirm={handleRejectConfirm}
+          onCancel={() => setShowRejectModal(false)}
+          loading={loadingAction}
+        />
+      )}
 
-      <PaymentModal
-        open={showPaymentModal}
-        claim={claim}
-        onConfirm={handlePaymentConfirm}
-        onCancel={() => setShowPaymentModal(false)}
-        loading={loadingAction}
-      />
+      {showPaymentModal && (
+        <PaymentModal
+          open={showPaymentModal}
+          claim={claim}
+          onConfirm={handlePaymentConfirm}
+          onCancel={() => setShowPaymentModal(false)}
+          loading={loadingAction}
+        />
+      )}
 
-      <AdminCorrectionModal
-        open={showCorrectionModal}
-        claim={claim}
-        onConfirm={handleCorrectionConfirm}
-        onCancel={() => setShowCorrectionModal(false)}
-        loading={loadingAction}
-      />
+      {showCorrectionModal && (
+        <AdminCorrectionModal
+          open={showCorrectionModal}
+          claim={claim}
+          onConfirm={handleCorrectionConfirm}
+          onCancel={() => setShowCorrectionModal(false)}
+          loading={loadingAction}
+        />
+      )}
 
-      <ReceiptViewerModal
-        attachment={previewAttachment}
-        onClose={() => setPreviewAttachment(null)}
-      />
+      {previewAttachment && (
+        <ReceiptViewerModal
+          attachment={previewAttachment}
+          onClose={() => setPreviewAttachment(null)}
+        />
+      )}
 
       {/* Delete Claim Confirmation Modal */}
       <Dialog open={showDeleteModal} onOpenChange={(open) => !open && !loadingAction && setShowDeleteModal(false)}>

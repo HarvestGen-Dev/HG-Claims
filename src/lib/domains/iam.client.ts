@@ -4,38 +4,66 @@ import { workspaceStore } from "./store";
 const IAM_ENDPOINT = "/api/v1/iam";
 
 export class IamClient {
-  private cachedInvitationsVersion = -1;
+  private cachedProfilesRef: Profile[] | null = null;
+  private profileByIdMap = new Map<string, Profile>();
+  private cachedInvitationsKey = "";
   private cachedInvitations: SignupInvitation[] = [];
+
+  constructor() {
+    workspaceStore.onClear(() => {
+      this.cachedProfilesRef = null;
+      this.profileByIdMap.clear();
+      this.cachedInvitationsKey = "";
+      this.cachedInvitations = [];
+    });
+  }
 
   getProfiles(): Profile[] {
     return workspaceStore.getState().profiles || [];
   }
 
+  private ensureProfileMap(): Map<string, Profile> {
+    const profiles = this.getProfiles();
+    if (this.cachedProfilesRef !== profiles) {
+      this.profileByIdMap = new Map();
+      for (const p of profiles) {
+        if (p && p.id) {
+          this.profileByIdMap.set(p.id, p);
+        }
+      }
+      this.cachedProfilesRef = profiles;
+    }
+    return this.profileByIdMap;
+  }
+
   getProfileById(id?: string | null): Profile | undefined {
     if (!id) return undefined;
-    return this.getProfiles().find(profile => profile.id === id);
+    return this.ensureProfileMap().get(id);
   }
 
   getSignupInvitations(): SignupInvitation[] {
-    const currentVersion = workspaceStore.getVersion();
-    if (this.cachedInvitationsVersion === currentVersion) {
+    const compositeKey = workspaceStore.getCompositeVersion("iam", "master-data");
+    if (this.cachedInvitationsKey === compositeKey) {
       return this.cachedInvitations;
     }
     const state = workspaceStore.getState();
-    const ministries = (state.ministries || []).map(m => ({
-      ...m,
-      leader: m.leader_id ? this.getProfileById(m.leader_id) : null,
-    }));
-    this.cachedInvitations = (state.signupInvitations || []).map(inv => ({
+    const ministryMap = new Map(
+      (state.ministries || []).map((m) => [
+        m.id,
+        {
+          ...m,
+          leader: m.leader_id ? this.getProfileById(m.leader_id) : null,
+        },
+      ])
+    );
+    this.cachedInvitations = (state.signupInvitations || []).map((inv) => ({
       ...inv,
       ministry:
         inv.ministry ||
-        (inv.ministry_id
-          ? ministries.find(m => m.id === inv.ministry_id)
-          : null),
+        (inv.ministry_id ? ministryMap.get(inv.ministry_id) ?? null : null),
       creator: this.getProfileById(inv.created_by),
     }));
-    this.cachedInvitationsVersion = currentVersion;
+    this.cachedInvitationsKey = compositeKey;
     return this.cachedInvitations;
   }
 
@@ -134,7 +162,7 @@ export class IamClient {
     if (!response.ok) {
       throw new Error(body.error || "Unable to send email invitation.");
     }
-    await workspaceStore.refreshDomain("iam");
+    await workspaceStore.refreshDomain(IAM_ENDPOINT, { forceFresh: true });
     return body;
   }
 }

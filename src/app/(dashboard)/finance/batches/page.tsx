@@ -30,7 +30,7 @@ import type { Claim, ReimbursementBatch } from "@/lib/types/database";
 import {
   evaluateClaimForReimbursement,
   previewReimbursementSelection,
-} from "@/lib/banking/bank-export-adapter";
+} from "@/lib/banking/reimbursement-preview";
 import { maskBankAccountNumber } from "@/lib/constants/banks";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 import { showToast } from "@/lib/utils/toast";
@@ -78,7 +78,10 @@ export default function FinanceBatchesPage() {
       }
     };
     sync();
-    return workspaceStore.subscribe(sync);
+    return workspaceStore.subscribeDomains(
+      ["claims", "finance", "master-data", "iam"],
+      sync
+    );
   }, [user, initializedSelection]);
 
   const filteredClaims = useMemo(() => {

@@ -7,8 +7,14 @@ import { gatewayService } from "@/services/gateway.service";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const result = await gatewayService.getWorkspaceSnapshot();
+export async function GET(): Promise<NextResponse>;
+export async function GET(request: NextRequest): Promise<NextResponse>;
+export async function GET(request?: NextRequest): Promise<NextResponse> {
+  const mode =
+    request?.nextUrl?.searchParams?.get("mode") === "bootstrap"
+      ? "bootstrap"
+      : undefined;
+  const result = await gatewayService.getWorkspaceSnapshot(mode);
   if (result.error) {
     return NextResponse.json(
       { error: result.error },

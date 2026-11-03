@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { notificationClient } from "@/lib/domains";
+import { notificationClient, workspaceStore } from "@/lib/domains";
 import { AuditLog } from "@/lib/types/database";
 import { formatDateTime } from "@/lib/utils/formatters";
 import { History, Search, ShieldCheck } from "lucide-react";
@@ -13,7 +13,14 @@ export default function AuditTrailPage() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    setLogs(notificationClient.getAuditLogs());
+    const sync = () => {
+      setLogs(notificationClient.getAuditLogs());
+    };
+    sync();
+    if (notificationClient.getAuditLogs().length === 0) {
+      void workspaceStore.refreshDomain("/api/v1/notifications").catch(() => {});
+    }
+    return workspaceStore.subscribeDomains(["notifications"], sync);
   }, []);
 
   const filtered = logs.filter((l) => {

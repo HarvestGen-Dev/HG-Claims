@@ -32,7 +32,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user) return;
     setClaims(claimsClient.getClaims(user));
-    return workspaceStore.subscribe(() => {
+    return workspaceStore.subscribeDomains(["claims", "master-data", "iam"], () => {
       setClaims(claimsClient.getClaims(user));
     });
   }, [user]);

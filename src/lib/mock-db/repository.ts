@@ -28,7 +28,7 @@ import {
   formatPaymentDescription,
   previewReimbursementSelection,
   toExactCents,
-} from "@/lib/banking/bank-export-adapter";
+} from "@/lib/banking/reimbursement-preview";
 import {
   INITIAL_PROFILES,
   INITIAL_MINISTRIES,

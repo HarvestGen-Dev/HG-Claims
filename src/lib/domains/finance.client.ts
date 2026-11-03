@@ -11,32 +11,70 @@ import { claimsClient } from "./claims.client";
 import {
   previewReimbursementSelection,
   type ReimbursementPreviewResult,
-} from "@/lib/banking/bank-export-adapter";
+} from "@/lib/banking/reimbursement-preview";
 import { calculateTotalAmount, moneyToCents } from "@/lib/utils/calculations";
 
 const FINANCE_ENDPOINT = "/api/v1/finance";
 
 export class FinanceClient {
-  private cachedRulesVersion = -1;
+  private cachedRulesKey = "";
   private cachedRules: ApprovalRule[] = [];
 
+  private cachedBatchesKey = "";
+  private cachedBatches: ReimbursementBatch[] = [];
+
+  private cachedEligibleKey = "";
+  private cachedEligibleClaims: Claim[] = [];
+
+  private cachedStatsKey = "";
+  private cachedStats: {
+    totalClaims: number;
+    awaitingReview: number;
+    awaitingPayment: number;
+    paidCount: number;
+    totalPaidAmount: number;
+    totalPendingAmount: number;
+    byMinistry: { name: string; count: number; total: number }[];
+    byCategory: never[];
+  } | null = null;
+
+  constructor() {
+    workspaceStore.onClear(() => {
+      this.cachedRulesKey = "";
+      this.cachedRules = [];
+      this.cachedBatchesKey = "";
+      this.cachedBatches = [];
+      this.cachedEligibleKey = "";
+      this.cachedEligibleClaims = [];
+      this.cachedStatsKey = "";
+      this.cachedStats = null;
+    });
+  }
+
   getApprovalRules(): ApprovalRule[] {
-    const currentVersion = workspaceStore.getVersion();
-    if (this.cachedRulesVersion === currentVersion) {
+    const compositeKey = workspaceStore.getCompositeVersion(
+      "finance",
+      "master-data",
+      "iam"
+    );
+    if (this.cachedRulesKey === compositeKey) {
       return this.cachedRules;
     }
-    const ministries = masterDataClient.getMinistries();
-    const categories = masterDataClient.getCategories();
-    const profiles = iamClient.getProfiles();
     this.cachedRules = (workspaceStore.getState().approvalRules || []).map(
-      r => ({
+      (r) => ({
         ...r,
-        ministry: ministries.find(m => m.id === r.ministry_id),
-        expense_category: categories.find(c => c.id === r.expense_category_id),
-        approver_user: profiles.find(p => p.id === r.approver_user_id),
+        ministry: r.ministry_id
+          ? masterDataClient.getMinistryById(r.ministry_id)
+          : undefined,
+        expense_category: r.expense_category_id
+          ? masterDataClient.getCategoryById(r.expense_category_id)
+          : undefined,
+        approver_user: r.approver_user_id
+          ? iamClient.getProfileById(r.approver_user_id)
+          : undefined,
       })
     );
-    this.cachedRulesVersion = currentVersion;
+    this.cachedRulesKey = compositeKey;
     return this.cachedRules;
   }
 
@@ -110,38 +148,59 @@ export class FinanceClient {
   }
 
   getReimbursementBatches(): ReimbursementBatch[] {
-    const profiles = iamClient.getProfiles();
-    const allClaims = claimsClient.getClaims();
-    const claimMap = new Map(allClaims.map(c => [c.id, c]));
+    const compositeKey = workspaceStore.getCompositeVersion(
+      "finance",
+      "claims",
+      "iam",
+      "master-data"
+    );
+    if (this.cachedBatchesKey === compositeKey) {
+      return this.cachedBatches;
+    }
 
-    return (workspaceStore.getState().reimbursementBatches || []).map(b => ({
+    this.cachedBatches = (
+      workspaceStore.getState().reimbursementBatches || []
+    ).map((b) => ({
       ...b,
-      creator: profiles.find(p => p.id === b.created_by) || null,
-      instructions: (b.instructions || []).map(inst => ({
+      creator: iamClient.getProfileById(b.created_by) || null,
+      instructions: (b.instructions || []).map((inst) => ({
         ...inst,
-        claims: (inst.claims || []).map(ic => ({
+        claims: (inst.claims || []).map((ic) => ({
           ...ic,
-          claim: claimMap.get(ic.claim_id) || null,
+          claim: claimsClient.getClaimById(ic.claim_id) || null,
         })),
       })),
     }));
+    this.cachedBatchesKey = compositeKey;
+    return this.cachedBatches;
   }
 
   getReimbursementBatchById(id: string): ReimbursementBatch | null {
-    return this.getReimbursementBatches().find(b => b.id === id) || null;
+    return this.getReimbursementBatches().find((b) => b.id === id) || null;
   }
 
   getEligibleClaimsForReimbursement(): Claim[] {
-    return claimsClient
+    const compositeKey = workspaceStore.getCompositeVersion(
+      "claims",
+      "finance",
+      "master-data",
+      "iam"
+    );
+    if (this.cachedEligibleKey === compositeKey) {
+      return this.cachedEligibleClaims;
+    }
+    this.cachedEligibleClaims = claimsClient
       .getClaims()
       .filter(
-        c =>
+        (c) =>
           c.status === "APPROVED_FOR_PAYMENT" &&
           !c.payment &&
           !c.active_batch_id &&
           (!c.reimbursement_status ||
             ["ELIGIBLE", "RELEASED", "FAILED"].includes(c.reimbursement_status))
       );
+    this.cachedEligibleKey = compositeKey;
+    return this.cachedEligibleClaims;
   }
 
   previewReimbursementBatch(
@@ -220,15 +279,25 @@ export class FinanceClient {
   }
 
   getFinanceStats() {
+    const compositeKey = workspaceStore.getCompositeVersion(
+      "claims",
+      "finance",
+      "master-data",
+      "iam"
+    );
+    if (this.cachedStatsKey === compositeKey && this.cachedStats) {
+      return this.cachedStats;
+    }
+
     const claims = claimsClient
       .getClaims()
-      .filter(c => !["DRAFT", "CANCELLED"].includes(c.status));
-    const paid = claims.filter(c => c.status === "PAID");
+      .filter((c) => !["DRAFT", "CANCELLED"].includes(c.status));
+    const paid = claims.filter((c) => c.status === "PAID");
     const ministries = new Map<
       string,
       { name: string; totalCents: number; count: number }
     >();
-    claims.forEach(c => {
+    claims.forEach((c) => {
       const ministry = ministries.get(c.ministry_id) || {
         name: c.ministry?.name || "General",
         totalCents: 0,
@@ -239,22 +308,31 @@ export class FinanceClient {
       ministries.set(c.ministry_id, ministry);
     });
 
-    return {
+    this.cachedStats = {
       totalClaims: claims.length,
       awaitingReview: claims.filter(
-        c => c.status === "PENDING_FINANCE_REVIEW"
+        (c) => c.status === "PENDING_FINANCE_REVIEW"
       ).length,
       awaitingPayment: claims.filter(
-        c => c.status === "APPROVED_FOR_PAYMENT"
+        (c) => c.status === "APPROVED_FOR_PAYMENT"
       ).length,
       paidCount: paid.length,
-      totalPaidAmount: calculateTotalAmount(paid.map(c => ({ amount: c.total_amount }))),
-      totalPendingAmount: calculateTotalAmount(claims
-        .filter(c => !["PAID", "REJECTED"].includes(c.status))
-        .map(c => ({ amount: c.total_amount }))),
-      byMinistry: Array.from(ministries.values(), ({ totalCents, ...rest }) => ({ ...rest, total: totalCents / 100 })),
+      totalPaidAmount: calculateTotalAmount(
+        paid.map((c) => ({ amount: c.total_amount }))
+      ),
+      totalPendingAmount: calculateTotalAmount(
+        claims
+          .filter((c) => !["PAID", "REJECTED"].includes(c.status))
+          .map((c) => ({ amount: c.total_amount }))
+      ),
+      byMinistry: Array.from(ministries.values(), ({ totalCents, ...rest }) => ({
+        ...rest,
+        total: totalCents / 100,
+      })),
       byCategory: [],
     };
+    this.cachedStatsKey = compositeKey;
+    return this.cachedStats;
   }
 }
 

@@ -2,6 +2,7 @@
 
 import { Select } from "@/components/ui/select";
 import React, { useState, useEffect, useMemo } from "react";
+import dynamic from "next/dynamic";
 import {
   FileSpreadsheet
 } from "lucide-react";
@@ -13,15 +14,16 @@ import { claimsClient, masterDataClient, workspaceStore } from "@/lib/domains";
 import { Claim } from "@/lib/types/database";
 import { formatCurrency } from "@/lib/utils/formatters";
 import { generateClaimsCsv, downloadCsv } from "@/lib/utils/export-csv";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from "recharts";
+
+const FinanceReportChart = dynamic(
+  () => import("@/components/finance/FinanceReportChart"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full w-full rounded-lg bg-zinc-50 dark:bg-zinc-900/40 animate-pulse" />
+    ),
+  }
+);
 
 export default function FinancialReportsPage() {
   const { user } = useAuth();
@@ -35,7 +37,7 @@ export default function FinancialReportsPage() {
   useEffect(() => {
     if (!user) return;
     setClaims(claimsClient.getClaims(user));
-    return workspaceStore.subscribe(() => {
+    return workspaceStore.subscribeDomains(["claims", "master-data", "iam"], () => {
       setClaims(claimsClient.getClaims(user));
     });
   }, [user]);
@@ -188,15 +190,7 @@ export default function FinancialReportsPage() {
             </CardHeader>
             <CardContent className="p-4">
               <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={ministryChartData} margin={{ top: 10, right: 10, left: -15, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#f4f4f5" />
-                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#71717a" }} interval={0} angle={-25} textAnchor="end" axisLine={{ stroke: "#e4e4e7" }} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: "#71717a" }} axisLine={{ stroke: "#e4e4e7" }} tickLine={false} />
-                    <Tooltip formatter={(val: any) => [`RM ${Number(val).toFixed(2)}`, "Total"]} contentStyle={{ borderRadius: "8px", fontSize: "11px", border: "1px solid #e4e4e7" }} />
-                    <Bar dataKey="total" fill="#d95f3b" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <FinanceReportChart data={ministryChartData} />
               </div>
             </CardContent>
           </Card>

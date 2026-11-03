@@ -12,7 +12,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { MobileClaimList } from "@/components/claims/MobileClaimList";
 import { useAuth } from "@/lib/auth/context";
-import { claimsClient } from "@/lib/domains";
+import { claimsClient, workspaceStore } from "@/lib/domains";
 import { Claim } from "@/lib/types/database";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 import { calculateTotalAmount } from "@/lib/utils/calculations";
@@ -26,6 +26,9 @@ export default function ApprovalsInboxPage() {
   useEffect(() => {
     if (!user) return;
     setClaims(claimsClient.getClaims(user));
+    return workspaceStore.subscribeDomains(["claims", "master-data", "iam"], () => {
+      setClaims(claimsClient.getClaims(user));
+    });
   }, [user]);
 
   const pendingApprovals = claims.filter(c => {

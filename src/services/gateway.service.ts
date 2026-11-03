@@ -22,8 +22,8 @@ import {
 } from "@/services/notifications/notifications.service";
 
 export class GatewayService {
-  async getWorkspaceSnapshot() {
-    return fetchAuthorizedSnapshot();
+  async getWorkspaceSnapshot(mode?: "bootstrap" | "full") {
+    return fetchAuthorizedSnapshot(mode === "bootstrap" ? "bootstrap" : undefined);
   }
 
   async dispatch(

@@ -1,7 +1,7 @@
 "use client";
 
 import { Select } from "@/components/ui/select";
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useMemo, useDeferredValue, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Plus, Search, FileText, Download, Trash2 } from "lucide-react";
@@ -38,12 +38,25 @@ function ClaimsContent() {
 
   useEffect(() => {
     if (!user) return;
-    setClaims(claimsClient.getClaims(user).filter(claim => claim.submitted_by_user_id === user.id || claim.claimant_id === user.id));
-    const unsub = workspaceStore.subscribe(() => {
-      setClaims(claimsClient.getClaims(user).filter(claim => claim.submitted_by_user_id === user.id || claim.claimant_id === user.id));
-    });
-    return unsub;
+    const sync = () => {
+      setClaims(
+        claimsClient
+          .getClaims(user)
+          .filter(
+            (claim) =>
+              claim.submitted_by_user_id === user.id ||
+              claim.claimant_id === user.id
+          )
+      );
+    };
+    sync();
+    return workspaceStore.subscribeDomains(
+      ["claims", "master-data", "iam"],
+      sync
+    );
   }, [user]);
+
+  const deferredSearch = useDeferredValue(search);
 
   const handleConfirmDelete = async () => {
     if (!deletingClaim) return;
@@ -63,7 +76,7 @@ function ClaimsContent() {
   };
 
   const filteredClaims = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     return claims.filter((c) => {
       if (selectedStatus === "IN_REVIEW") {
         if (!c.status.startsWith("PENDING_") && c.status !== "SUBMITTED") return false;
@@ -82,9 +95,9 @@ function ClaimsContent() {
       }
       return true;
     });
-  }, [claims, selectedStatus, search]);
+  }, [claims, selectedStatus, deferredSearch]);
 
-  useEffect(() => { setPage(1); }, [selectedStatus, search, sort]);
+  useEffect(() => { setPage(1); }, [selectedStatus, deferredSearch, sort]);
 
   const sortedClaims = useMemo(() => [...filteredClaims].sort((a, b) => {
     if (sort === "amount-high") return Number(b.total_amount) - Number(a.total_amount);
@@ -93,9 +106,10 @@ function ClaimsContent() {
     const dateB = b.submitted_at || b.created_at;
     return sort === "oldest" ? dateA.localeCompare(dateB) : dateB.localeCompare(dateA);
   }), [filteredClaims, sort]);
-  const pageCount = Math.max(1, Math.ceil(sortedClaims.length / 20));
+  const pageSize = 25;
+  const pageCount = Math.max(1, Math.ceil(sortedClaims.length / pageSize));
   const currentPage = Math.min(page, pageCount);
-  const visibleClaims = sortedClaims.slice((currentPage - 1) * 20, currentPage * 20);
+  const visibleClaims = sortedClaims.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const handleExport = () => {
     const csv = generateClaimsCsv(sortedClaims);

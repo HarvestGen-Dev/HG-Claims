@@ -1,8 +1,9 @@
 "use client";
 
 import { Select } from "@/components/ui/select";
-import React, { useState, useEffect, Suspense, useMemo } from "react";
+import React, { useState, useEffect, Suspense, useMemo, useDeferredValue } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import {
   Search,
@@ -19,7 +20,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ClaimStatusBadge } from "@/components/claims/ClaimStatusBadge";
 import { MobileClaimList } from "@/components/claims/MobileClaimList";
-import { PaymentModal } from "@/components/claims/PaymentModal";
+
+const PaymentModal = dynamic(
+  () => import("@/components/claims/PaymentModal").then((m) => m.PaymentModal),
+  { ssr: false }
+);
 import { useAuth } from "@/lib/auth/context";
 import {
   claimsClient,
@@ -28,7 +33,7 @@ import {
   workspaceStore,
 } from "@/lib/domains";
 import { Claim, ReimbursementBatch } from "@/lib/types/database";
-import { evaluateClaimForReimbursement } from "@/lib/banking/bank-export-adapter";
+import { evaluateClaimForReimbursement } from "@/lib/banking/reimbursement-preview";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 import { generateClaimsCsv, downloadCsv } from "@/lib/utils/export-csv";
 import { showToast } from "@/lib/utils/toast";
@@ -43,6 +48,8 @@ function FinanceClaimsContent() {
   const [selectedStatus, setSelectedStatus] = useState(statusParam);
   const [selectedMinistry, setSelectedMinistry] = useState("ALL");
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
+  const [page, setPage] = useState(1);
 
   const [selectedClaimIds, setSelectedClaimIds] = useState<string[]>([]);
   const [paymentClaim, setPaymentClaim] = useState<Claim | null>(null);
@@ -73,7 +80,10 @@ function FinanceClaimsContent() {
       );
     };
     sync();
-    return workspaceStore.subscribe(sync);
+    return workspaceStore.subscribeDomains(
+      ["claims", "finance", "master-data", "iam"],
+      sync
+    );
   }, [user]);
 
   const batchById = useMemo(() => {
@@ -85,8 +95,8 @@ function FinanceClaimsContent() {
       if (selectedStatus !== "ALL" && c.status !== selectedStatus) return false;
       if (selectedMinistry !== "ALL" && c.ministry_id !== selectedMinistry)
         return false;
-      if (search.trim()) {
-        const q = search.toLowerCase();
+      if (deferredSearch.trim()) {
+        const q = deferredSearch.toLowerCase();
         return (
           (c.claim_number && c.claim_number.toLowerCase().includes(q)) ||
           (c.claimant_name && c.claimant_name.toLowerCase().includes(q)) ||
@@ -101,7 +111,19 @@ function FinanceClaimsContent() {
       }
       return true;
     });
-  }, [claims, selectedStatus, selectedMinistry, search]);
+  }, [claims, selectedStatus, selectedMinistry, deferredSearch]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedStatus, selectedMinistry, deferredSearch]);
+
+  const pageSize = 25;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const visibleClaims = useMemo(
+    () => filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [filtered, currentPage, pageSize]
+  );
 
   const selectableApprovedIds = useMemo(() => {
     return filtered
@@ -529,7 +551,7 @@ function FinanceClaimsContent() {
         ) : (
           <>
             <MobileClaimList
-              claims={filtered}
+              claims={visibleClaims}
               baseHref="/finance/claims"
               showFinanceInfo={true}
             />
@@ -560,7 +582,7 @@ function FinanceClaimsContent() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
-                  {(filtered || []).map((c) => {
+                  {(visibleClaims || []).map((c) => {
                     const isEligibleForXls =
                       c.status === "APPROVED_FOR_PAYMENT" &&
                       !c.active_batch_id &&
@@ -694,13 +716,46 @@ function FinanceClaimsContent() {
         )}
       </div>
 
-      <PaymentModal
-        open={!!paymentClaim}
-        claim={paymentClaim}
-        onConfirm={handlePaymentConfirm}
-        onCancel={() => setPaymentClaim(null)}
-        loading={loadingAction}
-      />
+      {pageCount > 1 && (
+        <nav
+          aria-label="Finance claims pages"
+          className="flex items-center justify-between gap-3 text-sm text-zinc-600"
+        >
+          <span>
+            Showing {(currentPage - 1) * pageSize + 1}–
+            {Math.min(currentPage * pageSize, filtered.length)} of{" "}
+            {filtered.length} claims (Page {currentPage} of {pageCount})
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => setPage(currentPage - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === pageCount}
+              onClick={() => setPage(currentPage + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </nav>
+      )}
+
+      {paymentClaim && (
+        <PaymentModal
+          open={!!paymentClaim}
+          claim={paymentClaim}
+          onConfirm={handlePaymentConfirm}
+          onCancel={() => setPaymentClaim(null)}
+          loading={loadingAction}
+        />
+      )}
     </div>
   );
 }

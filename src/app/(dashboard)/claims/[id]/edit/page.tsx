@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ClaimForm } from "@/components/claims/ClaimForm";
-import { claimsClient } from "@/lib/domains";
+import { claimsClient, workspaceStore } from "@/lib/domains";
 import { Claim } from "@/lib/types/database";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,14 +15,37 @@ export default function EditClaimPage() {
   const { canEdit } = useAuth();
   const params = useParams();
   const id = params.id as string;
-  const [claim, setClaim] = useState<Claim | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [claim, setClaim] = useState<Claim | null>(() =>
+    id ? claimsClient.getClaimById(id) : null
+  );
+  const [loading, setLoading] = useState(() =>
+    id ? !claimsClient.getClaimById(id) : true
+  );
 
   useEffect(() => {
     if (!id) return;
-    const found = claimsClient.getClaimById(id);
-    setClaim(found);
-    setLoading(false);
+    let active = true;
+    const syncLocal = () => {
+      const found = claimsClient.getClaimById(id);
+      if (active && found) {
+        setClaim(found);
+        setLoading(false);
+      }
+    };
+    syncLocal();
+    void claimsClient.fetchClaimDetail(id).then((fetched) => {
+      if (!active) return;
+      if (fetched) setClaim(fetched);
+      setLoading(false);
+    });
+    const unsub = workspaceStore.subscribeDomains(
+      ["claims", "master-data", "iam"],
+      syncLocal
+    );
+    return () => {
+      active = false;
+      unsub();
+    };
   }, [id]);
 
   if (loading) {
