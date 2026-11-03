@@ -6,13 +6,18 @@ import { masterDataClient } from "./master-data.client";
 const CLAIMS_ENDPOINT = "/api/v1/claims";
 
 export class ClaimsClient {
-  private cachedClaimsVersion = -1;
+  private cachedSources: Pick<ReturnType<typeof workspaceStore.getState>, "claims" | "profiles" | "ministries" | "categories" | "costCentres"> | null = null;
   private cachedClaims: Claim[] = [];
 
   getClaims(_user?: Profile): Claim[] {
     void _user;
-    const currentVersion = workspaceStore.getVersion();
-    if (this.cachedClaimsVersion === currentVersion) {
+    const state = workspaceStore.getState();
+    if (this.cachedSources &&
+      this.cachedSources.claims === state.claims &&
+      this.cachedSources.profiles === state.profiles &&
+      this.cachedSources.ministries === state.ministries &&
+      this.cachedSources.categories === state.categories &&
+      this.cachedSources.costCentres === state.costCentres) {
       return this.cachedClaims;
     }
 
@@ -20,53 +25,64 @@ export class ClaimsClient {
     const ministries = masterDataClient.getMinistries();
     const categories = masterDataClient.getCategories();
     const costCentres = masterDataClient.getCostCentres();
+    const profileById = new Map(profiles.map(profile => [profile.id, profile]));
+    const ministryById = new Map(ministries.map(ministry => [ministry.id, ministry]));
+    const categoryById = new Map(categories.map(category => [category.id, category]));
+    const costCentreById = new Map(costCentres.map(centre => [centre.id, centre]));
+    const profile = (id?: string | null) => id ? profileById.get(id) : undefined;
 
-    this.cachedClaims = (workspaceStore.getState().claims || []).map(c => ({
+    this.cachedClaims = (state.claims || []).map(c => {
+      const attachmentsByExpense = new Map<string, typeof c.attachments>();
+      for (const attachment of c.attachments || []) {
+        if (!attachment.expense_id) continue;
+        const group = attachmentsByExpense.get(attachment.expense_id) || [];
+        group.push(attachment);
+        attachmentsByExpense.set(attachment.expense_id, group);
+      }
+      return {
       ...c,
-      claimant: iamClient.getProfileById(c.claimant_id),
-      submitted_by: iamClient.getProfileById(
+      claimant: profile(c.claimant_id),
+      submitted_by: profile(
         c.submitted_by_user_id || c.claimant_id
       ),
-      ministry: ministries.find(m => m.id === c.ministry_id),
-      cost_centre: costCentres.find(cc => cc.id === c.cost_centre_id),
+      ministry: ministryById.get(c.ministry_id),
+      cost_centre: costCentreById.get(c.cost_centre_id || ""),
       returned_by_user: c.returned_by
-        ? iamClient.getProfileById(c.returned_by)
+        ? profile(c.returned_by)
         : null,
       expenses: (c.expenses || []).map(e => ({
         ...e,
-        expense_category: categories.find(
-          cat => cat.id === e.expense_category_id
-        ),
-        cost_centre: costCentres.find(cc => cc.id === e.cost_centre_id),
-        attachments: (c.attachments || []).filter(a => a.expense_id === e.id),
+        expense_category: categoryById.get(e.expense_category_id || ""),
+        cost_centre: costCentreById.get(e.cost_centre_id),
+        attachments: attachmentsByExpense.get(e.id) || [],
       })),
       workflow_steps: (c.workflow_steps || []).map(s => ({
         ...s,
-        assigned_user: profiles.find(p => p.id === s.assigned_user_id),
-        completed_by_user: profiles.find(p => p.id === s.completed_by),
+        assigned_user: profile(s.assigned_user_id),
+        completed_by_user: profile(s.completed_by),
       })),
       approval_actions: (c.approval_actions || []).map(a => ({
         ...a,
-        actor: iamClient.getProfileById(a.actor_id),
+        actor: profile(a.actor_id),
       })),
       comments: (c.comments || []).map(comment => ({
         ...comment,
-        author: iamClient.getProfileById(comment.author_id),
+        author: profile(comment.author_id),
       })),
       finance_review: c.finance_review
         ? {
             ...c.finance_review,
-            reviewer: iamClient.getProfileById(c.finance_review.reviewer_id),
+            reviewer: profile(c.finance_review.reviewer_id),
           }
         : null,
       payment: c.payment
         ? {
             ...c.payment,
-            processor: iamClient.getProfileById(c.payment.processed_by),
+            processor: profile(c.payment.processed_by),
           }
         : null,
-    }));
-    this.cachedClaimsVersion = currentVersion;
+    }; });
+    this.cachedSources = state;
     return this.cachedClaims;
   }
 

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { moneyToCents } from "@/lib/utils/calculations";
 
 export const expenseItemSchema = z.object({
   id: z.string().optional(),
@@ -8,7 +9,8 @@ export const expenseItemSchema = z.object({
   vendor: z.string().optional().nullable(),
   description: z.string().min(3, "Description must be at least 3 characters"),
   cost_centre_id: z.string().min(1, "Please select a cost centre"),
-  amount: z.coerce.number().positive("Amount must be greater than RM 0.00"),
+  amount: z.coerce.number().positive("Amount must be greater than RM 0.00")
+    .refine(value => moneyToCents(value) !== null, "Enter an amount with at most two decimal places"),
   notes: z.string().optional().nullable(),
   sort_order: z.number().default(0),
   attachment: z.any().optional().nullable(),

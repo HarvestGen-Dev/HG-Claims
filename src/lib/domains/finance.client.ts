@@ -12,6 +12,7 @@ import {
   previewReimbursementSelection,
   type ReimbursementPreviewResult,
 } from "@/lib/banking/bank-export-adapter";
+import { calculateTotalAmount, moneyToCents } from "@/lib/utils/calculations";
 
 const FINANCE_ENDPOINT = "/api/v1/finance";
 
@@ -225,17 +226,17 @@ export class FinanceClient {
     const paid = claims.filter(c => c.status === "PAID");
     const ministries = new Map<
       string,
-      { name: string; total: number; count: number }
+      { name: string; totalCents: number; count: number }
     >();
-    const costCentres = new Map<string, { name: string; total: number }>();
+    const costCentres = new Map<string, { name: string; totalCents: number }>();
 
     claims.forEach(c => {
       const ministry = ministries.get(c.ministry_id) || {
         name: c.ministry?.name || "General",
-        total: 0,
+        totalCents: 0,
         count: 0,
       };
-      ministry.total += Number(c.total_amount);
+      ministry.totalCents += moneyToCents(c.total_amount) ?? 0;
       ministry.count++;
       ministries.set(c.ministry_id, ministry);
       c.expenses?.forEach(e => {
@@ -243,9 +244,9 @@ export class FinanceClient {
           name: e.cost_centre
             ? `${e.cost_centre.code} - ${e.cost_centre.name}`
             : "General",
-          total: 0,
+          totalCents: 0,
         };
-        cc.total += Number(e.amount);
+        cc.totalCents += moneyToCents(e.amount) ?? 0;
         costCentres.set(e.cost_centre_id, cc);
       });
     });
@@ -259,15 +260,12 @@ export class FinanceClient {
         c => c.status === "APPROVED_FOR_PAYMENT"
       ).length,
       paidCount: paid.length,
-      totalPaidAmount: paid.reduce(
-        (sum, c) => sum + Number(c.total_amount),
-        0
-      ),
-      totalPendingAmount: claims
+      totalPaidAmount: calculateTotalAmount(paid.map(c => ({ amount: c.total_amount }))),
+      totalPendingAmount: calculateTotalAmount(claims
         .filter(c => !["PAID", "REJECTED"].includes(c.status))
-        .reduce((sum, c) => sum + Number(c.total_amount), 0),
-      byMinistry: Array.from(ministries.values()),
-      byCostCentre: Array.from(costCentres.values()),
+        .map(c => ({ amount: c.total_amount }))),
+      byMinistry: Array.from(ministries.values(), ({ totalCents, ...rest }) => ({ ...rest, total: totalCents / 100 })),
+      byCostCentre: Array.from(costCentres.values(), ({ totalCents, ...rest }) => ({ ...rest, total: totalCents / 100 })),
       byCategory: [],
     };
   }

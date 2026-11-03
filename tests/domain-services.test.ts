@@ -229,6 +229,18 @@ describe("Bounded-Context Domain Services & APIs (/api/v1/*)", () => {
       expect(Object.keys(body)).toEqual(["claims"]);
     });
 
+    it("does not retry a failed scoped snapshot with the full workspace", async () => {
+      mocks.rpc.mockReset().mockResolvedValue({ data: null, error: { code: "57014" } });
+      const log = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const res = await getClaims();
+        expect(res.status).toBe(503);
+        expect(mocks.rpc).toHaveBeenCalledTimes(1);
+      } finally {
+        log.mockRestore();
+      }
+    });
+
     it("returns only Finance & Workflow entities from GET /api/v1/finance", async () => {
       const res = await getFinance();
       const body = await res.json();

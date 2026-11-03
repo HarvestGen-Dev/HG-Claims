@@ -206,7 +206,7 @@ export function PasswordRecovery({ reset = false }: { reset?: boolean }) {
           </Link>
         </div>
       </main>
-      <footer className="auth-footer">Harvest Generation &middot; Expenses</footer>
+      <footer className="auth-footer">Harvest Generation &middot; Claims Management</footer>
     </div>
   );
 }

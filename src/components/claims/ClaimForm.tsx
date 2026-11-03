@@ -36,6 +36,7 @@ import { claimsClient, iamClient, masterDataClient, workspaceStore } from "@/lib
 import { Claim, Ministry, CostCentre, Profile } from "@/lib/types/database";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/utils/formatters";
+import { calculateTotalAmount, moneyToCents, parseMoneyInput } from "@/lib/utils/calculations";
 import { showToast } from "@/lib/utils/toast";
 
 
@@ -369,8 +370,8 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
       if (!e.expense_date) return `Receipt #${i + 1}: Date is required.`;
       if (!e.cost_centre_id) return `Receipt #${i + 1}: Cost centre is required.`;
       if (!e.description.trim()) return `Receipt #${i + 1}: Item description is required.`;
-      const amt = typeof e.amount === "string" ? parseFloat(e.amount) : e.amount;
-      if (isNaN(amt) || amt <= 0) return `Receipt #${i + 1}: Please enter a valid positive amount.`;
+      const amountCents = moneyToCents(e.amount);
+      if (amountCents === null || amountCents <= 0) return `Receipt #${i + 1}: Enter a positive amount with at most two decimal places.`;
       if (formConfig.require_vendor_name && !e.vendor?.trim()) {
         return `Receipt #${i + 1}: Vendor / merchant name is required by church policy.`;
       }
@@ -426,7 +427,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           cost_centre_id: e.cost_centre_id,
           vendor: e.vendor || undefined,
           description: e.description || "Draft receipt",
-          amount: typeof e.amount === "string" ? parseFloat(e.amount) || 0 : e.amount || 0,
+          amount: parseMoneyInput(e.amount),
           notes: e.notes || undefined,
           sort_order: idx + 1,
           attachment: e.attachment
@@ -502,7 +503,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           cost_centre_id: e.cost_centre_id,
           vendor: e.vendor || undefined,
           description: e.description.trim(),
-          amount: typeof e.amount === "string" ? parseFloat(e.amount) : e.amount,
+          amount: parseMoneyInput(e.amount),
           notes: e.notes || undefined,
           sort_order: idx + 1,
           attachment: e.attachment
@@ -535,10 +536,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
     }
   };
 
-  const totalAmount = expenses.reduce((sum, item) => {
-    const val = typeof item.amount === "string" ? parseFloat(item.amount) : item.amount;
-    return isNaN(val) ? sum : sum + val;
-  }, 0);
+  const totalAmount = calculateTotalAmount(expenses);
 
   return (
     <form
@@ -562,10 +560,10 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           </Link>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-              {isEditMode ? `Edit Claim ${initialClaim?.claim_number || ""}` : "New Expense Claim"}
+              {isEditMode ? `Edit Claim ${initialClaim?.claim_number || ""}` : "Submit Claim"}
             </h1>
             <p className="text-xs text-zinc-500">
-              {initialClaim?.claim_number || "Ministry head expense reimbursement submission"}
+              {initialClaim?.claim_number || "Enter the claim details and attach receipts."}
             </p>
           </div>
         </div>
@@ -616,43 +614,40 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
       {/* SECTION 01: Claimant Details */}
       <Card className="claim-section border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
         <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800/80">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <span className="font-mono text-[10px] font-bold text-zinc-400">01</span>
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                Claimant Details
+              <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                Claimant details
               </CardTitle>
             </div>
             <button
               type="button"
               onClick={handleFillMyDetails}
-              className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-800 hover:text-zinc-950 hover:underline dark:text-zinc-200"
+              className="inline-flex min-h-10 items-center gap-1 self-start text-sm font-medium text-zinc-800 hover:text-zinc-950 hover:underline dark:text-zinc-200"
             >
               <UserCheck className="w-3.5 h-3.5" />
-              <span>Fill my details (Self-claim)</span>
+              <span>Use my details</span>
             </button>
           </div>
         </CardHeader>
         <CardContent className="p-4 space-y-4">
           {/* Submitter Context Banner */}
-          <div className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800 text-xs flex items-center justify-between">
-            <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300">
-              <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
-                Submitted By:
+          <div className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800 text-xs">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-zinc-600 dark:text-zinc-300">
+              <span className="font-medium text-zinc-500">
+                Submitted by
               </span>
               <span className="font-medium text-zinc-900 dark:text-zinc-100">
                 {user?.full_name || "Ministry Head"}
               </span>
-              <span className="text-[10px] text-zinc-400">({user?.email})</span>
+              <span className="break-all text-zinc-500">{user?.email}</span>
               {user?.is_multi_user && (
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
                   Multi-User Account
                 </span>
               )}
             </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-200/70 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
-              Ministry Submitter
-            </span>
           </div>
 
           {/* Saved Claimant / Payee Bank Profile Lookup & Quick-Add */}
@@ -662,17 +657,17 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                 <div className="flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-zinc-800 dark:text-zinc-200" />
                   <span className="text-[11px] font-semibold text-zinc-900 dark:text-zinc-100">
-                    Select Saved Claimant Bank Profile
+                    Choose payee
                   </span>
                   {selectedPayeeProfileId && (
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold">
                       <CheckCircle2 className="w-3 h-3" />
-                      Linked to Saved Profile
+                      Saved profile
                     </span>
                   )}
                 </div>
                 <p className="text-[11px] text-zinc-500 mt-0.5">
-                  Search or select a claimant&apos;s name to automatically link their bank account and disbursement details. If their name is not listed, click <strong>+ Add Bank Profile</strong>.
+                  Select a saved payee or add a new bank profile.
                 </p>
               </div>
               <Button
@@ -695,7 +690,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                   <Input
                     type="text"
                     id="claimantProfileSearch"
-                    placeholder="Search claimant name or bank account..."
+                    placeholder="Search payee name..."
                     value={profileSearchQuery}
                     onFocus={() => setIsProfileDropdownOpen(true)}
                     onChange={(e) => {
@@ -713,6 +708,8 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                       const selectableProfiles = (profiles || []).filter(
                         (p) =>
                           p.status !== "INACTIVE" &&
+                          (p.id === user?.id || p.created_by_user_id === user?.id ||
+                            user?.roles?.includes("FINANCE_OFFICER") || user?.roles?.includes("SYSTEM_ADMIN")) &&
                           Boolean(p.full_name?.trim()) &&
                           (!q ||
                             p.full_name.toLowerCase().includes(q) ||

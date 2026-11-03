@@ -259,7 +259,7 @@ function FinanceClaimsContent() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-zinc-200/80 dark:border-zinc-800">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            Process &amp; Disburse Claims
+            Reimbursements
           </h1>
           <p className="text-xs text-zinc-500">
             Approve claims, select or bulk-select approved claims to generate the

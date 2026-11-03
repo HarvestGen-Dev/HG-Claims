@@ -173,7 +173,7 @@ function OnboardingContent() {
 
       // 4. Flash welcome toast
       showToast.flashSuccess(
-        "Welcome to Harvest Generation Expenses! Your profile and reimbursement bank details are saved.",
+        "Your Harvest Generation profile and reimbursement bank details are saved.",
         "Registration Complete"
       );
 
@@ -555,7 +555,7 @@ function OnboardingContent() {
       </div>
 
       <footer className="text-center text-xs text-slate-400 mt-8">
-        Harvest Generation &middot; Expenses
+        Harvest Generation &middot; Claims Management
       </footer>
     </div>
   );

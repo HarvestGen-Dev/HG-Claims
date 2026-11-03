@@ -17,7 +17,7 @@ import { generateClaimsCsv, downloadCsv } from "@/lib/utils/export-csv";
 import { showToast } from "@/lib/utils/toast";
 
 function ClaimsContent() {
-  const { user } = useAuth();
+  const { user, canCreateClaim } = useAuth();
   const searchParams = useSearchParams();
   const initialStatus = searchParams.get("status") as ClaimStatus | null;
   const initialSearch = searchParams.get("search") || "";
@@ -25,6 +25,8 @@ function ClaimsContent() {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>(initialStatus || "ALL");
   const [search, setSearch] = useState(initialSearch);
+  const [sort, setSort] = useState<"newest" | "oldest" | "amount-high" | "amount-low">("newest");
+  const [page, setPage] = useState(1);
   const [deletingClaim, setDeletingClaim] = useState<Claim | null>(null);
   const [isDeletingClaim, setIsDeletingClaim] = useState(false);
 
@@ -81,8 +83,21 @@ function ClaimsContent() {
     });
   }, [claims, selectedStatus, search]);
 
+  useEffect(() => { setPage(1); }, [selectedStatus, search, sort]);
+
+  const sortedClaims = useMemo(() => [...filteredClaims].sort((a, b) => {
+    if (sort === "amount-high") return Number(b.total_amount) - Number(a.total_amount);
+    if (sort === "amount-low") return Number(a.total_amount) - Number(b.total_amount);
+    const dateA = a.submitted_at || a.created_at;
+    const dateB = b.submitted_at || b.created_at;
+    return sort === "oldest" ? dateA.localeCompare(dateB) : dateB.localeCompare(dateA);
+  }), [filteredClaims, sort]);
+  const pageCount = Math.max(1, Math.ceil(sortedClaims.length / 20));
+  const currentPage = Math.min(page, pageCount);
+  const visibleClaims = sortedClaims.slice((currentPage - 1) * 20, currentPage * 20);
+
   const handleExport = () => {
-    const csv = generateClaimsCsv(filteredClaims);
+    const csv = generateClaimsCsv(sortedClaims);
     downloadCsv(`claims_export_${new Date().toISOString().split("T")[0]}.csv`, csv);
   };
 
@@ -120,12 +135,12 @@ function ClaimsContent() {
             <Download className="w-3.5 h-3.5 text-zinc-400" />
             <span>Export CSV</span>
           </Button>
-          <Link href="/claims/new">
+          {canCreateClaim() && <Link href="/claims/new">
             <Button size="sm" className="h-8 bg-zinc-900 hover:bg-zinc-800 text-white gap-1.5 text-xs shadow-2xs font-medium">
               <Plus className="w-3.5 h-3.5" />
-              <span>New Claim</span>
+              <span>Submit Claim</span>
             </Button>
-          </Link>
+          </Link>}
         </div>
       </div>
 
@@ -150,6 +165,7 @@ function ClaimsContent() {
         </div>
 
         {/* Search Box */}
+        <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
         <div className="relative w-full md:w-64">
           <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-zinc-400" />
           <input
@@ -160,6 +176,13 @@ function ClaimsContent() {
             onChange={(e) => setSearch(e.target.value)}
             className="h-7 w-full pl-8 pr-2.5 text-xs rounded-lg border border-zinc-200 bg-zinc-50/70 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-900"
           />
+        </div>
+        <select aria-label="Sort claims" value={sort} onChange={(event) => setSort(event.target.value as typeof sort)} className="h-10 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="amount-high">Highest amount</option>
+          <option value="amount-low">Lowest amount</option>
+        </select>
         </div>
       </div>
 
@@ -174,7 +197,7 @@ function ClaimsContent() {
           </div>
         ) : (
           <>
-            <MobileClaimList claims={filteredClaims || []} onDelete={setDeletingClaim} />
+            <MobileClaimList claims={visibleClaims} onDelete={setDeletingClaim} />
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
@@ -191,7 +214,7 @@ function ClaimsContent() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
-                  {(filteredClaims || []).map((c) => (
+                  {visibleClaims.map((c) => (
                     <tr key={c.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-900/50 transition-colors">
                       <td className="py-3 px-4 font-mono font-medium text-zinc-900 dark:text-zinc-100">
                         <Link href={`/claims/${c.id}`} className="hover:underline hover:text-emerald-700 dark:hover:text-emerald-400">
@@ -248,6 +271,16 @@ function ClaimsContent() {
           </>
         )}
       </div>
+
+      {pageCount > 1 && (
+        <nav aria-label="Claims pages" className="flex items-center justify-between gap-3 text-sm text-zinc-600">
+          <span>Page {currentPage} of {pageCount}</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Previous</Button>
+            <Button variant="outline" size="sm" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>Next</Button>
+          </div>
+        </nav>
+      )}
 
       {/* Delete Claim Confirmation Dialog */}
       <Dialog open={!!deletingClaim} onOpenChange={(open) => !open && !isDeletingClaim && setDeletingClaim(null)}>

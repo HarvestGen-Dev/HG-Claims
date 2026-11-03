@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
 import { Sidebar } from "./Sidebar";
@@ -16,6 +16,9 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const closeMenuRef = useRef<HTMLButtonElement>(null);
+  const menuPanelRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
   const { user, isAuthenticated, isLoading, hasRole } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
@@ -25,6 +28,38 @@ export function AppLayout({ children }: AppLayoutProps) {
       router.replace("/login");
     }
   }, [isLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeMenuRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileMenuOpen(false);
+      if (event.key === "Tab" && menuPanelRef.current) {
+        const focusable = Array.from(menuPanelRef.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'));
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+      previousFocusRef.current?.focus();
+    };
+  }, [mobileMenuOpen]);
+
+  useEffect(() => { setMobileMenuOpen(false); }, [pathname]);
 
   if (isLoading) {
     return (
@@ -42,7 +77,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col antialiased font-sans">
+    <div className="min-h-screen bg-background text-foreground flex flex-col antialiased font-sans">
       <div className="flex h-screen overflow-hidden">
         {/* Desktop Fixed Sidebar */}
         <div className="hidden lg:flex lg:w-64 lg:flex-col lg:inset-y-0 z-30">
@@ -51,7 +86,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
         {/* Mobile Slide-over Drawer */}
         {mobileMenuOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden flex">
+          <div className="fixed inset-0 z-50 lg:hidden flex" role="dialog" aria-modal="true" aria-label="Navigation menu">
             {/* Backdrop */}
             <div
               className="fixed inset-0 bg-zinc-950/60 backdrop-blur-xs transition-opacity duration-300"
@@ -60,7 +95,8 @@ export function AppLayout({ children }: AppLayoutProps) {
             />
 
             {/* Slide-out Panel */}
-            <div className="relative flex-1 flex flex-col max-w-[280px] w-full bg-white dark:bg-zinc-950 z-10 shadow-2xl animate-in slide-in-from-left duration-200">
+            <div id="mobile-navigation" ref={menuPanelRef} className="relative flex-1 flex flex-col max-w-[280px] w-full bg-white dark:bg-zinc-950 z-10 shadow-2xl animate-in slide-in-from-left duration-200">
+              <button ref={closeMenuRef} type="button" className="sr-only focus:not-sr-only focus:absolute focus:right-3 focus:top-3 focus:z-20 focus:bg-white focus:p-2" onClick={() => setMobileMenuOpen(false)}>Close navigation</button>
               <Sidebar onNavigate={() => setMobileMenuOpen(false)} />
             </div>
           </div>
@@ -68,7 +104,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
         {/* Main Content Area */}
         <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-          <TopHeader onToggleMobileMenu={() => setMobileMenuOpen(true)} />
+          <TopHeader onToggleMobileMenu={() => setMobileMenuOpen(true)} mobileMenuOpen={mobileMenuOpen} />
           <main id="main-content" className="workspace-content flex-1 min-w-0 p-3.5 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24 lg:pb-8">
             {(pathname.startsWith("/admin") && !hasRole("SYSTEM_ADMIN")) ||
              (pathname.startsWith("/finance") && !hasRole("FINANCE_OFFICER")) ||

@@ -29,8 +29,8 @@ export function MobileClaimList({
         const targetHref = `${baseHref}/${claim.id}`;
 
         return (
+          <div key={claim.id}>
           <Link
-            key={claim.id}
             href={targetHref}
             className="block p-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100/70 transition-colors touch-manipulation"
           >
@@ -78,23 +78,17 @@ export function MobileClaimList({
                   />
                 )}
 
-                {onDelete && (claim.status === "DRAFT" || claim.status === "CANCELLED") && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onDelete(claim);
-                    }}
-                    className="p-1 rounded text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                    title="Delete Draft"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
               </div>
             </div>
           </Link>
+          {onDelete && (claim.status === "DRAFT" || claim.status === "CANCELLED") && (
+            <div className="flex justify-end px-3 pb-2">
+              <button type="button" onClick={() => onDelete(claim)} className="inline-flex min-h-10 items-center gap-2 rounded-md px-3 text-sm text-red-700 hover:bg-red-50" aria-label={`Delete ${claim.claim_number || "draft claim"}`}>
+                <Trash2 className="h-4 w-4" /> Delete draft
+              </button>
+            </div>
+          )}
+          </div>
         );
       })}
     </div>

@@ -6,7 +6,6 @@ import {
   Menu,
   ChevronDown,
   LogOut,
-  User,
   FileText,
   Bell,
 } from "lucide-react";
@@ -18,9 +17,10 @@ import { BrandLogo } from "@/components/BrandLogo";
 
 interface TopHeaderProps {
   onToggleMobileMenu?: () => void;
+  mobileMenuOpen?: boolean;
 }
 
-export function TopHeader({ onToggleMobileMenu }: TopHeaderProps) {
+export function TopHeader({ onToggleMobileMenu, mobileMenuOpen = false }: TopHeaderProps) {
   const { user, logout } = useAuth();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -63,13 +63,14 @@ export function TopHeader({ onToggleMobileMenu }: TopHeaderProps) {
           onClick={onToggleMobileMenu}
           className="p-2 -ml-1 text-zinc-600 hover:text-zinc-900 rounded-lg lg:hidden hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
           aria-label="Open Navigation"
+          aria-controls="mobile-navigation"
+          aria-expanded={mobileMenuOpen}
         >
           <Menu className="w-5 h-5" />
         </button>
 
         <Link href="/dashboard" className="flex items-center gap-2 lg:hidden py-1">
           <BrandLogo compact />
-          <span className="font-semibold text-zinc-900 text-xs tracking-tight dark:text-zinc-100">Harvest Generation</span>
         </Link>
 
         {/* Global Search */}

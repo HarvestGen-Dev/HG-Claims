@@ -22,9 +22,10 @@ import { useAuth } from "@/lib/auth/context";
 import { claimsClient, workspaceStore } from "@/lib/domains";
 import { Claim } from "@/lib/types/database";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
+import { moneyToCents } from "@/lib/utils/calculations";
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, canCreateClaim } = useAuth();
   const [claims, setClaims] = useState<Claim[]>([]);
   const [search, setSearch] = useState("");
 
@@ -61,7 +62,7 @@ export default function DashboardPage() {
       else if (c.status === "APPROVED" || c.status === "APPROVED_FOR_PAYMENT") approved++;
       else if (c.status === "PAID") {
         paid++;
-        paidAmount += Number(c.total_amount);
+        paidAmount += moneyToCents(c.total_amount) ?? 0;
       }
     }
 
@@ -72,7 +73,7 @@ export default function DashboardPage() {
       returnedCount: returned,
       approvedCount: approved,
       paidCount: paid,
-      totalPaidAmount: paidAmount,
+      totalPaidAmount: paidAmount / 100,
     };
   }, [claims, user?.id]);
 
@@ -101,17 +102,17 @@ export default function DashboardPage() {
               Overview
             </h1>
             <p className="text-xs text-zinc-500 mt-0.5">
-              Welcome back, <span className="font-medium text-zinc-700 dark:text-zinc-300">{user?.full_name}</span>. Track and submit your ministry claims.
+              Track your claims and their current status.
             </p>
           </div>
 
           <div className="flex items-center gap-2.5">
-            <Link href="/claims/new">
+            {canCreateClaim() && <Link href="/claims/new">
               <Button size="sm" className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-medium shadow-2xs gap-1.5 h-8">
                 <Plus className="w-3.5 h-3.5" />
-                <span>New Claim</span>
+                <span>Submit Claim</span>
               </Button>
-            </Link>
+            </Link>}
           </div>
         </div>
 
@@ -209,18 +210,19 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="relative">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+              <div className="relative min-w-0 flex-1 sm:flex-none">
                 <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-zinc-400" />
                 <input
                   type="text"
+                  aria-label="Filter recent claims"
                   placeholder="Filter claims..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-7 pl-7 pr-2.5 text-xs rounded-lg border border-zinc-200 bg-zinc-50/70 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-900"
+                  className="h-10 w-full sm:w-40 pl-7 pr-2.5 text-sm rounded-lg border border-zinc-200 bg-zinc-50/70 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-900"
                 />
               </div>
-              <Link href="/claims">
+              <Link href="/claims" className="self-start sm:self-auto">
                 <Button variant="ghost" size="sm" className="h-7 text-xs text-zinc-600 hover:text-zinc-900 gap-1 px-2">
                   <span>View All</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />
@@ -235,11 +237,11 @@ export default function DashboardPage() {
                 <FileText className="w-8 h-8 text-zinc-300 mx-auto" />
                 <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">No claims found</p>
                 <p className="text-[11px] text-zinc-400">Submit a new expense claim to get started.</p>
-                <Link href="/claims/new" className="inline-block mt-2">
+                {canCreateClaim() && <Link href="/claims/new" className="inline-block mt-2">
                   <Button size="sm" className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs h-7">
-                    Create Claim
+                    Submit Claim
                   </Button>
-                </Link>
+                </Link>}
               </div>
             ) : (
               <><MobileClaimList claims={filteredRecent} /><div className="hidden sm:block overflow-x-auto">

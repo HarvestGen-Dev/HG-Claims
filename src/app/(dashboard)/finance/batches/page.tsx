@@ -224,7 +224,7 @@ export default function FinanceBatchesPage() {
           <div>
             <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
               <FileSpreadsheet className="w-5 h-5 text-zinc-900 dark:text-zinc-100" />
-              Bulk Reimbursement & Bank File (SBP .xls)
+              Bank Batches
             </h1>
             <p className="text-xs text-zinc-500 mt-0.5">
               Select approved claims, preview consolidated beneficiary transfers, export Alliance Bank BIFF8 (.xls) files, and reconcile bank settlements.

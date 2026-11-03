@@ -22,6 +22,7 @@ export async function executeRpcCommand(
   const { data, error } = await client.rpc("nlcc_command", { action, payload });
   if (error) {
     const expected = ["P0001", "42501", "PT409"].includes(error.code);
+    if (!expected) console.error("Domain command failed", { action, code: error.code });
     return {
       error: expected
         ? error.message
@@ -61,10 +62,13 @@ export async function fetchAuthorizedSnapshot(
     let { data, error } = domain
       ? await client.rpc("nlcc_domain_snapshot", { p_domain: domain })
       : await client.rpc("nlcc_snapshot");
-    if (error && domain && error.code !== "42501") {
+    // Older deployments may not yet have the scoped RPC. Other failures must
+    // surface instead of silently loading the much larger full snapshot.
+    if (error && domain && ["42883", "PGRST202"].includes(error.code)) {
       ({ data, error } = await client.rpc("nlcc_snapshot"));
     }
     if (error) {
+      if (error.code !== "42501") console.error("Workspace snapshot failed", { domain, code: error.code });
       return {
         error:
           error.code === "42501"
@@ -74,7 +78,8 @@ export async function fetchAuthorizedSnapshot(
       };
     }
     return { data: (data as Record<string, unknown>) ?? {}, status: 200 };
-  } catch {
+  } catch (cause) {
+    console.error("Workspace snapshot unavailable", { domain, cause: cause instanceof Error ? cause.name : "unknown" });
     return {
       error: "The backend is not configured or is unavailable.",
       status: 503,
@@ -156,7 +161,8 @@ export async function handleDomainCommandRequest(
       status: result.status,
       headers: NO_STORE_HEADERS,
     });
-  } catch {
+  } catch (cause) {
+    console.error("Domain request failed", { path: request.nextUrl.pathname, cause: cause instanceof Error ? cause.name : "unknown" });
     return NextResponse.json(
       { error: "The request could not be completed." },
       { status: 503, headers: NO_STORE_HEADERS }

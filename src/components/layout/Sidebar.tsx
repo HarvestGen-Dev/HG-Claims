@@ -112,7 +112,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           <Link href="/dashboard" onClick={onNavigate} aria-label="Harvest Generation dashboard" className="block w-fit">
             <BrandLogo priority />
           </Link>
-          <p className="mt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">Expense Portal</p>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Claims Management</p>
         </div>
         {onNavigate && (
           <button
@@ -132,10 +132,10 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           <Link
             href="/claims/new"
             onClick={onNavigate}
-            className="flex items-center justify-center gap-1.5 w-full py-1.5 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-white text-xs font-semibold shadow-2xs transition-colors"
+            className="flex min-h-10 items-center justify-center gap-1.5 w-full py-2 px-3 rounded-md bg-primary hover:brightness-90 text-primary-foreground text-sm font-medium transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>New Claim</span>
+            <span>Submit Claim</span>
           </Link>
         </div>
       )}
@@ -148,7 +148,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             Workspace
           </div>
           {navItem("/dashboard", "Dashboard", <LayoutDashboard className="w-4 h-4" />, undefined, true)}
-          {navItem("/claims", "Claims", <FileText className="w-4 h-4" />, undefined, true)}
+          {navItem("/claims", "My Claims", <FileText className="w-4 h-4" />, undefined, true)}
         </div>
 
         {/* Approver Inbox */}
@@ -157,7 +157,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
               Review
             </div>
-            {navItem("/approvals", "Approvals Inbox", <CheckSquare className="w-4 h-4" />, approvalsCount)}
+            {navItem("/approvals", "Pending Approval", <CheckSquare className="w-4 h-4" />, approvalsCount)}
           </div>
         )}
 
@@ -168,9 +168,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
               Finance
             </div>
             {navItem("/finance", "Finance Overview", <Wallet className="w-4 h-4" />, financeCount, true)}
-            {navItem("/finance/claims", "Process & Disburse", <Layers className="w-4 h-4" />)}
-            {navItem("/finance/batches", "Bulk Bank Batches (.xls)", <FileSpreadsheet className="w-4 h-4" />)}
-            {navItem("/finance/reports", "Analytics & Reports", <BarChart3 className="w-4 h-4" />)}
+            {navItem("/finance/claims", "Reimbursements", <Layers className="w-4 h-4" />)}
+            {navItem("/finance/batches", "Bank Batches", <FileSpreadsheet className="w-4 h-4" />)}
+            {navItem("/finance/reports", "Reports", <BarChart3 className="w-4 h-4" />)}
           </div>
         )}
 

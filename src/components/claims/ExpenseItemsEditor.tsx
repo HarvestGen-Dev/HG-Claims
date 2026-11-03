@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CostCentre, ClaimAttachment } from "@/lib/types/database";
 import { formatCurrency, formatFileSize } from "@/lib/utils/formatters";
+import { calculateTotalAmount } from "@/lib/utils/calculations";
 import { ReceiptViewerModal } from "./ReceiptViewerModal";
 import { saveReceipt } from "@/lib/data/receipts";
 
@@ -194,10 +195,7 @@ export function ExpenseItemsEditor({
     return <File className="w-4 h-4 text-zinc-500" />;
   };
 
-  const total = expenses.reduce((sum, item) => {
-    const val = typeof item.amount === "string" ? parseFloat(item.amount) : item.amount;
-    return isNaN(val) ? sum : sum + val;
-  }, 0);
+  const total = calculateTotalAmount(expenses);
 
   return (
     <div className="space-y-4">

@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth/context";
 import { claimsClient } from "@/lib/domains";
 import { Claim } from "@/lib/types/database";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
+import { calculateTotalAmount } from "@/lib/utils/calculations";
 
 export default function ApprovalsInboxPage() {
   const { user } = useAuth();
@@ -55,7 +56,7 @@ export default function ApprovalsInboxPage() {
     );
   });
 
-  const totalPendingAmount = pendingApprovals.reduce((sum, c) => sum + Number(c.total_amount), 0);
+  const totalPendingAmount = calculateTotalAmount(pendingApprovals.map(c => ({ amount: c.total_amount })));
 
   return (
     <AppLayout>
@@ -64,7 +65,7 @@ export default function ApprovalsInboxPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-zinc-200/80 dark:border-zinc-800">
           <div>
             <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-              Approvals Inbox
+              Pending Approval
             </h1>
             <p className="text-xs text-zinc-500">
               Review and endorse ministry expense claims assigned to your role.

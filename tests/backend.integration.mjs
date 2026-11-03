@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
-const status = JSON.parse(execFileSync("supabase", ["status", "-o", "json", ...(process.env.NLCC_TEST_WORKDIR ? ["--workdir", process.env.NLCC_TEST_WORKDIR] : [])], { encoding: "utf8", stdio: ["ignore","pipe","ignore"] }));
+const status = JSON.parse(execFileSync(process.env.NLCC_SUPABASE_CLI || "supabase", ["status", "-o", "json", ...(process.env.NLCC_TEST_WORKDIR ? ["--workdir", process.env.NLCC_TEST_WORKDIR] : [])], { encoding: "utf8", stdio: ["ignore","pipe","ignore"] }));
 assert.match(status.API_URL, /^http:\/\/(127\.0\.0\.1|localhost):/);
 const service = createClient(status.API_URL, status.SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 const anonymous = createClient(status.API_URL, status.ANON_KEY, { auth: { persistSession: false } });
@@ -47,6 +47,31 @@ check(!(await snapshot(outsider.client)).profiles.find(p => p.id === claimant.id
 
 const ministry = await command(admin.client, "master_save", { table: "ministries", data: { code: "TEST-" + suffix, name: "Test ministry", leader_id: leader.id } });
 const costCentre = await command(admin.client, "master_save", { table: "cost_centres", data: { code: "CC-" + suffix, name: "Test budget", ministry_id: ministry.id } });
+const payee = await command(claimant.client, "create_payee_profile", {
+  full_name: "Fixture payee " + suffix,
+  bank_code: "PBBEMYKL",
+  bank_account_number: "003198765432",
+  ministry_id: ministry.id,
+});
+check((await snapshot(claimant.client)).profiles.find(p => p.id === payee.id).bank_account_number === "003198765432", "Payee creator can view account details");
+check(!(await snapshot(outsider.client)).profiles.find(p => p.id === payee.id).bank_account_number, "Unrelated user cannot view saved payee account details");
+const outsiderIam = await outsider.client.rpc("nlcc_domain_snapshot", { p_domain: "iam" });
+assert.ifError(outsiderIam.error);
+check(!outsiderIam.data.profiles.find(p => p.id === payee.id).bank_account_number, "Scoped IAM snapshot also hides unrelated payee account details");
+check((await snapshot(finance.client)).profiles.find(p => p.id === payee.id).bank_account_number === "003198765432", "Finance can view payee details for reimbursement");
+const unauthorizedPayeeEdit = await outsider.client.rpc("nlcc_command", { action: "create_payee_profile", payload: {
+  id: payee.id, full_name: "Changed payee", bank_code: "PBBEMYKL", bank_account_number: "9999988888",
+} });
+check(unauthorizedPayeeEdit.error?.code === "42501", "Unrelated user cannot change saved payee details");
+const payeeDraftPayload = {
+  request_key: randomUUID(), ministry_id: ministry.id, claim_date: "2026-11-03",
+  claimant_name: "Fixture payee " + suffix, purpose: "Payee access check", expenses: [],
+  payee_profile_id: payee.id,
+};
+const payeeDraft = await command(claimant.client, "save_draft", payeeDraftPayload);
+check((await snapshot(claimant.client)).claims.find(c => c.id === payeeDraft.id).claimant_id === payee.id, "Payee creator can save a claim for the payee");
+const unauthorizedPayeeDraft = await outsider.client.rpc("nlcc_command", { action: "save_draft", payload: { ...payeeDraftPayload, request_key: randomUUID() } });
+check(unauthorizedPayeeDraft.error?.code === "42501", "Unrelated user cannot create a claim for another account's payee");
 const category = (await snapshot(claimant.client)).categories[0];
 const path = claimant.id + "/" + randomUUID() + "/receipt.png";
 const bytes = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64");

@@ -88,7 +88,7 @@ export default function ProfilePage() {
         <div className="pb-2 border-b border-zinc-200/80 dark:border-zinc-800">
           <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
             <User className="w-5 h-5 text-zinc-900 dark:text-zinc-100" />
-            Profile Settings
+            My Profile
           </h1>
           <p className="text-xs text-zinc-500">
             Keep your contact details and verified reimbursement banking destination current.
@@ -105,8 +105,8 @@ export default function ProfilePage() {
         {/* Personal Card */}
         <Card className="border-zinc-200/80 shadow-2xs">
           <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800">
-            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-              Personal Information
+            <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+              Personal information
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 space-y-3 text-xs">
@@ -130,10 +130,13 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-1 pt-1">
-              <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-                Mobile Phone Number
+              <label htmlFor="profile-phone" className="text-sm font-medium text-zinc-600">
+                Mobile phone number
               </label>
               <Input
+                id="profile-phone"
+                type="tel"
+                autoComplete="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="h-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
@@ -147,8 +150,8 @@ export default function ProfilePage() {
           <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800 flex flex-row items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Landmark className="w-4 h-4 text-zinc-900 dark:text-zinc-100" />
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                Default Reimbursement Bank Account
+              <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                Default reimbursement bank account
               </CardTitle>
             </div>
             {selectedBank && (
@@ -163,10 +166,11 @@ export default function ProfilePage() {
             </p>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-                Beneficiary Bank (31-Bank Directory)
+              <label htmlFor="profile-bank" className="text-sm font-medium text-zinc-600">
+                Beneficiary bank
               </label>
               <select
+                id="profile-bank"
                 value={bankCode}
                 onChange={(e) => setBankCode(e.target.value)}
                 className="flex h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
@@ -182,10 +186,12 @@ export default function ProfilePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-                  Beneficiary Legal Name
+                <label htmlFor="profile-holder" className="text-sm font-medium text-zinc-600">
+                  Beneficiary legal name
                 </label>
                 <Input
+                  id="profile-holder"
+                  autoComplete="name"
                   value={bankAccountHolderName}
                   onChange={(e) => setBankAccountHolderName(e.target.value)}
                   placeholder="Exact legal name on bank account"
@@ -195,14 +201,15 @@ export default function ProfilePage() {
 
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-                    Bank Account Number
+                  <label htmlFor="profile-account" className="text-sm font-medium text-zinc-600">
+                    Bank account number
                   </label>
                   {bankAccountNumber && (
                     <button
                       type="button"
                       onClick={() => setShowRawAccount(!showRawAccount)}
-                      className="text-[10px] text-zinc-500 hover:text-zinc-900 inline-flex items-center gap-1"
+                      className="text-sm text-zinc-600 hover:text-zinc-900 inline-flex items-center gap-1"
+                      aria-label={showRawAccount ? "Hide bank account number" : "Reveal bank account number for editing"}
                     >
                       {showRawAccount ? (
                         <>
@@ -218,29 +225,36 @@ export default function ProfilePage() {
                 </div>
                 {showRawAccount || !user?.bank_account_number ? (
                   <Input
+                    id="profile-account"
+                    inputMode="text"
+                    autoComplete="off"
                     value={bankAccountNumber}
                     onChange={(e) => setBankAccountNumber(e.target.value)}
                     placeholder="e.g. 514012345678"
                     className="h-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 font-mono tracking-wider"
                   />
                 ) : (
-                  <div
+                  <button
+                    type="button"
+                    id="profile-account"
                     onClick={() => setShowRawAccount(true)}
-                    className="h-8 px-2.5 rounded-lg border border-zinc-200 bg-zinc-50 flex items-center justify-between font-mono text-xs text-zinc-700 cursor-pointer"
+                    className="min-h-10 w-full px-2.5 rounded-lg border border-zinc-200 bg-zinc-50 flex items-center justify-between font-mono text-xs text-zinc-700 cursor-pointer"
+                    aria-label="Reveal bank account number for editing"
                   >
                     <span>{maskBankAccountNumber(bankAccountNumber)}</span>
                     <span className="text-[10px] font-sans text-zinc-400">Click to edit</span>
-                  </div>
+                  </button>
                 )}
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div className="space-y-1">
-                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-                  New IC No. <span className="text-zinc-400 font-normal">(Optional)</span>
+                <label htmlFor="profile-new-ic" className="text-sm font-medium text-zinc-600">
+                  New IC number <span className="text-zinc-500 font-normal">(optional)</span>
                 </label>
                 <Input
+                  id="profile-new-ic"
                   value={beneficiaryNewIc}
                   onChange={(e) => setBeneficiaryNewIc(e.target.value)}
                   placeholder="Optional for standard transfer"
@@ -249,10 +263,11 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-                  Beneficiary Address <span className="text-zinc-400 font-normal">(Optional)</span>
+                <label htmlFor="profile-address" className="text-sm font-medium text-zinc-600">
+                  Beneficiary address <span className="text-zinc-500 font-normal">(optional)</span>
                 </label>
                 <Input
+                  id="profile-address"
                   value={beneficiaryAddress}
                   onChange={(e) => setBeneficiaryAddress(e.target.value)}
                   placeholder="Optional"

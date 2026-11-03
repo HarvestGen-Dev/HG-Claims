@@ -32,7 +32,7 @@ export default function LoginPage() {
     <div className="auth-page">
       <header className="auth-brand"><BrandLogo priority /></header>
       <main className="auth-content">
-        <p className="text-sm font-medium text-zinc-600 mb-3">Expense portal</p>
+        <p className="text-sm text-zinc-600 mb-3">Claims Management</p>
         <h1 className="text-3xl font-semibold mb-8">Sign in</h1>
         <form className="space-y-5" onSubmit={(event) => { event.preventDefault(); void signIn(email); }}>
           <div className="space-y-2">
@@ -51,7 +51,7 @@ export default function LoginPage() {
         </form>
         <Link href="/forgot-password" className="inline-block mt-6 text-sm text-zinc-700 hover:text-zinc-900 hover:underline">Forgot password?</Link>
       </main>
-      <footer className="auth-footer">Harvest Generation &middot; Expenses</footer>
+      <footer className="auth-footer">Harvest Generation &middot; Claims Management</footer>
     </div>
   );
 }

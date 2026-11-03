@@ -40,6 +40,7 @@ export function ReceiptUploader({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ complete: 0, total: 0 });
   const uploadLock = useRef(false);
 
   const allowedTypes = [
@@ -57,11 +58,14 @@ export function ReceiptUploader({
     if (!files || files.length === 0 || disabled || uploadLock.current) return;
     uploadLock.current = true;
     setUploading(true);
+    setUploadProgress({ complete: 0, total: files.length });
 
     const newAttachments: AttachmentDraft[] = [...attachments];
     const errors: string[] = [];
 
-    for (const file of Array.from(files)) {
+    const fileList = Array.from(files);
+    for (let index = 0; index < fileList.length; index++) {
+      const file = fileList[index];
       // 10MB limit
       if (newAttachments.length >= maxAttachments) {
         errors.push(`A maximum of ${maxAttachments} attachments is allowed.`);
@@ -98,6 +102,7 @@ export function ReceiptUploader({
         file_category: "RECEIPT",
         uploaded_by: userId,
       });
+      setUploadProgress({ complete: index + 1, total: files.length });
     }
 
     onChange(newAttachments);
@@ -166,7 +171,7 @@ export function ReceiptUploader({
             </div>
             <div className="text-left">
               <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">
-                {uploading ? "Saving receipts..." : "Add receipts"}
+                {uploading ? `Saving files (${uploadProgress.complete} of ${uploadProgress.total})...` : "Add receipts"}
               </p>
               <p className="text-[10px] text-zinc-400">
                 PNG, JPG, PDF, Excel or Word
@@ -204,8 +209,8 @@ export function ReceiptUploader({
                 <button
                   type="button"
                   onClick={() => setPreviewItem(att as any)}
-                  className="p-1 text-zinc-400 hover:text-zinc-800 hover:bg-zinc-100 rounded dark:hover:bg-zinc-800 transition-colors"
-                  title="Preview"
+                  className="inline-flex min-h-10 min-w-10 items-center justify-center text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 rounded dark:hover:bg-zinc-800 transition-colors"
+                  aria-label={`Preview ${att.original_filename}`}
                 >
                   <Eye className="w-3.5 h-3.5" />
                 </button>
@@ -213,8 +218,8 @@ export function ReceiptUploader({
                   <button
                     type="button"
                     onClick={() => removeAttachment(idx)}
-                    className="p-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded dark:hover:bg-rose-950/40 transition-colors"
-                    title="Remove"
+                    className="inline-flex min-h-10 min-w-10 items-center justify-center text-zinc-500 hover:text-rose-600 hover:bg-rose-50 rounded dark:hover:bg-rose-950/40 transition-colors"
+                    aria-label={`Remove ${att.original_filename}`}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

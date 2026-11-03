@@ -132,7 +132,7 @@ export default function SystemSettingsPage() {
           <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
               <Sliders className="w-7 h-7 text-zinc-900" />
-              Claim Form & System Settings
+              Claim Form Settings
             </h1>
             <p className="text-xs text-slate-500">
               Customize the claimant submission form format, declaration text, field requirements, and organization details.
