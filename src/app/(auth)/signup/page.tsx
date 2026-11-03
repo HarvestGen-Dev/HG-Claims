@@ -488,7 +488,7 @@ function SignupContent() {
                 type="submit"
                 loading={busy}
                 disabled={busy || !isFormValid}
-                className="w-full h-11 gap-2 mt-2 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-xs shadow-md"
+                className="w-full h-11 gap-2 mt-2 font-semibold text-xs shadow-md"
               >
                 {!busy && (
                   <>

@@ -91,7 +91,7 @@ export function PasswordRecovery({ reset = false }: { reset?: boolean }) {
             </div>
             <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800">
               <Link href="/login" className="block">
-                <Button className="w-full h-10 text-xs bg-zinc-900 hover:bg-zinc-800 text-white">
+                <Button className="w-full h-10 text-xs">
                   Continue to Sign In
                 </Button>
               </Link>

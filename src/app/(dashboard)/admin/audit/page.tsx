@@ -41,7 +41,7 @@ export default function AuditTrailPage() {
           </div>
 
           <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none w-3.5 h-3.5 text-slate-400" />
             <input
               type="text"
               placeholder="Search action, actor..."

@@ -212,7 +212,7 @@ export default function DashboardPage() {
 
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
               <div className="relative min-w-0 flex-1 sm:flex-none">
-                <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-zinc-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none w-3.5 h-3.5 text-zinc-400" />
                 <input
                   type="text"
                   aria-label="Filter recent claims"

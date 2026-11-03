@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -355,13 +356,13 @@ function OnboardingContent() {
                   <Landmark className="h-3.5 w-3.5 text-slate-400" />
                   Beneficiary Bank <span className="text-red-500">*</span>
                 </label>
-                <select
+                <Select
                   id="bankCode"
                   value={bankCode}
                   onChange={(e) => setBankCode(e.target.value)}
                   required={!isMultiUser}
                   disabled={busy}
-                  className="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                  className="w-full"
                 >
                   <option value="">-- Select Bank from Directory --</option>
                   {MALAYSIAN_BANKS.map((bank) => (
@@ -369,7 +370,7 @@ function OnboardingContent() {
                       {bank.name} ({bank.swiftCode})
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -543,7 +544,7 @@ function OnboardingContent() {
 
             <Button
               disabled={busy}
-              className="w-full h-11 gap-2 mt-4 bg-zinc-900 hover:bg-zinc-800 text-white"
+              className="w-full h-11 gap-2 mt-4"
               type="submit"
             >
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}

@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import React, { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -839,13 +840,13 @@ export default function UserManagementPage() {
                 {newUserRoles.includes("MINISTRY_LEADER") ? "Required for Ministry Leader" : "Optional"}
               </span>
             </label>
-            <select
+            <Select
               id="invite-ministry"
               value={newUserMinistryId}
               onChange={(e) => setNewUserMinistryId(e.target.value)}
               required={newUserRoles.includes("MINISTRY_LEADER")}
               disabled={emailInviteBusy}
-              className="w-full border border-slate-300 rounded-md p-2 text-xs bg-white h-9 focus:ring-1 focus:ring-zinc-900"
+              className="w-full"
             >
               <option value="">-- Select a Ministry --</option>
               {(ministries || []).map((m) => (
@@ -853,7 +854,7 @@ export default function UserManagementPage() {
                   {m.name} ({m.code})
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div className="space-y-2 pt-1">
@@ -970,49 +971,49 @@ export default function UserManagementPage() {
         ) : (
           <form onSubmit={handleCreateInvite} className="space-y-4 my-2 text-xs">
             <div className="space-y-1.5">
-              <label className="font-semibold text-slate-700 block">Invited System Role</label>
-              <select
+              <label htmlFor="users-select-2" className="font-semibold text-slate-700 block">Invited System Role</label>
+              <Select id="users-select-2"
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value as RoleCode)}
-                className="w-full border border-slate-300 rounded-md p-2 text-xs bg-white h-9 focus:ring-1 focus:ring-zinc-900"
+                className="w-full"
               >
                 <option value="MINISTRY_LEADER">Ministry Leader (Submits claims for volunteers/staff)</option>
                 <option value="FINANCE_OFFICER">Finance Officer (Reviews, approves, records payments)</option>
                 <option value="SYSTEM_ADMIN">System Administrator (Full platform configuration)</option>
-              </select>
+              </Select>
             </div>
 
             {inviteRole === "MINISTRY_LEADER" && (
               <div className="space-y-1.5">
-                <label className="font-semibold text-slate-700 flex items-center justify-between">
+                <label htmlFor="users-select-3" className="font-semibold text-slate-700 flex items-center justify-between">
                   <span>Assigned Ministry <span className="text-red-500">*</span></span>
                   <span className="text-[10px] text-slate-400 font-normal">Required for Ministry Leader</span>
                 </label>
-                <select
+                <Select id="users-select-3"
                   value={inviteMinistryId}
                   onChange={(e) => setInviteMinistryId(e.target.value)}
                   required
-                  className="w-full border border-slate-300 rounded-md p-2 text-xs bg-white h-9 focus:ring-1 focus:ring-zinc-900"
+                  className="w-full"
                 >
                   <option value="">-- Select a Ministry --</option>
                   {(ministries || []).map((m) => (
                     <option key={m.id} value={m.id}>{m.name} ({m.code})</option>
                   ))}
-                </select>
+                </Select>
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="font-semibold text-slate-700 block">Usage Limit</label>
-                <select
+                <label htmlFor="users-select-4" className="font-semibold text-slate-700 block">Usage Limit</label>
+                <Select id="users-select-4"
                   value={inviteUsageType}
                   onChange={(e) => setInviteUsageType(e.target.value as any)}
-                  className="w-full border border-slate-300 rounded-md p-2 text-xs bg-white h-9 focus:ring-1 focus:ring-zinc-900"
+                  className="w-full"
                 >
                   <option value="single">Single Use (1 user)</option>
                   <option value="multi">Multiple Uses</option>
-                </select>
+                </Select>
               </div>
 
               {inviteUsageType === "multi" ? (
@@ -1029,17 +1030,17 @@ export default function UserManagementPage() {
                 </div>
               ) : (
                 <div className="space-y-1.5">
-                  <label className="font-semibold text-slate-700 block">Expiration Duration</label>
-                  <select
+                  <label htmlFor="users-select-5" className="font-semibold text-slate-700 block">Expiration Duration</label>
+                  <Select id="users-select-5"
                     value={inviteExpiresDays}
                     onChange={(e) => setInviteExpiresDays(parseInt(e.target.value) || 7)}
-                    className="w-full border border-slate-300 rounded-md p-2 text-xs bg-white h-9 focus:ring-1 focus:ring-zinc-900"
+                    className="w-full"
                   >
                     <option value={3}>3 Days</option>
                     <option value={7}>7 Days (Standard)</option>
                     <option value={14}>14 Days</option>
                     <option value={30}>30 Days</option>
-                  </select>
+                  </Select>
                 </div>
               )}
             </div>
@@ -1127,17 +1128,17 @@ export default function UserManagementPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="font-semibold text-slate-700">Assigned Ministry</label>
-              <select
+              <label htmlFor="users-select-6" className="font-semibold text-slate-700">Assigned Ministry</label>
+              <Select id="users-select-6"
                 value={selectedMinistryId}
                 onChange={(e) => setSelectedMinistryId(e.target.value)}
-                className="w-full border border-slate-300 rounded-md p-2 text-xs bg-white h-9 focus:ring-1 focus:ring-zinc-900"
+                className="w-full"
               >
                 <option value="">-- No Specific Ministry --</option>
                 {(ministries || []).map((m) => (
                   <option key={m.id} value={m.id}>{m.name} ({m.code})</option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70">
