@@ -58,7 +58,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
     };
 
     updateBadges();
-    return workspaceStore.subscribe(updateBadges);
+    return workspaceStore.subscribeDomains(["claims", "master-data", "iam"], updateBadges);
   }, [user]);
 
   const isFinance = hasRole("FINANCE_OFFICER") || hasRole("SYSTEM_ADMIN");

@@ -37,7 +37,7 @@ export default function MinistryManagementPage() {
   };
 
   React.useEffect(() => {
-    const unsub = workspaceStore.subscribe(() => {
+    const unsub = workspaceStore.subscribeDomains(["master-data", "iam"], () => {
       setMinistries(masterDataClient.getMinistries());
       setProfiles(iamClient.getProfiles());
     });
@@ -134,13 +134,13 @@ export default function MinistryManagementPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-zinc-200/80 dark:border-zinc-800">
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <Building2 className="w-6 h-6 text-zinc-900" />
+            <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-zinc-900 dark:text-zinc-100" />
               Ministries & Department Leaders
             </h1>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-zinc-500 mt-0.5">
               Create, edit and configure ministries and assign approving ministry leaders.
             </p>
           </div>

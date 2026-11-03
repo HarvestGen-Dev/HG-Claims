@@ -282,13 +282,13 @@ export default function UserManagementPage() {
     <AppLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-zinc-200/80 dark:border-zinc-800">
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <UserCheck className="w-6 h-6 text-zinc-900" />
+            <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight flex items-center gap-2">
+              <UserCheck className="w-5 h-5 text-zinc-900 dark:text-zinc-100" />
               User & Invitation Management
             </h1>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-zinc-500 mt-0.5">
               Invite users directly by email, manage system roles, or generate shareable sign-up links.
             </p>
           </div>

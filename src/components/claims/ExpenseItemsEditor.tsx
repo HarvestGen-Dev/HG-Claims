@@ -57,11 +57,13 @@ interface ExpenseReceiptCardProps {
   isUploading: boolean;
   isDragOver: boolean;
   uploadError?: string;
+  hasRetryableFile?: boolean;
   maxFileSizeMb: number;
   onUpdateField: (index: number, field: keyof ExpenseItemDraft, value: any) => void;
   onDuplicate: (index: number) => void;
   onDelete: (index: number) => void;
   onFileUpload: (index: number, files: FileList | null) => void;
+  onRetryUpload: (index: number) => void;
   onRemoveAttachment: (index: number) => void;
   onPreviewAttachment: (attachment: ClaimAttachment) => void;
   onDragOverChange: (index: number | null) => void;
@@ -83,11 +85,13 @@ const ExpenseReceiptCard = React.memo(function ExpenseReceiptCard({
   isUploading,
   isDragOver,
   uploadError,
+  hasRetryableFile,
   maxFileSizeMb,
   onUpdateField,
   onDuplicate,
   onDelete,
   onFileUpload,
+  onRetryUpload,
   onRemoveAttachment,
   onPreviewAttachment,
   onDragOverChange,
@@ -329,9 +333,18 @@ const ExpenseReceiptCard = React.memo(function ExpenseReceiptCard({
             </div>
 
             {uploadError && (
-              <p role="alert" className="mt-1.5 text-xs text-rose-600 font-medium">
-                {uploadError}
-              </p>
+              <div role="alert" className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300">
+                <span className="font-medium">{uploadError}</span>
+                {hasRetryableFile && !isUploading && (
+                  <button
+                    type="button"
+                    onClick={() => onRetryUpload(index)}
+                    className="inline-flex items-center gap-1 rounded bg-white px-2 py-1 text-[11px] font-semibold text-rose-700 border border-rose-200 hover:bg-rose-50 dark:bg-zinc-900 dark:border-rose-800 dark:text-rose-300"
+                  >
+                    Retry Upload
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -352,6 +365,7 @@ export function ExpenseItemsEditor({
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [uploadErrors, setUploadErrors] = useState<Record<number, string>>({});
+  const [retryableFiles, setRetryableFiles] = useState<Record<number, File>>({});
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   // Keep a mutable ref to current expenses and onChange so card callbacks remain referentially stable
@@ -476,7 +490,16 @@ export function ExpenseItemsEditor({
       const updated = [...current];
       updated[index] = { ...currentItem, attachment: newAttachment };
       onChangeRef.current(updated);
+      setRetryableFiles((prev) => {
+        const next = { ...prev };
+        delete next[index];
+        return next;
+      });
     } catch (err: any) {
+      setRetryableFiles((prev) => ({
+        ...prev,
+        [index]: file,
+      }));
       setUploadErrors((prev) => ({
         ...prev,
         [index]: `${file.name} upload failed: ${err?.message || "Please check connection or file size."}`,
@@ -488,6 +511,19 @@ export function ExpenseItemsEditor({
       }
     }
   }, [disabled, maxFileSizeMb, userId]);
+
+  const retryableFilesRef = useRef(retryableFiles);
+  retryableFilesRef.current = retryableFiles;
+
+  const handleRetryUpload = useCallback(
+    (index: number) => {
+      const file = retryableFilesRef.current[index];
+      if (!file) return;
+      const dt = { 0: file, length: 1, item: (i: number) => (i === 0 ? file : null) } as unknown as FileList;
+      void handleFileUpload(index, dt);
+    },
+    [handleFileUpload]
+  );
 
   const removeAttachmentFromReceipt = useCallback((index: number) => {
     const current = expensesRef.current;
@@ -534,11 +570,13 @@ export function ExpenseItemsEditor({
             isUploading={uploadingIdx === idx}
             isDragOver={dragOverIdx === idx}
             uploadError={uploadErrors[idx]}
+            hasRetryableFile={Boolean(retryableFiles[idx])}
             maxFileSizeMb={maxFileSizeMb}
             onUpdateField={updateField}
             onDuplicate={duplicateReceipt}
             onDelete={removeReceipt}
             onFileUpload={handleFileUpload}
+            onRetryUpload={handleRetryUpload}
             onRemoveAttachment={removeAttachmentFromReceipt}
             onPreviewAttachment={setPreviewAttachment}
             onDragOverChange={setDragOverIdx}

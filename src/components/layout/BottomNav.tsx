@@ -51,7 +51,7 @@ export function BottomNav() {
     };
 
     updateBadges();
-    return workspaceStore.subscribe(updateBadges);
+    return workspaceStore.subscribeDomains(["claims", "notifications", "iam"], updateBadges);
   }, [user]);
 
   if (!user) return null;
