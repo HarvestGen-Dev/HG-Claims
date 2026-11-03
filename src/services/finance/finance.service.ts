@@ -11,6 +11,11 @@ export const FINANCE_WORKFLOW_ACTIONS = [
   "verify",
   "pay",
   "correct",
+  "finalize_reimbursement_batch",
+  "record_batch_export",
+  "record_batch_bank_upload",
+  "reconcile_batch_instruction",
+  "void_reimbursement_batch",
 ] as const;
 
 export function isFinanceCommand(
@@ -38,6 +43,7 @@ export class FinanceService {
       data: {
         approvalRules: snapshot.data.approvalRules ?? [],
         claims: snapshot.data.claims ?? [],
+        reimbursementBatches: snapshot.data.reimbursementBatches ?? [],
       },
     };
   }

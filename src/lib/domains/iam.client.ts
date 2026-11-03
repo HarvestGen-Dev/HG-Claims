@@ -69,7 +69,16 @@ export class IamClient {
     );
   }
 
-  async completeOnboarding(data: { full_name: string; phone?: string }) {
+  async completeOnboarding(data: {
+    full_name: string;
+    phone?: string;
+    bank_name?: string;
+    bank_code?: string;
+    bank_account_holder_name?: string;
+    bank_account_number?: string;
+    beneficiary_new_ic?: string;
+    beneficiary_address?: string;
+  }) {
     return workspaceStore.dispatchDomainCommand(
       IAM_ENDPOINT,
       "complete_onboarding",

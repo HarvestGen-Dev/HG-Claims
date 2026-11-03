@@ -96,15 +96,26 @@ function FinanceClaimsContent() {
           </p>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleExport}
-          className="h-8 gap-1.5 border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 text-xs"
-        >
-          <Download className="w-3.5 h-3.5 text-zinc-400" />
-          <span>Export Vouchers</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href="/finance/batches">
+            <Button
+              size="sm"
+              className="h-8 gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-white text-xs"
+            >
+              <Banknote className="w-3.5 h-3.5" />
+              <span>Bulk Bank Batches (.xls)</span>
+            </Button>
+          </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            className="h-8 gap-1.5 border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 text-xs"
+          >
+            <Download className="w-3.5 h-3.5 text-zinc-400" />
+            <span>Export Vouchers</span>
+          </Button>
+        </div>
       </div>
 
       {/* Filter Controls */}

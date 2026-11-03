@@ -17,8 +17,18 @@ import {
   FinanceReview,
   ClaimStatus,
   RoleCode,
-  SignupInvitation
+  SignupInvitation,
+  ReimbursementBatch,
+  ReimbursementBatchInstruction,
+  ReimbursementInstructionClaim
 } from "@/lib/types/database";
+import { resolveCanonicalBank } from "@/lib/constants/banks";
+import {
+  centsToMyrNumber,
+  formatPaymentDescription,
+  previewReimbursementSelection,
+  toExactCents,
+} from "@/lib/banking/bank-export-adapter";
 import {
   INITIAL_PROFILES,
   INITIAL_MINISTRIES,
@@ -45,6 +55,8 @@ class DatabaseRepository {
   private systemSettings: SystemSetting[] = [];
   private auditLogs: AuditLog[] = [];
   private signupInvitations: SignupInvitation[] = [];
+  private reimbursementBatches: ReimbursementBatch[] = [];
+  private paymentDescriptionSeqByYear: Record<number, number> = {};
   private runningSequence: number = 125;
   private isInitialized = false;
 
@@ -63,6 +75,8 @@ class DatabaseRepository {
     this.notifications = JSON.parse(JSON.stringify(INITIAL_NOTIFICATIONS));
     this.systemSettings = JSON.parse(JSON.stringify(INITIAL_SYSTEM_SETTINGS));
     this.signupInvitations = JSON.parse(JSON.stringify(INITIAL_SIGNUP_INVITATIONS || []));
+    this.reimbursementBatches = [];
+    this.paymentDescriptionSeqByYear = {};
     this.auditLogs = [];
     if (typeof window !== "undefined") {
       const stored = window.localStorage.getItem("nlcc_workspace_v1");
@@ -592,6 +606,8 @@ class DatabaseRepository {
     claimant_email: string;
     claimant_phone: string;
     bank_name?: string;
+    bank_code?: string;
+    bank_account_holder_name?: string;
     bank_account_number?: string;
     ministry_id: string;
     claim_date: string;
@@ -606,6 +622,7 @@ class DatabaseRepository {
     const total_amount = calculateTotalAmount(params.expenses);
     const now = new Date().toISOString();
     const submitterId = params.submitted_by_user_id || params.claimant_id || "u-sarah-02";
+    const resolvedBank = resolveCanonicalBank(params.bank_code || params.bank_name);
 
     if (params.id) {
       const idx = this.claims.findIndex(c => c.id === params.id);
@@ -627,7 +644,9 @@ class DatabaseRepository {
           claimant_name: params.claimant_name,
           claimant_email: params.claimant_email,
           claimant_phone: params.claimant_phone,
-          bank_name: params.bank_name || existing.bank_name,
+          bank_name: params.bank_name || resolvedBank?.name || existing.bank_name,
+          bank_code: resolvedBank?.swiftCode || params.bank_code || existing.bank_code,
+          bank_account_holder_name: params.bank_account_holder_name || existing.bank_account_holder_name || params.claimant_name,
           bank_account_number: params.bank_account_number || existing.bank_account_number,
           ministry_id: params.ministry_id,
           claim_date: params.claim_date,
@@ -648,7 +667,7 @@ class DatabaseRepository {
       }
     }
 
-    const claimId = `claim-${Date.now()}`;
+    const claimId = `claim-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const claimExpenses: ClaimExpense[] = params.expenses.map((exp, i) => ({
       ...exp,
       id: `exp-${Date.now()}-${i}`,
@@ -673,7 +692,9 @@ class DatabaseRepository {
       claimant_name: params.claimant_name,
       claimant_email: params.claimant_email,
       claimant_phone: params.claimant_phone,
-      bank_name: params.bank_name,
+      bank_name: params.bank_name || resolvedBank?.name,
+      bank_code: resolvedBank?.swiftCode || params.bank_code,
+      bank_account_holder_name: params.bank_account_holder_name || params.claimant_name,
       bank_account_number: params.bank_account_number,
       ministry_id: params.ministry_id,
       claim_date: params.claim_date,
@@ -705,6 +726,8 @@ class DatabaseRepository {
     claimant_email: string;
     claimant_phone: string;
     bank_name?: string;
+    bank_code?: string;
+    bank_account_holder_name?: string;
     bank_account_number?: string;
     ministry_id: string;
     claim_date: string;
@@ -791,12 +814,15 @@ class DatabaseRepository {
       };
     });
 
+    const resolvedBank = resolveCanonicalBank(params.bank_code || params.bank_name || claim.bank_code || claim.bank_name);
     claim.submitted_by_user_id = submitterId;
     claim.claimant_id = params.claimant_id || submitterId;
     claim.claimant_name = params.claimant_name;
     claim.claimant_email = params.claimant_email;
     claim.claimant_phone = params.claimant_phone;
-    claim.bank_name = params.bank_name || claim.bank_name;
+    claim.bank_name = params.bank_name || resolvedBank?.name || claim.bank_name;
+    claim.bank_code = resolvedBank?.swiftCode || params.bank_code || claim.bank_code;
+    claim.bank_account_holder_name = params.bank_account_holder_name || claim.bank_account_holder_name || params.claimant_name;
     claim.bank_account_number = params.bank_account_number || claim.bank_account_number;
     claim.ministry_id = params.ministry_id;
     claim.claim_date = params.claim_date;
@@ -886,6 +912,20 @@ class DatabaseRepository {
     const nextStatus: ClaimStatus = "APPROVED_FOR_PAYMENT";
     claim.current_step_sequence = null;
     claim.status = nextStatus;
+    claim.reimbursement_status = "ELIGIBLE";
+    const resolvedBank = resolveCanonicalBank(claim.bank_code || claim.bank_name);
+    claim.approved_snapshot = {
+      beneficiary_user_id: claim.claimant_id || claim.submitted_by_user_id || "",
+      bank_account_holder_name: (claim.bank_account_holder_name || claim.claimant_name || "").trim(),
+      bank_name: resolvedBank?.name || claim.bank_name || "",
+      bank_code: resolvedBank?.swiftCode || claim.bank_code || "",
+      bank_account_number: (claim.bank_account_number || "").trim(),
+      approved_amount: Number(claim.total_amount),
+      approved_amount_cents: toExactCents(claim.total_amount),
+      currency: claim.currency || "MYR",
+      approved_by: actor.id,
+      approved_at: now,
+    };
     claim.updated_at = now;
 
     // Record immutable approval action
@@ -1235,6 +1275,7 @@ class DatabaseRepository {
 
     claim.payment = payment;
     claim.status = "PAID";
+    claim.reimbursement_status = "PAID";
     claim.updated_at = now;
 
     const action: ApprovalAction = {
@@ -1686,6 +1727,262 @@ class DatabaseRepository {
       after_data: { full_name: data.full_name.trim(), phone: data.phone },
     });
     return updated;
+  }
+
+  // --- Bulk Reimbursement Batch Management ---
+  public getReimbursementBatches(): ReimbursementBatch[] {
+    return this.reimbursementBatches;
+  }
+
+  public getReimbursementBatchById(id: string): ReimbursementBatch | undefined {
+    return this.reimbursementBatches.find(b => b.id === id);
+  }
+
+  public createReimbursementBatch(params: {
+    actor_id: string;
+    claim_ids: string[];
+    batch_name?: string;
+    notes?: string;
+    payment_reference_default?: string;
+  }): ReimbursementBatch {
+    const actor = this.getProfileById(params.actor_id);
+    if (!actor || (!actor.roles?.includes("FINANCE_OFFICER") && !actor.roles?.includes("SYSTEM_ADMIN"))) {
+      throw new Error("Only Finance Officer or System Admin can create reimbursement batches.");
+    }
+    const uniqueClaimIds = Array.from(new Set(params.claim_ids));
+    if (uniqueClaimIds.length === 0) {
+      throw new Error("Select at least one eligible claim.");
+    }
+
+    const selectedClaims = uniqueClaimIds.map(id => {
+      const c = this.claims.find(cl => cl.id === id);
+      if (!c) throw new Error(`Claim ${id} not found.`);
+      return c;
+    });
+
+    const preview = previewReimbursementSelection(selectedClaims, uniqueClaimIds);
+    if (preview.blockedClaims.length > 0) {
+      throw new Error(
+        preview.blockedClaims
+          .map(b => `${b.claimNumber}: ${b.blockers.join("; ")}`)
+          .join(" | ")
+      );
+    }
+    if (preview.proposedInstructions.length === 0) {
+      throw new Error("No valid transfer instructions could be generated.");
+    }
+
+    const now = new Date().toISOString();
+    const year = new Date().getFullYear();
+    const batchSeq = this.reimbursementBatches.length + 1;
+    const batchId = `batch-${Date.now()}-${batchSeq}`;
+    const batchNumber = `RB-${year}-${String(batchSeq).padStart(4, "0")}`;
+
+    const instructions: ReimbursementBatchInstruction[] = preview.proposedInstructions.map((row, idx) => {
+      const seq = (this.paymentDescriptionSeqByYear[year] || 0) + 1;
+      this.paymentDescriptionSeqByYear[year] = seq;
+      const paymentDescription = formatPaymentDescription(year, seq);
+      const instId = `inst-${Date.now()}-${idx + 1}`;
+
+      const linkedClaims: ReimbursementInstructionClaim[] = row.claimIds.map((cid: string) => {
+        const claim = this.claims.find(c => c.id === cid)!;
+        claim.reimbursement_status = "RESERVED_IN_BATCH";
+        claim.active_batch_id = batchId;
+        claim.active_instruction_id = instId;
+        claim.updated_at = now;
+        return {
+          id: `ic-${Date.now()}-${cid}`,
+          batch_id: batchId,
+          instruction_id: instId,
+          claim_id: cid,
+          claim,
+          allocated_amount_cents: toExactCents(claim.total_amount),
+          allocated_amount: Number(claim.total_amount),
+          is_active: true,
+          created_at: now,
+        };
+      });
+
+      return {
+        id: instId,
+        batch_id: batchId,
+        line_order: idx + 1,
+        payment_mode: row.paymentMode,
+        beneficiary_user_id: row.beneficiaryUserId,
+        beneficiary_name: row.beneficiaryName,
+        beneficiary_account_number: row.beneficiaryAccountNumber,
+        beneficiary_bank_name: row.beneficiaryBankName,
+        beneficiary_bank_code: row.beneficiaryBankCode,
+        amount_cents: row.amountCents,
+        amount: row.amount,
+        claim_count: linkedClaims.length,
+        payment_description: paymentDescription,
+        payment_reference: params.payment_reference_default?.slice(0, 35) || row.paymentReference || "",
+        status: "RESERVED",
+        created_at: now,
+        updated_at: now,
+        claims: linkedClaims,
+      };
+    });
+
+    const batch: ReimbursementBatch = {
+      id: batchId,
+      batch_number: batchNumber,
+      status: "FINALIZED",
+      template_version: "ALLIANCE_SBP_BIFF8_V1",
+      claim_count: preview.selectedEligibleClaims.length,
+      transfer_count: instructions.length,
+      total_amount_cents: preview.totalAmountCents,
+      total_amount: centsToMyrNumber(preview.totalAmountCents),
+      content_digest_sha256: preview.previewDigest,
+      notes: params.notes || params.batch_name || null,
+      created_by: params.actor_id,
+      created_at: now,
+      updated_at: now,
+      instructions,
+    };
+
+    this.reimbursementBatches.unshift(batch);
+    this.persist();
+    return batch;
+  }
+
+  public markBatchUploadedToBank(params: {
+    actor_id: string;
+    batch_id: string;
+    portal_submission_ref?: string;
+    notes?: string;
+  }): ReimbursementBatch {
+    const batch = this.getReimbursementBatchById(params.batch_id);
+    if (!batch) throw new Error("Batch not found.");
+    const now = new Date().toISOString();
+    batch.status = "SUBMITTED_TO_BANK";
+    batch.bank_uploaded_at = now;
+    batch.bank_uploaded_by = params.actor_id;
+    batch.bank_upload_reference = params.portal_submission_ref || null;
+    batch.updated_at = now;
+    (batch.instructions || []).forEach(inst => {
+      if (inst.status === "RESERVED" || inst.status === "EXPORTED") {
+        inst.status = "SUBMITTED_TO_BANK";
+        inst.updated_at = now;
+      }
+      (inst.claims || []).forEach(link => {
+        const claim = this.claims.find(c => c.id === link.claim_id);
+        if (claim && claim.status !== "PAID") {
+          claim.reimbursement_status = "SUBMITTED_TO_BANK";
+          claim.updated_at = now;
+        }
+      });
+    });
+    this.persist();
+    return batch;
+  }
+
+  public reconcileBatchInstruction(params: {
+    actor_id: string;
+    batch_id: string;
+    instruction_id: string;
+    outcome: "PAID" | "FAILED";
+    bank_reference?: string;
+    failure_reason?: string;
+    payment_date?: string;
+  }): ReimbursementBatch {
+    const batch = this.getReimbursementBatchById(params.batch_id);
+    if (!batch) throw new Error("Batch not found.");
+    const inst = (batch.instructions || []).find(i => i.id === params.instruction_id);
+    if (!inst) throw new Error("Instruction not found.");
+    if (inst.status === "PAID") throw new Error("Instruction already settled as PAID.");
+
+    const now = new Date().toISOString();
+    if (params.outcome === "PAID") {
+      inst.status = "PAID";
+      inst.bank_reference = params.bank_reference || inst.payment_description;
+      inst.reconciled_at = now;
+      inst.reconciled_by = params.actor_id;
+      inst.updated_at = now;
+      (inst.claims || []).forEach(link => {
+        const claim = this.claims.find(c => c.id === link.claim_id);
+        if (claim) {
+          claim.status = "PAID";
+          claim.reimbursement_status = "PAID";
+          claim.payment = {
+            id: `pay-${Date.now()}-${claim.id}`,
+            claim_id: claim.id,
+            amount: claim.total_amount,
+            payment_date: params.payment_date || now.slice(0, 10),
+            payment_reference: `${inst.payment_description} / ${inst.bank_reference}`,
+            payment_method: "BANK_TRANSFER",
+            processed_by: params.actor_id,
+            created_at: now,
+          };
+          claim.updated_at = now;
+        }
+      });
+    } else {
+      inst.status = "FAILED";
+      inst.failure_reason = params.failure_reason || "Rejected by bank";
+      inst.reconciled_at = now;
+      inst.reconciled_by = params.actor_id;
+      inst.updated_at = now;
+      (inst.claims || []).forEach(link => {
+        link.is_active = false;
+        const claim = this.claims.find(c => c.id === link.claim_id);
+        if (claim) {
+          claim.reimbursement_status = "FAILED";
+          claim.active_batch_id = undefined;
+          claim.active_instruction_id = undefined;
+          claim.updated_at = now;
+        }
+      });
+    }
+
+    const allInst = batch.instructions || [];
+    const paidCount = allInst.filter(i => i.status === "PAID").length;
+    const failedCount = allInst.filter(i => i.status === "FAILED").length;
+    if (paidCount === allInst.length) {
+      batch.status = "SETTLED";
+      batch.settled_at = now;
+    } else if (failedCount === allInst.length) {
+      batch.status = "REJECTED";
+    } else if (paidCount > 0 || failedCount > 0) {
+      batch.status = "PARTIALLY_SETTLED";
+    }
+    batch.updated_at = now;
+    this.persist();
+    return batch;
+  }
+
+  public voidReimbursementBatch(params: {
+    actor_id: string;
+    batch_id: string;
+    void_reason: string;
+  }): ReimbursementBatch {
+    const batch = this.getReimbursementBatchById(params.batch_id);
+    if (!batch) throw new Error("Batch not found.");
+    if ((batch.instructions || []).some(i => i.status === "PAID")) {
+      throw new Error("Cannot void a batch that already has PAID instructions.");
+    }
+    const now = new Date().toISOString();
+    batch.status = "VOIDED";
+    batch.voided_at = now;
+    batch.voided_by = params.actor_id;
+    batch.void_reason = params.void_reason;
+    batch.updated_at = now;
+    (batch.instructions || []).forEach(inst => {
+      inst.status = "VOIDED";
+      inst.updated_at = now;
+      (inst.claims || []).forEach(link => {
+        link.is_active = false;
+        const claim = this.claims.find(c => c.id === link.claim_id);
+        if (claim && claim.status !== "PAID") {
+          claim.reimbursement_status = "RELEASED";
+          claim.active_batch_id = undefined;
+          claim.updated_at = now;
+        }
+      });
+    });
+    this.persist();
+    return batch;
   }
 }
 

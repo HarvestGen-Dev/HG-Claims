@@ -232,7 +232,11 @@ describe("Bounded-Context Domain Services & APIs (/api/v1/*)", () => {
     it("returns only Finance & Workflow entities from GET /api/v1/finance", async () => {
       const res = await getFinance();
       const body = await res.json();
-      expect(Object.keys(body).sort()).toEqual(["approvalRules", "claims"]);
+      expect(Object.keys(body).sort()).toEqual([
+        "approvalRules",
+        "claims",
+        "reimbursementBatches",
+      ]);
     });
 
     it("returns only Notifications & Audit logs from GET /api/v1/notifications", async () => {

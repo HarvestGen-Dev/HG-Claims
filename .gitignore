@@ -37,3 +37,7 @@ next-env.d.ts
 .vercel
 .idea/
 .vscode/
+
+# raw bank samples containing PII
+SBP_Sample - Copy.xls
+*SBP_Sample*Copy*.xls

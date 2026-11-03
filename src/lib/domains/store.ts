@@ -9,6 +9,7 @@ import type {
   SystemSetting,
   AuditLog,
   SignupInvitation,
+  ReimbursementBatch,
 } from "@/lib/types/database";
 
 export interface WorkspaceState {
@@ -23,6 +24,7 @@ export interface WorkspaceState {
   systemSettings: SystemSetting[];
   auditLogs: AuditLog[];
   signupInvitations: SignupInvitation[];
+  reimbursementBatches: ReimbursementBatch[];
 }
 
 export const createEmptyWorkspaceState = (): WorkspaceState => ({
@@ -37,6 +39,7 @@ export const createEmptyWorkspaceState = (): WorkspaceState => ({
   systemSettings: [],
   auditLogs: [],
   signupInvitations: [],
+  reimbursementBatches: [],
 });
 
 export class WorkspaceStore {
@@ -108,6 +111,9 @@ export class WorkspaceStore {
       ...(Array.isArray(partial.signupInvitations)
         ? { signupInvitations: partial.signupInvitations }
         : {}),
+      ...(Array.isArray(partial.reimbursementBatches)
+        ? { reimbursementBatches: partial.reimbursementBatches }
+        : {}),
     };
     this.version++;
     this.notify();
@@ -158,6 +164,9 @@ export class WorkspaceStore {
           auditLogs: Array.isArray(data?.auditLogs) ? data.auditLogs : [],
           signupInvitations: Array.isArray(data?.signupInvitations)
             ? data.signupInvitations
+            : [],
+          reimbursementBatches: Array.isArray(data?.reimbursementBatches)
+            ? data.reimbursementBatches
             : [],
         };
         this.version++;

@@ -1,8 +1,17 @@
-import type { ApprovalRule, Claim, Profile } from "@/lib/types/database";
+import type {
+  ApprovalRule,
+  Claim,
+  Profile,
+  ReimbursementBatch,
+} from "@/lib/types/database";
 import { workspaceStore } from "./store";
 import { iamClient } from "./iam.client";
 import { masterDataClient } from "./master-data.client";
 import { claimsClient } from "./claims.client";
+import {
+  previewReimbursementSelection,
+  type ReimbursementPreviewResult,
+} from "@/lib/banking/bank-export-adapter";
 
 const FINANCE_ENDPOINT = "/api/v1/finance";
 
@@ -97,6 +106,103 @@ export class FinanceClient {
     const payload = { ...data };
     delete payload.actor;
     return this.transitionClaim("correct", data.claim_id, payload);
+  }
+
+  getReimbursementBatches(): ReimbursementBatch[] {
+    const profiles = iamClient.getProfiles();
+    const allClaims = claimsClient.getClaims();
+    const claimMap = new Map(allClaims.map(c => [c.id, c]));
+
+    return (workspaceStore.getState().reimbursementBatches || []).map(b => ({
+      ...b,
+      creator: profiles.find(p => p.id === b.created_by) || null,
+      instructions: (b.instructions || []).map(inst => ({
+        ...inst,
+        claims: (inst.claims || []).map(ic => ({
+          ...ic,
+          claim: claimMap.get(ic.claim_id) || null,
+        })),
+      })),
+    }));
+  }
+
+  getReimbursementBatchById(id: string): ReimbursementBatch | null {
+    return this.getReimbursementBatches().find(b => b.id === id) || null;
+  }
+
+  getEligibleClaimsForReimbursement(): Claim[] {
+    return claimsClient
+      .getClaims()
+      .filter(
+        c =>
+          c.status === "APPROVED_FOR_PAYMENT" &&
+          !c.payment &&
+          !c.active_batch_id &&
+          (!c.reimbursement_status ||
+            ["ELIGIBLE", "RELEASED", "FAILED"].includes(c.reimbursement_status))
+      );
+  }
+
+  previewReimbursementBatch(
+    selectedClaimIds: string[],
+    candidateClaims?: Claim[]
+  ): ReimbursementPreviewResult {
+    const candidates =
+      candidateClaims || this.getEligibleClaimsForReimbursement();
+    return previewReimbursementSelection(candidates, selectedClaimIds);
+  }
+
+  async finalizeReimbursementBatch(data: {
+    claim_ids: string[];
+    preview_digest?: string;
+    notes?: string;
+    request_key?: string;
+  }): Promise<{ id: string; batch_number: string }> {
+    const res = await workspaceStore.dispatchDomainCommand(
+      FINANCE_ENDPOINT,
+      "finalize_reimbursement_batch",
+      {
+        ...data,
+        request_key: data.request_key || crypto.randomUUID(),
+      }
+    );
+    return res as { id: string; batch_number: string };
+  }
+
+  async recordBatchBankUpload(data: {
+    batch_id: string;
+    bank_upload_reference?: string;
+  }) {
+    return workspaceStore.dispatchDomainCommand(
+      FINANCE_ENDPOINT,
+      "record_batch_bank_upload",
+      data
+    );
+  }
+
+  async reconcileBatchInstruction(data: {
+    instruction_id: string;
+    outcome: "PAID" | "FAILED";
+    bank_reference?: string;
+    payment_date?: string;
+    failure_reason?: string;
+  }) {
+    return workspaceStore.dispatchDomainCommand(
+      FINANCE_ENDPOINT,
+      "reconcile_batch_instruction",
+      data
+    );
+  }
+
+  async voidReimbursementBatch(data: {
+    batch_id: string;
+    void_reason: string;
+  }) {
+    return workspaceStore.dispatchDomainCommand(
+      FINANCE_ENDPOINT,
+      "void_reimbursement_batch",
+      data
+    );
   }
 
   getFinanceStats() {

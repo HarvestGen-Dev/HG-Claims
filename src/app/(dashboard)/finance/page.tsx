@@ -75,6 +75,12 @@ export default function FinanceDashboardPage() {
               <Download className="w-3.5 h-3.5 text-zinc-400" />
               <span>Export Ledger</span>
             </Button>
+            <Link href="/finance/batches">
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 border-zinc-200 text-zinc-800 hover:bg-zinc-50 text-xs font-medium">
+                <Wallet className="w-3.5 h-3.5" />
+                <span>Bulk Bank Batches (.xls)</span>
+              </Button>
+            </Link>
             <Link href="/finance/claims">
               <Button size="sm" className="h-8 bg-zinc-900 hover:bg-zinc-800 text-white gap-1.5 text-xs shadow-2xs font-medium">
                 <Layers className="w-3.5 h-3.5" />

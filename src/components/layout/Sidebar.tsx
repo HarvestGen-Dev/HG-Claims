@@ -18,7 +18,8 @@ import {
   History,
   Bell,
   Building2,
-  ShieldCheck
+  ShieldCheck,
+  FileSpreadsheet
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
 import { canUserCreateClaim } from "@/lib/auth/permissions";
@@ -168,6 +169,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             </div>
             {navItem("/finance", "Finance Overview", <Wallet className="w-4 h-4" />, financeCount, true)}
             {navItem("/finance/claims", "Process & Disburse", <Layers className="w-4 h-4" />)}
+            {navItem("/finance/batches", "Bulk Bank Batches (.xls)", <FileSpreadsheet className="w-4 h-4" />)}
             {navItem("/finance/reports", "Analytics & Reports", <BarChart3 className="w-4 h-4" />)}
           </div>
         )}

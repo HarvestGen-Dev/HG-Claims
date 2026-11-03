@@ -81,10 +81,16 @@ export interface Profile {
   default_ministry_id?: string | null;
   status: UserStatus;
   onboarding_completed_at?: string | null;
-  /** @deprecated Removed from profile requirements */
   bank_name?: string | null;
-  /** @deprecated Removed from profile requirements */
+  bank_code?: string | null;
+  bank_account_holder_name?: string | null;
   bank_account_number?: string | null;
+  beneficiary_new_ic?: string | null;
+  beneficiary_old_ic?: string | null;
+  beneficiary_business_reg?: string | null;
+  beneficiary_others?: string | null;
+  beneficiary_address?: string | null;
+  bank_updated_at?: string | null;
   avatar_url?: string | null;
   created_at: string;
   updated_at: string;
@@ -263,6 +269,122 @@ export interface Payment {
   created_at: string;
 }
 
+export type ReimbursementStatus =
+  | 'ELIGIBLE'
+  | 'RESERVED_IN_BATCH'
+  | 'EXPORTED_PENDING_CONFIRMATION'
+  | 'SUBMITTED_TO_BANK'
+  | 'PAID'
+  | 'FAILED'
+  | 'RELEASED';
+
+export type ReimbursementBatchStatus =
+  | 'FINALIZED'
+  | 'EXPORTED'
+  | 'SUBMITTED_TO_BANK'
+  | 'PARTIALLY_SETTLED'
+  | 'SETTLED'
+  | 'REJECTED'
+  | 'VOIDED';
+
+export type ReimbursementInstructionStatus =
+  | 'RESERVED'
+  | 'EXPORTED'
+  | 'SUBMITTED_TO_BANK'
+  | 'PAID'
+  | 'FAILED'
+  | 'VOIDED';
+
+export interface ClaimApprovedSnapshot {
+  approved_amount_cents: number;
+  approved_amount: number;
+  currency: string;
+  beneficiary_user_id: string;
+  bank_account_holder_name: string;
+  bank_name: string;
+  bank_code: string;
+  bank_account_number: string;
+  beneficiary_new_ic?: string | null;
+  beneficiary_old_ic?: string | null;
+  beneficiary_business_reg?: string | null;
+  beneficiary_others?: string | null;
+  beneficiary_address?: string | null;
+  approved_at: string;
+  approved_by: string;
+}
+
+export interface ReimbursementInstructionClaim {
+  id: string;
+  batch_id: string;
+  instruction_id: string;
+  claim_id: string;
+  claim?: Claim | null;
+  allocated_amount_cents: number;
+  allocated_amount: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ReimbursementBatchInstruction {
+  id: string;
+  batch_id: string;
+  line_order: number;
+  payment_description: string;
+  payment_reference?: string | null;
+  payment_mode: 'LIP' | 'LGP';
+  beneficiary_user_id: string;
+  beneficiary_name: string;
+  beneficiary_account_number: string;
+  beneficiary_bank_name: string;
+  beneficiary_bank_code: string;
+  beneficiary_new_ic?: string | null;
+  beneficiary_old_ic?: string | null;
+  beneficiary_business_reg?: string | null;
+  beneficiary_others?: string | null;
+  beneficiary_address?: string | null;
+  amount_cents: number;
+  amount: number;
+  claim_count: number;
+  status: ReimbursementInstructionStatus;
+  bank_reference?: string | null;
+  bank_acknowledged_at?: string | null;
+  failure_reason?: string | null;
+  reconciled_by?: string | null;
+  reconciled_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  claims?: ReimbursementInstructionClaim[];
+}
+
+export interface ReimbursementBatch {
+  id: string;
+  batch_number: string;
+  status: ReimbursementBatchStatus;
+  template_version: string;
+  claim_count: number;
+  transfer_count: number;
+  total_amount_cents: number;
+  total_amount: number;
+  content_digest_sha256: string;
+  exported_file_hash_sha256?: string | null;
+  exported_filename?: string | null;
+  exported_at?: string | null;
+  exported_by?: string | null;
+  bank_uploaded_at?: string | null;
+  bank_upload_reference?: string | null;
+  bank_uploaded_by?: string | null;
+  settled_at?: string | null;
+  voided_at?: string | null;
+  voided_by?: string | null;
+  void_reason?: string | null;
+  notes?: string | null;
+  created_by: string;
+  creator?: Profile | null;
+  created_at: string;
+  updated_at: string;
+  instructions?: ReimbursementBatchInstruction[];
+}
+
 export interface Claim {
   version?: number;
   id: string;
@@ -273,7 +395,20 @@ export interface Claim {
   claimant_email?: string | null;
   claimant_phone?: string | null;
   bank_name?: string | null;
+  bank_code?: string | null;
+  bank_account_holder_name?: string | null;
   bank_account_number?: string | null;
+  beneficiary_new_ic?: string | null;
+  beneficiary_old_ic?: string | null;
+  beneficiary_business_reg?: string | null;
+  beneficiary_others?: string | null;
+  beneficiary_address?: string | null;
+  reimbursement_status?: ReimbursementStatus | null;
+  active_batch_id?: string | null;
+  active_instruction_id?: string | null;
+  approved_snapshot?: ClaimApprovedSnapshot | null;
+  approved_at?: string | null;
+  approved_by?: string | null;
   /** @deprecated Historical field - use submitted_by_user_id and claimant_name */
   claimant_id?: string | null;
   /** @deprecated Historical field - use claimant_name snapshot */

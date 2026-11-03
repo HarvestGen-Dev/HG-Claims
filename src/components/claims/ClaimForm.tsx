@@ -16,7 +16,11 @@ import {
   Receipt,
   Landmark
 } from "lucide-react";
-import { MALAYSIAN_BANKS } from "@/lib/constants/banks";
+import {
+  MALAYSIAN_BANKS,
+  resolveCanonicalBank,
+  validateBankAccountString,
+} from "@/lib/constants/banks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -65,8 +69,28 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   const [claimantPhone, setClaimantPhone] = useState(
     initialClaim?.claimant_phone || initialClaim?.claimant?.phone || user?.phone || "+60 12-345 6789"
   );
+  const initialResolvedBank = resolveCanonicalBank(
+    initialClaim?.bank_code ||
+      initialClaim?.bank_name ||
+      user?.bank_code ||
+      user?.bank_name ||
+      "MBBEMYKL"
+  );
   const [bankName, setBankName] = useState(
-    initialClaim?.bank_name || user?.bank_name || "Malayan Banking Berhad (Maybank)"
+    initialResolvedBank?.name ||
+      initialClaim?.bank_name ||
+      user?.bank_name ||
+      "Maybank / Malayan Banking Berhad"
+  );
+  const [bankCode, setBankCode] = useState(
+    initialResolvedBank?.swiftCode || "MBBEMYKL"
+  );
+  const [bankAccountHolderName, setBankAccountHolderName] = useState(
+    initialClaim?.bank_account_holder_name ||
+      user?.bank_account_holder_name ||
+      initialClaim?.claimant_name ||
+      user?.full_name ||
+      ""
   );
   const [bankAccountNumber, setBankAccountNumber] = useState(
     initialClaim?.bank_account_number || user?.bank_account_number || ""
@@ -179,7 +203,12 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
       setClaimantName(user.full_name);
       setClaimantEmail(user.email);
       setClaimantPhone(user.phone || "+60 12-345 6789");
-      if (user.bank_name) setBankName(user.bank_name);
+      const resolved = resolveCanonicalBank(user.bank_code || user.bank_name);
+      if (resolved) {
+        setBankName(resolved.name);
+        setBankCode(resolved.swiftCode);
+      }
+      setBankAccountHolderName(user.bank_account_holder_name || user.full_name);
       if (user.bank_account_number) setBankAccountNumber(user.bank_account_number);
       setDirty(true);
     }
@@ -191,8 +220,14 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
       return "Please enter a valid claimant email address.";
     }
     if (!claimantPhone.trim()) return "Please enter the claimant phone number.";
-    if (!bankName.trim()) return "Please select or enter the claimant bank name for reimbursement.";
-    if (!bankAccountNumber.trim()) return "Please enter the claimant bank account number.";
+    const resolvedBank = resolveCanonicalBank(bankCode || bankName);
+    if (!resolvedBank) {
+      return "Please select a supported reimbursement bank from the directory.";
+    }
+    const acctValidation = validateBankAccountString(bankAccountNumber);
+    if (!acctValidation.valid) {
+      return acctValidation.error || "Please enter a valid bank account number.";
+    }
     if (!ministryId) return "Please select a ministry / department.";
     if (!claimDate) return "Please select the claim date.";
     if (!purpose.trim()) return "Please provide the ministry purpose and justification.";
@@ -244,8 +279,10 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         claimant_name: claimantName.trim() || user?.full_name || "Unknown Claimant",
         claimant_email: claimantEmail.trim() || user?.email || "",
         claimant_phone: claimantPhone.trim() || user?.phone || "",
-        bank_name: bankName.trim() || undefined,
-        bank_account_number: bankAccountNumber.trim() || undefined,
+        bank_name: resolveCanonicalBank(bankCode || bankName)?.name || bankName.trim() || undefined,
+        bank_code: resolveCanonicalBank(bankCode || bankName)?.swiftCode || undefined,
+        bank_account_holder_name: (bankAccountHolderName.trim() || claimantName.trim() || user?.full_name || "") || undefined,
+        bank_account_number: bankAccountNumber.replace(/[\s\-]/g, "") || undefined,
         ministry_id: ministryId,
         claim_date: claimDate,
         purpose: purpose || "Draft expense claim",
@@ -316,8 +353,10 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         claimant_name: claimantName.trim(),
         claimant_email: claimantEmail.trim(),
         claimant_phone: claimantPhone.trim(),
-        bank_name: bankName.trim(),
-        bank_account_number: bankAccountNumber.trim(),
+        bank_name: resolveCanonicalBank(bankCode || bankName)?.name || bankName.trim(),
+        bank_code: resolveCanonicalBank(bankCode || bankName)?.swiftCode || bankCode,
+        bank_account_holder_name: bankAccountHolderName.trim() || claimantName.trim(),
+        bank_account_number: bankAccountNumber.replace(/[\s\-]/g, ""),
         ministry_id: ministryId,
         claim_date: claimDate,
         purpose: purpose.trim(),
@@ -529,51 +568,62 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
 
           {/* Claimant Reimbursement Banking Details */}
           <div className="pt-3 mt-1 border-t border-zinc-100 dark:border-zinc-800/80">
-            <div className="flex items-center gap-1.5 mb-2.5">
-              <Landmark className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
-                Reimbursement Banking Details
-              </span>
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center gap-1.5">
+                <Landmark className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
+                  Reimbursement Banking Details (SBP Directory)
+                </span>
+              </div>
+              {resolveCanonicalBank(bankCode || bankName) && (
+                <span className="text-[10px] font-mono font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 px-2 py-0.5 rounded">
+                  {resolveCanonicalBank(bankCode || bankName)?.swiftCode} &middot;{" "}
+                  {resolveCanonicalBank(bankCode || bankName)?.paymentMode}
+                </span>
+              )}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               <div className="space-y-1">
-                <label htmlFor="bankName" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-                  Bank Name *
+                <label htmlFor="bankNameSelect" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                  Beneficiary Bank *
                 </label>
-                <div className="space-y-1.5">
-                  <select
-                    id="bankNameSelect"
-                    value={MALAYSIAN_BANKS.some((b) => b.name === bankName || b.shortName === bankName) ? bankName : "__OTHER__"}
-                    onChange={(e) => {
-                      if (e.target.value !== "__OTHER__") {
-                        setBankName(e.target.value);
-                      } else {
-                        setBankName("");
-                      }
-                      setDirty(true);
-                    }}
-                    className="flex h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
-                  >
-                    <option value="" disabled>Select Bank...</option>
-                    {MALAYSIAN_BANKS.map((bank) => (
-                      <option key={bank.id} value={bank.name}>
-                        {bank.name} ({bank.shortName})
-                      </option>
-                    ))}
-                    <option value="__OTHER__">Other / Custom Bank...</option>
-                  </select>
-                  {(!MALAYSIAN_BANKS.some((b) => b.name === bankName || b.shortName === bankName) || bankName === "") && (
-                    <Input
-                      type="text"
-                      id="bankName"
-                      placeholder="Enter bank name (e.g. Maybank, HSBC, Standard Chartered)"
-                      value={bankName}
-                      onChange={(e) => setBankName(e.target.value)}
-                      className="h-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
-                      required
-                    />
-                  )}
-                </div>
+                <select
+                  id="bankNameSelect"
+                  value={resolveCanonicalBank(bankCode || bankName)?.swiftCode || ""}
+                  onChange={(e) => {
+                    const selected = resolveCanonicalBank(e.target.value);
+                    if (selected) {
+                      setBankCode(selected.swiftCode);
+                      setBankName(selected.name);
+                    }
+                    setDirty(true);
+                  }}
+                  className="flex h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                >
+                  <option value="" disabled>
+                    Select Bank from Directory...
+                  </option>
+                  {MALAYSIAN_BANKS.map((bank) => (
+                    <option key={bank.swiftCode} value={bank.swiftCode}>
+                      {bank.name} ({bank.swiftCode})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="bankAccountHolderName" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                  Beneficiary Legal Name *
+                </label>
+                <Input
+                  type="text"
+                  id="bankAccountHolderName"
+                  placeholder="Exact legal name on bank account"
+                  value={bankAccountHolderName || claimantName}
+                  onChange={(e) => setBankAccountHolderName(e.target.value)}
+                  className="h-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
+                  required
+                />
               </div>
 
               <div className="space-y-1">
@@ -583,6 +633,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                 <Input
                   type="text"
                   id="bankAccountNumber"
+                  inputMode="numeric"
                   placeholder="e.g. 514012345678"
                   value={bankAccountNumber}
                   onChange={(e) => setBankAccountNumber(e.target.value)}
@@ -590,7 +641,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                   required
                 />
                 <p className="text-[10px] text-zinc-400">
-                  Account number to disburse the approved reimbursement payment.
+                  Leading zeroes are preserved for bank transfer.
                 </p>
               </div>
             </div>
