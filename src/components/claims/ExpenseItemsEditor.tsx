@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import React, { useState, useRef } from "react";
 import { Plus, Trash2, Copy, UploadCloud, FileText, Image as ImageIcon, File, Eye, X, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -295,12 +296,12 @@ export function ExpenseItemsEditor({
                 <label htmlFor={`receipt-${idx}-cost-centre`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                   Cost Centre *
                 </label>
-                <select
+                <Select
                   id={`receipt-${idx}-cost-centre`}
                   value={item.cost_centre_id}
                   disabled={disabled}
                   onChange={(e) => updateField(idx, "cost_centre_id", e.target.value)}
-                  className="flex h-8 w-full rounded-lg border border-zinc-200 bg-zinc-50/50 px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 font-sans"
+                  className="w-full"
                   required
                 >
                   <option value="" disabled>Select Cost Centre</option>
@@ -309,7 +310,7 @@ export function ExpenseItemsEditor({
                       {cc.code} - {cc.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               {/* Amount (RM) */}
@@ -318,7 +319,7 @@ export function ExpenseItemsEditor({
                   Amount (RM) *
                 </label>
                 <div className="relative">
-                  <span className="absolute left-2.5 top-2 text-[11px] font-semibold text-zinc-400">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[11px] font-semibold text-zinc-400">
                     RM
                   </span>
                   <Input

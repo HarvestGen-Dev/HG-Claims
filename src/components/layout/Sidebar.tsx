@@ -78,12 +78,12 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         className={cn(
           "flex min-h-10 items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors group",
           isActive
-            ? "bg-zinc-900 text-white font-medium shadow-2xs dark:bg-zinc-100 dark:text-zinc-900"
-            : "text-zinc-600 hover:bg-zinc-100/80 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/80 dark:hover:text-zinc-100"
+            ? "bg-accent text-accent-foreground font-semibold shadow-sm ring-1 ring-primary/20"
+            : "text-zinc-600 hover:bg-accent/70 hover:text-accent-foreground dark:text-zinc-400 dark:hover:bg-zinc-800/80 dark:hover:text-zinc-100"
         )}
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className={cn("transition-colors shrink-0", isActive ? "text-white dark:text-zinc-900" : "text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100")}>
+          <span className={cn("transition-colors shrink-0", isActive ? "text-primary" : "text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100")}>
             {icon}
           </span>
           <span className="truncate">{label}</span>
@@ -93,7 +93,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             className={cn(
               "px-1.5 py-0.2 text-[10px] font-semibold tabular-nums rounded-md shrink-0",
               isActive
-                ? "bg-white/20 text-white dark:bg-zinc-900/20 dark:text-zinc-900"
+                ? "bg-primary text-primary-foreground"
                 : "bg-rose-500 text-white"
             )}
           >
@@ -105,7 +105,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   };
 
   return (
-    <aside className="flex flex-col h-full bg-white dark:bg-zinc-950 border-r border-zinc-200/80 dark:border-zinc-800/80 p-3 select-none">
+    <aside className="flex flex-col h-full bg-card border-r border-border p-3 select-none">
       {/* Brand Header */}
       <div className="px-2 py-2.5 mb-3 flex items-start justify-between">
         <div>

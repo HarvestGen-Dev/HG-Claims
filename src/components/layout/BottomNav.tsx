@@ -78,7 +78,7 @@ export function BottomNav() {
           className={cn(
             "flex flex-col items-center justify-center flex-1 py-1 text-[10px] font-medium transition-colors relative min-h-[44px]",
             isTabActive("/dashboard", true)
-              ? "text-zinc-900 dark:text-zinc-100 font-semibold"
+              ? "text-primary font-semibold"
               : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
           )}
         >
@@ -92,7 +92,7 @@ export function BottomNav() {
           className={cn(
             "flex flex-col items-center justify-center flex-1 py-1 text-[10px] font-medium transition-colors relative min-h-[44px]",
             isTabActive("/claims") && !pathname.startsWith("/claims/new")
-              ? "text-zinc-900 dark:text-zinc-100 font-semibold"
+              ? "text-primary font-semibold"
               : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
           )}
         >
@@ -107,7 +107,7 @@ export function BottomNav() {
             aria-label="Create New Claim"
             className="flex flex-col items-center justify-center -mt-4 px-2 min-h-[44px]"
           >
-            <div className="w-11 h-11 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shadow-md active:scale-95 transition-transform hover:bg-zinc-800 dark:hover:bg-zinc-200 ring-4 ring-white dark:ring-zinc-950">
+            <div className="w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md active:scale-95 transition-transform hover:brightness-90 ring-4 ring-white dark:ring-zinc-950">
               <Plus className="w-6 h-6 stroke-[2.5]" />
             </div>
             <span className="text-[10px] font-semibold text-zinc-900 dark:text-zinc-100 mt-0.5">
@@ -123,7 +123,7 @@ export function BottomNav() {
             className={cn(
               "flex flex-col items-center justify-center flex-1 py-1 text-[10px] font-medium transition-colors relative min-h-[44px]",
               isTabActive("/approvals") || isTabActive("/finance")
-                ? "text-zinc-900 dark:text-zinc-100 font-semibold"
+                ? "text-primary font-semibold"
                 : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
             )}
           >
@@ -143,7 +143,7 @@ export function BottomNav() {
             className={cn(
               "flex flex-col items-center justify-center flex-1 py-1 text-[10px] font-medium transition-colors relative min-h-[44px]",
               isTabActive("/admin")
-                ? "text-zinc-900 dark:text-zinc-100 font-semibold"
+                ? "text-primary font-semibold"
                 : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
             )}
           >
@@ -158,7 +158,7 @@ export function BottomNav() {
           className={cn(
             "flex flex-col items-center justify-center flex-1 py-1 text-[10px] font-medium transition-colors relative min-h-[44px]",
             isTabActive("/notifications")
-              ? "text-zinc-900 dark:text-zinc-100 font-semibold"
+              ? "text-primary font-semibold"
               : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
           )}
         >

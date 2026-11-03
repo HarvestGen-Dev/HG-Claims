@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import React, { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -525,17 +526,17 @@ export default function CostCentreManagementPage() {
 
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2 space-y-1">
-                <label className="font-semibold text-slate-700">Associated Ministry</label>
-                <select
+                <label htmlFor="cost-centres-select-1" className="font-semibold text-slate-700">Associated Ministry</label>
+                <Select id="cost-centres-select-1"
                   value={formData.ministry_id}
                   onChange={(e) => setFormData({ ...formData, ministry_id: e.target.value })}
-                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs"
+                  className="w-full"
                 >
                   <option value="">General / All Ministries</option>
                   {(ministries || []).map((m) => (
                     <option key={m.id} value={m.id}>{m.name}</option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div className="space-y-1">
                 <label className="font-semibold text-slate-700">Display Order</label>

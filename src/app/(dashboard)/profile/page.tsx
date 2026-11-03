@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import React, { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -169,11 +170,11 @@ export default function ProfilePage() {
               <label htmlFor="profile-bank" className="text-sm font-medium text-zinc-600">
                 Beneficiary bank
               </label>
-              <select
+              <Select
                 id="profile-bank"
                 value={bankCode}
                 onChange={(e) => setBankCode(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                className="w-full"
               >
                 <option value="">Select Bank from Directory...</option>
                 {MALAYSIAN_BANKS.map((bank) => (
@@ -181,7 +182,7 @@ export default function ProfilePage() {
                     {bank.name} ({bank.swiftCode} — {bank.paymentMode})
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

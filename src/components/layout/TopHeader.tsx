@@ -57,7 +57,7 @@ export function TopHeader({ onToggleMobileMenu, mobileMenuOpen = false }: TopHea
   };
 
   return (
-    <header className="sticky top-0 z-40 flex shrink-0 h-14 w-full items-center justify-between border-b border-zinc-200/80 bg-white/90 px-3 sm:px-6 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/90">
+    <header className="sticky top-0 z-40 flex shrink-0 h-14 w-full items-center justify-between border-b border-border bg-background/95 px-3 sm:px-6 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/90">
       <div className="flex items-center gap-2 sm:gap-3">
         <button
           onClick={onToggleMobileMenu}
@@ -82,7 +82,7 @@ export function TopHeader({ onToggleMobileMenu, mobileMenuOpen = false }: TopHea
             placeholder="Search claims, vouchers..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8 w-full rounded-lg border border-zinc-200 bg-zinc-50/70 pl-8 pr-10 text-xs text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-100 dark:focus:ring-zinc-100 transition-all"
+            className="h-11 w-full rounded-lg border border-zinc-200 bg-zinc-50/70 pl-8 pr-10 text-xs text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-100 dark:focus:ring-zinc-100 transition-all"
           />
         </form>
       </div>
@@ -101,7 +101,7 @@ export function TopHeader({ onToggleMobileMenu, mobileMenuOpen = false }: TopHea
             aria-label="Account menu"
             aria-haspopup="true"
           >
-            <div className="h-7 w-7 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center font-semibold text-xs shrink-0 overflow-hidden ring-1 ring-zinc-200 dark:ring-zinc-800">
+            <div className="h-7 w-7 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center font-semibold text-xs shrink-0 overflow-hidden ring-1 ring-zinc-200 dark:ring-zinc-800">
               {user?.avatar_url ? (
                 <img src={user.avatar_url} alt={user.full_name} className="h-full w-full object-cover" />
               ) : (

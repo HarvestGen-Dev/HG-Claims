@@ -4,15 +4,15 @@ import { cn } from "@/lib/utils/cn";
 import { Loader2 } from "lucide-react";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]",
   {
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:brightness-90",
         destructive: "bg-red-600 text-white shadow-sm hover:bg-red-700",
-        outline: "border border-slate-300 bg-white text-slate-800 shadow-sm hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100",
-        secondary: "bg-slate-100 text-slate-900 shadow-sm hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-100",
-        ghost: "hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+        outline: "border border-input bg-card text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground dark:text-foreground dark:hover:bg-accent",
+        secondary: "bg-secondary text-secondary-foreground shadow-sm hover:brightness-95",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-zinc-900 underline-offset-4 hover:underline dark:text-zinc-100",
         brand: "bg-primary text-primary-foreground hover:brightness-90",
         amber: "bg-amber-600 text-white hover:bg-amber-700 shadow-sm",

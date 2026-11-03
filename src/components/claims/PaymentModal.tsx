@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import React, { useState } from "react";
 import { Banknote, Calendar, CreditCard, Hash, User, Copy, Check, Landmark } from "lucide-react";
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -140,25 +141,25 @@ export function PaymentModal({
 
           {/* Payment Method */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1">
+            <label htmlFor="claims-select-1" className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1">
               <CreditCard className="w-3.5 h-3.5 text-zinc-400" />
               Payment Method *
             </label>
-            <select
+            <Select id="claims-select-1"
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
-              className="flex h-10 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-900"
+              className="w-full"
             >
               <option value="BANK_TRANSFER">Bank Online Transfer (IBG / DuitNow)</option>
               <option value="CHEQUE">Cheque</option>
               <option value="CASH">Cash Voucher</option>
               <option value="ONLINE_BANKING">Direct Bill Payment</option>
               <option value="OTHER">Other</option>
-            </select>
+            </Select>
           </div>
 
           {/* Payment Reference */}
-          <div className="col-span-2 space-y-1">
+          <div className="sm:col-span-2 space-y-1">
             <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1">
               <Hash className="w-3.5 h-3.5 text-zinc-400" />
               Payment Transaction Reference *
@@ -173,7 +174,7 @@ export function PaymentModal({
           </div>
 
           {/* Internal Notes */}
-          <div className="col-span-2 space-y-1">
+          <div className="sm:col-span-2 space-y-1">
             <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
               Finance Notes (Optional)
             </label>

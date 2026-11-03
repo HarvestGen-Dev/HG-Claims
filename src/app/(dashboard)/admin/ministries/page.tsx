@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import React, { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -324,17 +325,17 @@ export default function MinistryManagementPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="font-semibold text-slate-700">Designated Approver (Ministry Leader)</label>
-              <select
+              <label htmlFor="ministries-select-1" className="font-semibold text-slate-700">Designated Approver (Ministry Leader)</label>
+              <Select id="ministries-select-1"
                 value={formData.leader_id}
                 onChange={(e) => setFormData({ ...formData, leader_id: e.target.value })}
-                className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs"
+                className="w-full"
               >
                 <option value="">-- No Leader Assigned --</option>
                 {(profiles || []).map((p) => (
                   <option key={p.id} value={p.id}>{p.full_name} ({p.email})</option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             <div className="space-y-1">
