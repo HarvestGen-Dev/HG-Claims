@@ -84,12 +84,12 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
   };
 
   const handleApprove = async () => {
-    if (!user || !canApprove(claim) || !claim.finance_review?.receipts_verified || loadingAction) return;
+    if (!user || !canApprove(claim) || loadingAction) return;
     try {
       setLoadingAction(true);
       const updated = await financeClient.approveStep(claim.id, user, "Approved in accordance with ministry guidelines.");
       setClaim(updated);
-      showToast.success("Claim has been successfully approved.", "Claim Approved");
+      showToast.success("Claim has been approved and is ready for XLS disbursement.", "Claim Approved");
     } catch (err: any) {
       showToast.error(err.message || "Failed to approve claim", "Approval Error");
     } finally {
@@ -215,7 +215,10 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
             <h1 className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100 tracking-tight">
               {claim.claim_number || "Draft Claim"}
             </h1>
-            <ClaimStatusBadge status={claim.status} />
+            <ClaimStatusBadge
+              status={claim.status}
+              reimbursementStatus={claim.reimbursement_status}
+            />
           </div>
           <p className="text-[11px] text-zinc-500 flex items-center gap-x-3 gap-y-0.5 flex-wrap">
             <span>Claimant: <strong className="text-zinc-700 dark:text-zinc-300 font-medium">{claimantName}</strong></span>
@@ -269,12 +272,12 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                 size="sm"
                 onClick={handleApprove}
                 loading={loadingAction}
-                disabled={loadingAction || !claim.finance_review?.receipts_verified}
-                title={!claim.finance_review?.receipts_verified ? "Verify receipts before approving" : "Approve claim"}
+                disabled={loadingAction}
+                title="Approve claim for XLS disbursement"
                 className="h-7 text-xs bg-zinc-900 hover:bg-zinc-800 text-white gap-1.5 shadow-2xs font-medium"
               >
                 {!loadingAction && <CheckCircle2 className="w-3.5 h-3.5" />}
-                <span>Approve</span>
+                <span>Approve Claim</span>
               </Button>
 
               <Button

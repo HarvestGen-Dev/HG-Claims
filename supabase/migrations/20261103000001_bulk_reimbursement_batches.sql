@@ -600,6 +600,12 @@ BEGIN
       END IF;
       IF action IN ('return','reject') AND length(trim(COALESCE(payload->>'reason','')))=0 THEN RAISE EXCEPTION 'A reason is required'; END IF;
       IF action='approve' THEN
+        IF COALESCE((payload->>'auto_verify')::boolean, false) AND NOT EXISTS(
+          SELECT 1 FROM public.finance_reviews WHERE claim_id=c.id AND status='VERIFIED' AND created_at>=COALESCE(c.resubmitted_at,c.submitted_at)
+        ) THEN
+          INSERT INTO public.finance_reviews(claim_id,reviewer_id,receipts_verified,category_verified,cost_centre_verified,status,notes)
+          VALUES(c.id,uid,true,true,true,'VERIFIED',COALESCE(payload->>'reason','Receipts verified during approval'));
+        END IF;
         IF s.approver_role='FINANCE_OFFICER' AND NOT EXISTS(SELECT 1 FROM public.finance_reviews WHERE claim_id=c.id AND status='VERIFIED' AND created_at>=COALESCE(c.resubmitted_at,c.submitted_at)) THEN RAISE EXCEPTION 'Verify receipts and allocations before finance approval'; END IF;
         UPDATE public.claim_workflow_steps SET status='COMPLETED',completed_at=now(),completed_by=uid,action_taken='APPROVE',comments=payload->>'reason' WHERE id=s.id;
         SELECT * INTO next_step FROM public.claim_workflow_steps WHERE workflow_id=s.workflow_id AND status='PENDING' ORDER BY sequence LIMIT 1;
@@ -874,8 +880,24 @@ BEGIN
     END LOOP;
 
     UPDATE public.reimbursement_batches
-    SET transfer_count = v_line_order, updated_at = now()
+    SET
+      transfer_count = v_line_order,
+      status = CASE WHEN COALESCE((payload->>'mark_exported')::boolean, false) THEN 'EXPORTED' ELSE status END,
+      exported_at = CASE WHEN COALESCE((payload->>'mark_exported')::boolean, false) THEN now() ELSE exported_at END,
+      exported_by = CASE WHEN COALESCE((payload->>'mark_exported')::boolean, false) THEN uid ELSE exported_by END,
+      exported_filename = CASE WHEN COALESCE((payload->>'mark_exported')::boolean, false) THEN v_batch_num || '.xls' ELSE exported_filename END,
+      updated_at = now()
     WHERE id = v_batch_id;
+
+    IF COALESCE((payload->>'mark_exported')::boolean, false) THEN
+      UPDATE public.reimbursement_batch_instructions
+      SET status = 'EXPORTED', updated_at = now()
+      WHERE batch_id = v_batch_id;
+
+      UPDATE public.claims
+      SET reimbursement_status = 'EXPORTED_PENDING_CONFIRMATION', updated_at = now()
+      WHERE active_batch_id = v_batch_id;
+    END IF;
 
     -- Verify invariant: SUM(instructions.amount_cents) == batch.total_amount_cents
     IF (SELECT COALESCE(SUM(amount_cents), 0) FROM public.reimbursement_batch_instructions WHERE batch_id = v_batch_id) <> v_total_cents THEN
@@ -1104,6 +1126,99 @@ BEGIN
     );
 
     RETURN jsonb_build_object('id', v_batch.id, 'instruction_id', v_inst.id);
+  END IF;
+
+  IF action = 'disburse_reimbursement_batch' THEN
+    IF NOT (finance OR admin) THEN RAISE EXCEPTION 'Finance Officer or System Admin access is required' USING ERRCODE='42501'; END IF;
+    SELECT * INTO v_batch FROM public.reimbursement_batches WHERE id = (payload->>'batch_id')::uuid FOR UPDATE;
+    IF v_batch.id IS NULL THEN RAISE EXCEPTION 'Batch not found'; END IF;
+    IF v_batch.status = 'VOIDED' THEN RAISE EXCEPTION 'Cannot disburse a voided batch'; END IF;
+    IF v_batch.status = 'SETTLED' THEN
+      RETURN jsonb_build_object('id', v_batch.id, 'status', 'SETTLED');
+    END IF;
+
+    FOR v_inst IN
+      SELECT * FROM public.reimbursement_batch_instructions
+      WHERE batch_id = v_batch.id AND status NOT IN ('PAID', 'VOIDED')
+      ORDER BY line_order
+      FOR UPDATE
+    LOOP
+      UPDATE public.reimbursement_batch_instructions
+      SET
+        status = 'PAID',
+        bank_reference = COALESCE(NULLIF(trim(COALESCE(payload->>'bank_reference', '')), ''), v_inst.payment_description),
+        bank_acknowledged_at = now(),
+        reconciled_by = uid,
+        reconciled_at = now(),
+        updated_at = now()
+      WHERE id = v_inst.id;
+
+      FOR c IN
+        SELECT cl.* FROM public.claims cl
+        JOIN public.reimbursement_instruction_claims ic ON ic.claim_id = cl.id
+        WHERE ic.instruction_id = v_inst.id AND ic.is_active
+        FOR UPDATE
+      LOOP
+        IF c.status <> 'PAID' THEN
+          INSERT INTO public.payments (
+            claim_id, amount, payment_date, payment_reference, payment_method, notes, processed_by
+          ) VALUES (
+            c.id,
+            c.total_amount,
+            COALESCE(NULLIF(payload->>'payment_date', '')::date, CURRENT_DATE),
+            COALESCE(NULLIF(trim(COALESCE(payload->>'bank_reference', '')), ''), v_batch.batch_number) || ' (' || v_inst.payment_description || ')',
+            'BANK_TRANSFER',
+            'Disbursed via XLS Batch ' || v_batch.batch_number || ' / ' || v_inst.payment_description,
+            uid
+          );
+
+          UPDATE public.claims
+          SET
+            status = 'PAID',
+            reimbursement_status = 'PAID',
+            version = version + 1,
+            updated_at = now()
+          WHERE id = c.id;
+
+          INSERT INTO public.approval_actions (
+            claim_id, actor_id, actor_role, action, comment, previous_status, new_status
+          ) VALUES (
+            c.id,
+            uid,
+            CASE WHEN admin THEN 'SYSTEM_ADMIN' ELSE 'FINANCE_OFFICER' END,
+            'PAY',
+            'Disbursed via XLS Batch ' || v_batch.batch_number || ' (' || v_inst.payment_description || ')',
+            'APPROVED_FOR_PAYMENT',
+            'PAID'
+          );
+
+          PERFORM private.notify_claim(c.id, 'Claim disbursed');
+        END IF;
+      END LOOP;
+    END LOOP;
+
+    UPDATE public.reimbursement_batches
+    SET
+      status = 'SETTLED',
+      settled_at = now(),
+      exported_at = COALESCE(exported_at, now()),
+      exported_by = COALESCE(exported_by, uid),
+      updated_at = now()
+    WHERE id = v_batch.id;
+
+    INSERT INTO public.audit_logs (actor_id, action, entity_type, entity_id, after_data)
+    VALUES (
+      uid,
+      'DISBURSE_REIMBURSEMENT_BATCH',
+      'reimbursement_batches',
+      v_batch.id::text,
+      jsonb_build_object(
+        'batch_number', v_batch.batch_number,
+        'bank_reference', COALESCE(NULLIF(trim(COALESCE(payload->>'bank_reference', '')), ''), v_batch.batch_number)
+      )
+    );
+
+    RETURN jsonb_build_object('id', v_batch.id, 'status', 'SETTLED');
   END IF;
 
   IF action = 'void_reimbursement_batch' THEN

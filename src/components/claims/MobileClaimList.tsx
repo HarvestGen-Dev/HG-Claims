@@ -71,13 +71,11 @@ export function MobileClaimList({
                     <Clock className="w-2.5 h-2.5" />
                     {activeStep.step_name}
                   </span>
-                ) : showFinanceInfo && claim.finance_review?.receipts_verified ? (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300">
-                    <ShieldCheck className="w-3 h-3" />
-                    Verified
-                  </span>
                 ) : (
-                  <ClaimStatusBadge status={claim.status} />
+                  <ClaimStatusBadge
+                    status={claim.status}
+                    reimbursementStatus={claim.reimbursement_status}
+                  />
                 )}
 
                 {onDelete && (claim.status === "DRAFT" || claim.status === "CANCELLED") && (

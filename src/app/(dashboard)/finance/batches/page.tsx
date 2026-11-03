@@ -53,6 +53,7 @@ export default function FinanceBatchesPage() {
   const [batchNotes, setBatchNotes] = useState("");
   const [finalizing, setFinalizing] = useState(false);
   const [finalizeError, setFinalizeError] = useState("");
+  const [disbursingBatchId, setDisbursingBatchId] = useState<string | null>(null);
 
   const ministries = masterDataClient.getMinistries();
 
@@ -153,23 +154,55 @@ export default function FinanceBatchesPage() {
       const created = await financeClient.finalizeReimbursementBatch({
         claim_ids: preview.selectedEligibleClaims.map((c) => c.claimId),
         preview_digest: preview.previewDigest,
+        mark_exported: true,
         notes: batchNotes.trim() || undefined,
       });
+      await Promise.all([
+        workspaceStore.refreshDomain("/api/v1/finance"),
+        workspaceStore.refreshDomain("/api/v1/claims"),
+      ]);
       setConfirmModalOpen(false);
       setBatchNotes("");
-      showToast.flashSuccess(
-        `Batch ${created.batch_number} finalized with ${preview.totalTransfers} bank transfer(s). You can now export the BIFF8 .xls file.`,
-        "Reimbursement Batch Created"
+      setActiveTab("batches");
+      showToast.success(
+        `XLS file (${created.batch_number}.xls) created with ${preview.totalTransfers} bank transfer(s). Once disbursed, click "Mark .xls as Disbursed".`,
+        "XLS File Created"
       );
-      router.push(`/finance/batches/${created.id}`);
+      window.location.assign(`/api/v1/finance/batches/${created.id}/export`);
     } catch (err) {
       setFinalizeError(
         err instanceof Error
           ? err.message
-          : "Unable to finalize reimbursement batch. Another officer may have modified one of the claims."
+          : "Unable to generate reimbursement XLS file. Another officer may have modified one of the claims."
       );
     } finally {
       setFinalizing(false);
+    }
+  };
+
+  const handleMarkBatchDisbursed = async (batch: ReimbursementBatch) => {
+    if (disbursingBatchId) return;
+    setDisbursingBatchId(batch.id);
+    try {
+      await financeClient.disburseReimbursementBatch({
+        batch_id: batch.id,
+        bank_reference: batch.batch_number,
+      });
+      await Promise.all([
+        workspaceStore.refreshDomain("/api/v1/finance"),
+        workspaceStore.refreshDomain("/api/v1/claims"),
+      ]);
+      showToast.success(
+        `${batch.batch_number}.xls marked as Disbursed. All ${batch.claim_count} linked claim(s) are now marked as Disbursed!`,
+        "Disbursement Complete"
+      );
+    } catch (err) {
+      showToast.error(
+        err instanceof Error ? err.message : "Failed to mark .xls file as disbursed.",
+        "Disbursement Error"
+      );
+    } finally {
+      setDisbursingBatchId(null);
     }
   };
 
@@ -374,9 +407,9 @@ export default function FinanceBatchesPage() {
                   }}
                   className="h-8 bg-zinc-900 hover:bg-zinc-800 text-white text-xs gap-1.5"
                 >
-                  <Lock className="w-3.5 h-3.5" />
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
                   <span>
-                    Finalize Batch ({preview.totalSelectedClaims} Claims &rarr;{" "}
+                    Generate &amp; Download .xls ({preview.totalSelectedClaims} Claims &rarr;{" "}
                     {preview.totalTransfers} Transfers)
                   </span>
                 </Button>
@@ -706,30 +739,47 @@ export default function FinanceBatchesPage() {
                                   ? "bg-emerald-600 text-white"
                                   : b.status === "VOIDED" || b.status === "REJECTED"
                                   ? "bg-rose-600 text-white"
-                                  : b.status === "PARTIALLY_SETTLED"
-                                  ? "bg-amber-600 text-white"
-                                  : "bg-zinc-900 text-white"
+                                  : "bg-amber-100 text-amber-900 border border-amber-300"
                               }`}
                             >
-                              {b.status}
+                              {b.status === "SETTLED"
+                                ? "Disbursed"
+                                : b.status === "VOIDED" || b.status === "REJECTED"
+                                ? b.status
+                                : "XLS File Created"}
                             </Badge>
                           </td>
-                          <td className="py-3 px-4 text-right space-x-2">
+                          <td className="py-3 px-4 text-right space-x-2 whitespace-nowrap">
                             {b.status !== "VOIDED" && (
                               <a
                                 href={`/api/v1/finance/batches/${b.id}/export`}
                                 className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-800"
                               >
                                 <Download className="w-3 h-3" />
-                                <span>.xls</span>
+                                <span>Download .xls</span>
                               </a>
+                            )}
+                            {!["SETTLED", "VOIDED", "REJECTED"].includes(b.status) && (
+                              <Button
+                                size="sm"
+                                loading={disbursingBatchId === b.id}
+                                disabled={disbursingBatchId === b.id}
+                                onClick={() => handleMarkBatchDisbursed(b)}
+                                className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1 font-semibold"
+                              >
+                                {disbursingBatchId !== b.id && (
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                )}
+                                <span>Mark .xls as Disbursed</span>
+                              </Button>
                             )}
                             <Link href={`/finance/batches/${b.id}`}>
                               <Button
+                                variant="outline"
                                 size="sm"
-                                className="h-7 text-xs bg-zinc-900 hover:bg-zinc-800 text-white"
+                                className="h-7 text-xs"
                               >
-                                Open & Reconcile
+                                Details
                               </Button>
                             </Link>
                           </td>
@@ -801,7 +851,7 @@ export default function FinanceBatchesPage() {
                 disabled={finalizing}
                 className="bg-zinc-900 hover:bg-zinc-800 text-white"
               >
-                {finalizing ? "Finalizing Batch..." : "Confirm & Freeze Batch"}
+                {finalizing ? "Generating .xls..." : "Generate & Download .xls File"}
               </Button>
             </DialogFooter>
           </div>

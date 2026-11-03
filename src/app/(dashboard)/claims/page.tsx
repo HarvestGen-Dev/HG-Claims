@@ -217,7 +217,10 @@ function ClaimsContent() {
                         {formatCurrency(c.total_amount)}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <ClaimStatusBadge status={c.status} />
+                        <ClaimStatusBadge
+                          status={c.status}
+                          reimbursementStatus={c.reimbursement_status}
+                        />
                       </td>
                       <td className="py-3 px-4 text-right space-x-1">
                         <Link href={`/claims/${c.id}`}>

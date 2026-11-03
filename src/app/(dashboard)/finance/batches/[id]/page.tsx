@@ -154,6 +154,34 @@ export default function FinanceBatchDetailPage() {
     }
   };
 
+  const handleMarkWholeBatchDisbursed = async () => {
+    if (!batch || busy) return;
+    setBusy(true);
+    setActionError("");
+    try {
+      await financeClient.disburseReimbursementBatch({
+        batch_id: batch.id,
+        bank_reference: batch.batch_number,
+      });
+      await Promise.all([
+        workspaceStore.refreshDomain("/api/v1/finance"),
+        workspaceStore.refreshDomain("/api/v1/claims"),
+      ]);
+      showToast.success(
+        `${batch.batch_number}.xls marked as Disbursed. All ${batch.claim_count} linked claim(s) have been marked as Disbursed!`,
+        "Disbursement Complete"
+      );
+    } catch (err) {
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : "Failed to mark .xls file as disbursed."
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!isFinanceOrAdmin) {
     return (
       <AppLayout>
@@ -200,12 +228,14 @@ export default function FinanceBatchDetailPage() {
                       ? "bg-emerald-600 text-white"
                       : batch.status === "VOIDED" || batch.status === "REJECTED"
                       ? "bg-rose-600 text-white"
-                      : batch.status === "PARTIALLY_SETTLED"
-                      ? "bg-amber-600 text-white"
-                      : "bg-zinc-900 text-white"
+                      : "bg-amber-100 text-amber-900 border border-amber-300"
                   }`}
                 >
-                  {batch.status}
+                  {batch.status === "SETTLED"
+                    ? "Disbursed"
+                    : batch.status === "VOIDED" || batch.status === "REJECTED"
+                    ? batch.status
+                    : "XLS File Created"}
                 </Badge>
               </div>
               <p className="text-xs text-zinc-500 mt-0.5">
@@ -219,12 +249,26 @@ export default function FinanceBatchDetailPage() {
           <div className="flex flex-wrap items-center gap-2">
             {batch.status !== "VOIDED" && (
               <Button
+                variant="outline"
                 size="sm"
                 onClick={handleDownloadXls}
-                className="h-8 bg-zinc-900 hover:bg-zinc-800 text-white text-xs gap-1.5"
+                className="h-8 text-xs gap-1.5"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Download Alliance Bank .xls (BIFF8)</span>
+              </Button>
+            )}
+
+            {!["SETTLED", "VOIDED", "REJECTED"].includes(batch.status) && (
+              <Button
+                size="sm"
+                loading={busy}
+                disabled={busy}
+                onClick={handleMarkWholeBatchDisbursed}
+                className="h-8 bg-emerald-700 hover:bg-emerald-800 text-white text-xs gap-1.5 font-semibold"
+              >
+                {!busy && <CheckCircle2 className="w-3.5 h-3.5" />}
+                <span>Mark .xls File as Disbursed</span>
               </Button>
             )}
 

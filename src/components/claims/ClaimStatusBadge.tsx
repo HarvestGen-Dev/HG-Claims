@@ -14,23 +14,23 @@ const REIMBURSEMENT_BADGE_MAP: Record<
   { label: string; classes: string }
 > = {
   ELIGIBLE: {
-    label: "Eligible for Batch",
+    label: "Ready for XLS",
     classes: "bg-emerald-50 text-emerald-800 border-emerald-200",
   },
   RESERVED_IN_BATCH: {
-    label: "Reserved in Batch",
-    classes: "bg-blue-50 text-blue-800 border-blue-200",
+    label: "XLS File Created",
+    classes: "bg-amber-50 text-amber-800 border-amber-200",
   },
   EXPORTED_PENDING_CONFIRMATION: {
-    label: "XLS Exported (Unpaid)",
+    label: "XLS File Created",
     classes: "bg-amber-50 text-amber-800 border-amber-200",
   },
   SUBMITTED_TO_BANK: {
-    label: "Submitted to Bank",
-    classes: "bg-indigo-50 text-indigo-800 border-indigo-200",
+    label: "XLS File Created",
+    classes: "bg-amber-50 text-amber-800 border-amber-200",
   },
   PAID: {
-    label: "Settled / Paid",
+    label: "Disbursed",
     classes: "bg-zinc-900 text-white border-zinc-900",
   },
   FAILED: {
@@ -61,6 +61,8 @@ export function ClaimStatusBadge({
     reimbursementStatus &&
     reimbursementStatus !== "ELIGIBLE"
       ? REIMBURSEMENT_BADGE_MAP[reimbursementStatus]
+      : status === "PAID" && reimbursementStatus === "PAID"
+      ? REIMBURSEMENT_BADGE_MAP.PAID
       : null;
 
   return (

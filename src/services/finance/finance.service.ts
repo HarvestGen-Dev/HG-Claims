@@ -15,6 +15,7 @@ export const FINANCE_WORKFLOW_ACTIONS = [
   "record_batch_export",
   "record_batch_bank_upload",
   "reconcile_batch_instruction",
+  "disburse_reimbursement_batch",
   "void_reimbursement_batch",
 ] as const;
 

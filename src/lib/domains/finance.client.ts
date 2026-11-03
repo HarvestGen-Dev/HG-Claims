@@ -81,7 +81,7 @@ export class FinanceClient {
   }
 
   approveStep(id: string, _actor: Profile, reason?: string) {
-    return this.transitionClaim("approve", id, { reason });
+    return this.transitionClaim("approve", id, { reason, auto_verify: true });
   }
 
   returnForClarification(id: string, _actor: Profile, reason: string) {
@@ -156,6 +156,7 @@ export class FinanceClient {
     claim_ids: string[];
     preview_digest?: string;
     notes?: string;
+    mark_exported?: boolean;
     request_key?: string;
   }): Promise<{ id: string; batch_number: string }> {
     const res = await workspaceStore.dispatchDomainCommand(
@@ -167,6 +168,18 @@ export class FinanceClient {
       }
     );
     return res as { id: string; batch_number: string };
+  }
+
+  async disburseReimbursementBatch(data: {
+    batch_id: string;
+    bank_reference?: string;
+    payment_date?: string;
+  }) {
+    return workspaceStore.dispatchDomainCommand(
+      FINANCE_ENDPOINT,
+      "disburse_reimbursement_batch",
+      data
+    );
   }
 
   async recordBatchBankUpload(data: {

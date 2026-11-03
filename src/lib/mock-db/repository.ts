@@ -1877,6 +1877,7 @@ class DatabaseRepository {
     batch_name?: string;
     notes?: string;
     payment_reference_default?: string;
+    mark_exported?: boolean;
   }): ReimbursementBatch {
     const actor = this.getProfileById(params.actor_id);
     if (!actor || (!actor.roles?.includes("FINANCE_OFFICER") && !actor.roles?.includes("SYSTEM_ADMIN"))) {
@@ -1919,7 +1920,9 @@ class DatabaseRepository {
 
       const linkedClaims: ReimbursementInstructionClaim[] = row.claimIds.map((cid: string) => {
         const claim = this.claims.find(c => c.id === cid)!;
-        claim.reimbursement_status = "RESERVED_IN_BATCH";
+        claim.reimbursement_status = params.mark_exported
+          ? "EXPORTED_PENDING_CONFIRMATION"
+          : "RESERVED_IN_BATCH";
         claim.active_batch_id = batchId;
         claim.active_instruction_id = instId;
         claim.updated_at = now;
@@ -1951,7 +1954,7 @@ class DatabaseRepository {
         claim_count: linkedClaims.length,
         payment_description: paymentDescription,
         payment_reference: params.payment_reference_default?.slice(0, 35) || row.paymentReference || "",
-        status: "RESERVED",
+        status: params.mark_exported ? "EXPORTED" : "RESERVED",
         created_at: now,
         updated_at: now,
         claims: linkedClaims,
@@ -1961,13 +1964,16 @@ class DatabaseRepository {
     const batch: ReimbursementBatch = {
       id: batchId,
       batch_number: batchNumber,
-      status: "FINALIZED",
+      status: params.mark_exported ? "EXPORTED" : "FINALIZED",
       template_version: "ALLIANCE_SBP_BIFF8_V1",
       claim_count: preview.selectedEligibleClaims.length,
       transfer_count: instructions.length,
       total_amount_cents: preview.totalAmountCents,
       total_amount: centsToMyrNumber(preview.totalAmountCents),
       content_digest_sha256: preview.previewDigest,
+      exported_at: params.mark_exported ? now : null,
+      exported_by: params.mark_exported ? params.actor_id : null,
+      exported_filename: params.mark_exported ? `${batchNumber}.xls` : null,
       notes: params.notes || params.batch_name || null,
       created_by: params.actor_id,
       created_at: now,
@@ -2080,6 +2086,60 @@ class DatabaseRepository {
     } else if (paidCount > 0 || failedCount > 0) {
       batch.status = "PARTIALLY_SETTLED";
     }
+    batch.updated_at = now;
+    this.persist();
+    return batch;
+  }
+
+  public disburseReimbursementBatch(params: {
+    actor_id: string;
+    batch_id: string;
+    bank_reference?: string;
+    payment_date?: string;
+  }): ReimbursementBatch {
+    const batch = this.getReimbursementBatchById(params.batch_id);
+    if (!batch) throw new Error("Batch not found.");
+    if (batch.status === "VOIDED") {
+      throw new Error("Cannot disburse a voided batch.");
+    }
+    const now = new Date().toISOString();
+    const payDate = params.payment_date || now.slice(0, 10);
+    const refBase = params.bank_reference?.trim() || batch.batch_number;
+
+    (batch.instructions || []).forEach(inst => {
+      if (inst.status !== "PAID" && inst.status !== "VOIDED") {
+        inst.status = "PAID";
+        inst.bank_reference = params.bank_reference?.trim() || inst.payment_description;
+        inst.reconciled_at = now;
+        inst.reconciled_by = params.actor_id;
+        inst.updated_at = now;
+      }
+      (inst.claims || []).forEach(link => {
+        if (!link.is_active) return;
+        const claim = this.claims.find(c => c.id === link.claim_id);
+        if (claim && claim.status !== "PAID") {
+          claim.status = "PAID";
+          claim.reimbursement_status = "PAID";
+          claim.payment = {
+            id: `pay-${Date.now()}-${claim.id}`,
+            claim_id: claim.id,
+            amount: claim.total_amount,
+            payment_date: payDate,
+            payment_reference: `${refBase} (${inst.payment_description})`,
+            payment_method: "BANK_TRANSFER",
+            notes: `Disbursed via XLS Batch ${batch.batch_number} / ${inst.payment_description}`,
+            processed_by: params.actor_id,
+            created_at: now,
+          };
+          claim.updated_at = now;
+        }
+      });
+    });
+
+    batch.status = "SETTLED";
+    batch.settled_at = now;
+    batch.exported_at = batch.exported_at || now;
+    batch.exported_by = batch.exported_by || params.actor_id;
     batch.updated_at = now;
     this.persist();
     return batch;

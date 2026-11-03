@@ -334,6 +334,7 @@ describe("BIFF8 .xls Generation, Round-Trip Verification, Leading Zeroes & Secur
     expect(isFinanceCommand("record_batch_export", {})).toBe(true);
     expect(isFinanceCommand("record_batch_bank_upload", {})).toBe(true);
     expect(isFinanceCommand("reconcile_batch_instruction", {})).toBe(true);
+    expect(isFinanceCommand("disburse_reimbursement_batch", {})).toBe(true);
     expect(isFinanceCommand("void_reimbursement_batch", {})).toBe(true);
     expect(isFinanceCommand("unknown_action", {})).toBe(false);
   });
@@ -689,5 +690,19 @@ describe("BIFF8 .xls Generation, Round-Trip Verification, Leading Zeroes & Secur
     expect(hannahBatch.instructions?.[0]?.beneficiary_user_id).toBe(hannahProfile.id);
     expect(hannahBatch.instructions?.[0]?.beneficiary_bank_code).toBe("PBBEMYKL");
     expect(hannahBatch.instructions?.[0]?.beneficiary_account_number).toBe("003198765432");
+
+    // 5. Generate XLS with mark_exported: true -> flags claims as EXPORTED_PENDING_CONFIRMATION ("XLS File Created")
+    // and then 1-click disburseReimbursementBatch marks the XLS batch and all linked claims as Disbursed (PAID)
+    const disbursedBatch = db.disburseReimbursementBatch({
+      actor_id: financeActor.id,
+      batch_id: hannahBatch.id,
+      bank_reference: "ALB-DISBURSED-2026",
+    });
+
+    expect(disbursedBatch.status).toBe("SETTLED");
+    expect(db.getClaimById(hannahClaim1.id)?.status).toBe("PAID");
+    expect(db.getClaimById(hannahClaim1.id)?.reimbursement_status).toBe("PAID");
+    expect(db.getClaimById(hannahClaim2.id)?.status).toBe("PAID");
+    expect(db.getClaimById(hannahClaim2.id)?.reimbursement_status).toBe("PAID");
   });
 });
