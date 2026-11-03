@@ -33,7 +33,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { ExpenseItemsEditor, ExpenseItemDraft } from "./ExpenseItemsEditor";
 import { useAuth } from "@/lib/auth/context";
 import { claimsClient, iamClient, masterDataClient, workspaceStore } from "@/lib/domains";
-import { Claim, Ministry, CostCentre, Profile } from "@/lib/types/database";
+import { Claim, Profile } from "@/lib/types/database";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/utils/formatters";
 import { calculateTotalAmount, moneyToCents, parseMoneyInput } from "@/lib/utils/calculations";
@@ -130,7 +130,6 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   const [internalRef, setInternalRef] = useState(initialClaim?.internal_reference || "");
 
   // 03: Receipts State
-  const defaultCostCentre = "";
   const [expenses, setExpenses] = useState<ExpenseItemDraft[]>(
     initialClaim?.expenses && initialClaim.expenses.length > 0
       ? initialClaim.expenses.map((e) => {
@@ -142,7 +141,6 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
             temp_id: crypto.randomUUID(),
             expense_date: e.expense_date,
             expense_category_id: e.expense_category_id || undefined,
-            cost_centre_id: e.cost_centre_id || initialClaim.cost_centre_id || defaultCostCentre,
             vendor: e.vendor || "",
             description: e.description,
             amount: e.amount,
@@ -167,7 +165,6 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           {
             temp_id: crypto.randomUUID(),
             expense_date: today,
-            cost_centre_id: defaultCostCentre,
             vendor: "",
             description: "",
             amount: "",
@@ -422,7 +419,6 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           temp_id: e.temp_id,
           expense_date: e.expense_date,
           expense_category_id: e.expense_category_id,
-          cost_centre_id: e.cost_centre_id || undefined,
           vendor: e.vendor || undefined,
           description: e.description || "Draft receipt",
           amount: parseMoneyInput(e.amount),
@@ -498,7 +494,6 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           temp_id: e.temp_id,
           expense_date: e.expense_date,
           expense_category_id: e.expense_category_id,
-          cost_centre_id: e.cost_centre_id || undefined,
           vendor: e.vendor || undefined,
           description: e.description.trim(),
           amount: parseMoneyInput(e.amount),

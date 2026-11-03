@@ -36,7 +36,7 @@ import { ReceiptViewerModal } from "./ReceiptViewerModal";
 
 
 import { useAuth } from "@/lib/auth/context";
-import { claimsClient, financeClient, masterDataClient, workspaceStore } from "@/lib/domains";
+import { claimsClient, financeClient, workspaceStore } from "@/lib/domains";
 import { Claim, ClaimAttachment } from "@/lib/types/database";
 import { showToast } from "@/lib/utils/toast";
 
@@ -67,8 +67,6 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
 
   const [loadingAction, setLoadingAction] = useState(false);
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
-
-  const costCentres = masterDataClient.getCostCentres();
 
   const handleDeleteClaim = async () => {
     if (!user) return;
@@ -131,7 +129,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
     if (!user || !canVerify(claim) || claim.finance_review?.receipts_verified || loadingAction) return;
     try {
       setLoadingAction(true);
-      const updated = await financeClient.verifyClaim(claim.id, user, "All receipts and cost allocations verified.");
+      const updated = await financeClient.verifyClaim(claim.id, user, "All receipts verified.");
       setClaim(updated);
       showToast.success("Finance verification recorded.", "Finance Verified");
     } catch (err: any) {
@@ -515,11 +513,11 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
             </CardContent>
           </Card>
 
-          {/* Expense Breakdown Table with Per-Receipt Cost Centre */}
+          {/* Expense Breakdown Table */}
           <Card className="border-zinc-200/80 shadow-2xs overflow-hidden">
             <CardHeader className="py-2.5 px-4 border-b border-zinc-100 dark:border-zinc-800 flex flex-row items-center justify-between">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                Itemized Receipts & Cost Allocations
+                Itemized Receipts
               </CardTitle>
               <span className="text-xs font-mono font-semibold text-zinc-900 dark:text-zinc-100">
                 Subtotal: {formatCurrency(claim.total_amount)}
@@ -622,7 +620,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                   </tbody>
                   <tfoot>
                     <tr className="border-t border-zinc-200 dark:border-zinc-800 font-semibold bg-zinc-50/50 dark:bg-zinc-900/50">
-                      <td colSpan={7} className="py-2.5 px-4 text-right text-[10px] uppercase tracking-wider text-zinc-500">
+                      <td colSpan={5} className="py-2.5 px-4 text-right text-[10px] uppercase tracking-wider text-zinc-500">
                         Total Amount:
                       </td>
                       <td className="py-2.5 px-4 text-right font-mono text-xs text-zinc-900 dark:text-zinc-100">
@@ -775,7 +773,6 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
       <AdminCorrectionModal
         open={showCorrectionModal}
         claim={claim}
-        costCentres={costCentres}
         onConfirm={handleCorrectionConfirm}
         onCancel={() => setShowCorrectionModal(false)}
         loading={loadingAction}

@@ -6,14 +6,12 @@ import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } fr
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Claim, CostCentre } from "@/lib/types/database";
+import { Claim } from "@/lib/types/database";
 
 interface AdminCorrectionModalProps {
   open: boolean;
   claim: Claim | null;
-  costCentres: CostCentre[];
   onConfirm: (data: {
-    cost_centre_id?: string;
     purpose?: string;
     internal_reference?: string;
     bank_name?: string;
@@ -27,7 +25,6 @@ interface AdminCorrectionModalProps {
 export function AdminCorrectionModal({
   open,
   claim,
-  costCentres,
   onConfirm,
   onCancel,
   loading = false,

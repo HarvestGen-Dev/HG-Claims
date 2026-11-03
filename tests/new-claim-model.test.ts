@@ -217,7 +217,7 @@ describe("Ministry Head Submitter Model & Receipt-Level Cost Centres", () => {
   });
 
   describe("5. CSV Export Formatting", () => {
-    it("should export one row per receipt with claimant snapshot, submitter, and receipt cost centres", () => {
+    it("should export one row per receipt with claimant snapshot and submitter without cost centres", () => {
       const claim = db.getClaims(systemAdmin).find((c) => c.expenses && c.expenses.length > 1);
       expect(claim).toBeDefined();
 
@@ -236,8 +236,7 @@ describe("Ministry Head Submitter Model & Receipt-Level Cost Centres", () => {
         expect(headerLine).toContain("Claimant Name");
         expect(headerLine).toContain("Claimant Email");
         expect(headerLine).toContain("Receipt Date");
-        expect(headerLine).toContain("Cost Centre Code");
-        expect(headerLine).toContain("Cost Centre Name");
+        expect(headerLine).not.toContain("Cost Centre");
         expect(headerLine).toContain("Amount");
         expect(headerLine).toContain("Receipt Attached");
       }

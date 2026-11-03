@@ -27,7 +27,6 @@ export interface ExpenseItemDraft {
   temp_id?: string;
   expense_date: string;
   expense_category_id?: string | null;
-  cost_centre_id: string;
   vendor?: string;
   description: string;
   amount: number | string;
@@ -62,12 +61,10 @@ export function ExpenseItemsEditor({
 
   const addReceipt = () => {
     const today = new Date().toISOString().split("T")[0];
-    const defaultCostCentre = "";
     const newItem: ExpenseItemDraft = {
       temp_id: crypto.randomUUID(),
       expense_date: today,
       expense_category_id: undefined,
-      cost_centre_id: defaultCostCentre,
       vendor: "",
       description: "",
       amount: "",
@@ -283,8 +280,25 @@ export function ExpenseItemsEditor({
                 />
               </div>
 
+              {/* Description */}
+              <div className="md:col-span-6 space-y-1">
+                <label htmlFor={`receipt-${idx}-description`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                  Item Description *
+                </label>
+                <Input
+                  type="text"
+                  placeholder="e.g. Transport equipment to camp venue"
+                  id={`receipt-${idx}-description`}
+                  value={item.description}
+                  disabled={disabled}
+                  onChange={(e) => updateField(idx, "description", e.target.value)}
+                  className="h-8 text-xs bg-zinc-50/50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
+                  required
+                />
+              </div>
+
               {/* Amount (RM) */}
-              <div className="md:col-span-4 space-y-1">
+              <div className="md:col-span-3 space-y-1">
                 <label htmlFor={`receipt-${idx}-amount`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                   Amount (RM) *
                 </label>
@@ -308,9 +322,9 @@ export function ExpenseItemsEditor({
               </div>
 
               {/* Vendor */}
-              <div className="md:col-span-4 space-y-1">
+              <div className="md:col-span-6 space-y-1">
                 <label htmlFor={`receipt-${idx}-vendor`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-                  Vendor / Merchant
+                  Vendor / Merchant (Optional)
                 </label>
                 <Input
                   type="text"
@@ -323,25 +337,8 @@ export function ExpenseItemsEditor({
                 />
               </div>
 
-              {/* Description */}
-              <div className="md:col-span-5 space-y-1">
-                <label htmlFor={`receipt-${idx}-description`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-                  Item Description *
-                </label>
-                <Input
-                  type="text"
-                  placeholder="e.g. Transport equipment to camp venue"
-                  id={`receipt-${idx}-description`}
-                  value={item.description}
-                  disabled={disabled}
-                  onChange={(e) => updateField(idx, "description", e.target.value)}
-                  className="h-8 text-xs bg-zinc-50/50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
-                  required
-                />
-              </div>
-
               {/* Notes */}
-              <div className="md:col-span-3 space-y-1">
+              <div className="md:col-span-6 space-y-1">
                 <label htmlFor={`receipt-${idx}-notes`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
                   Notes (Optional)
                 </label>

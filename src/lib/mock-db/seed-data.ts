@@ -494,7 +494,7 @@ export const INITIAL_SYSTEM_SETTINGS: SystemSetting[] = [
       require_vendor_name: false,
       require_receipt_for_all_expenses: true,
       enable_internal_reference: true,
-      form_guidance_banner: "Please ensure each receipt card has an attached receipt file and cost centre before submitting for approval.",
+      form_guidance_banner: "Please ensure each receipt card has an attached receipt file before submitting for approval.",
       max_file_size_mb: 10,
       max_attachment_count: 15,
     },

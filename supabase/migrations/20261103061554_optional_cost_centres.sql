@@ -1,4 +1,17 @@
 -- Cost centres are optional; preserve historical references and all command permissions.
+ALTER TABLE public.claims ALTER COLUMN cost_centre_id DROP NOT NULL;
+ALTER TABLE public.claim_expenses ALTER COLUMN cost_centre_id DROP NOT NULL;
+
+UPDATE public.system_settings
+SET value = jsonb_set(
+  value,
+  '{form_guidance_banner}',
+  to_jsonb(replace(value->>'form_guidance_banner', ' and cost centre', ''))
+)
+WHERE key = 'claim_form_config'
+  AND value ? 'form_guidance_banner'
+  AND (value->>'form_guidance_banner') ILIKE '%cost centre%';
+
 CREATE OR REPLACE FUNCTION private.command(action text, payload jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE

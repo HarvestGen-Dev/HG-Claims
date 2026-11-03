@@ -228,8 +228,6 @@ export class FinanceClient {
       string,
       { name: string; totalCents: number; count: number }
     >();
-    const costCentres = new Map<string, { name: string; totalCents: number }>();
-
     claims.forEach(c => {
       const ministry = ministries.get(c.ministry_id) || {
         name: c.ministry?.name || "General",
@@ -239,16 +237,6 @@ export class FinanceClient {
       ministry.totalCents += moneyToCents(c.total_amount) ?? 0;
       ministry.count++;
       ministries.set(c.ministry_id, ministry);
-      c.expenses?.forEach(e => {
-        const cc = costCentres.get(e.cost_centre_id) || {
-          name: e.cost_centre
-            ? `${e.cost_centre.code} - ${e.cost_centre.name}`
-            : "General",
-          totalCents: 0,
-        };
-        cc.totalCents += moneyToCents(e.amount) ?? 0;
-        costCentres.set(e.cost_centre_id, cc);
-      });
     });
 
     return {
@@ -265,7 +253,6 @@ export class FinanceClient {
         .filter(c => !["PAID", "REJECTED"].includes(c.status))
         .map(c => ({ amount: c.total_amount }))),
       byMinistry: Array.from(ministries.values(), ({ totalCents, ...rest }) => ({ ...rest, total: totalCents / 100 })),
-      byCostCentre: Array.from(costCentres.values(), ({ totalCents, ...rest }) => ({ ...rest, total: totalCents / 100 })),
       byCategory: [],
     };
   }

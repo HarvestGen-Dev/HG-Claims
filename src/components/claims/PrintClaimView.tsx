@@ -79,7 +79,7 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
 
         {/* Itemized Expenses Table */}
         <div className="mb-6">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Itemized Receipts & Cost Allocations</h3>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Itemized Receipts</h3>
           <div className="overflow-x-auto print:overflow-visible">
           <table className="w-full text-left text-xs border-collapse border border-slate-300">
             <thead>
