@@ -111,7 +111,7 @@ export default function ProfilePage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 space-y-3 text-xs">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 [overflow-wrap:anywhere] sm:grid-cols-2">
               <div>
                 <span className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-0.5">
                   Full Name
@@ -157,7 +157,7 @@ export default function ProfilePage() {
             </div>
             {selectedBank && (
               <span className="text-[10px] font-mono font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 px-2 py-0.5 rounded">
-                {selectedBank.swiftCode} &middot; {selectedBank.paymentMode}
+                {selectedBank.swiftCode}
               </span>
             )}
           </CardHeader>
@@ -179,7 +179,7 @@ export default function ProfilePage() {
                 <option value="">Select Bank from Directory...</option>
                 {MALAYSIAN_BANKS.map((bank) => (
                   <option key={bank.swiftCode} value={bank.swiftCode}>
-                    {bank.name} ({bank.swiftCode} — {bank.paymentMode})
+                    {bank.name}
                   </option>
                 ))}
               </Select>

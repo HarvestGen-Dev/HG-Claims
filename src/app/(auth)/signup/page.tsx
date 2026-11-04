@@ -1,27 +1,17 @@
 "use client";
 
-import { formatRole } from "@/lib/auth/roles";
-
-import { useEffect, useState, useMemo, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowRight,
   Loader2,
-  ShieldCheck,
   Eye,
   EyeOff,
   AlertCircle,
-  CheckCircle2,
-  Check,
-  User,
-  Mail,
-  Lock,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
 
@@ -34,15 +24,11 @@ function SignupContent() {
   const [loadingInvite, setLoadingInvite] = useState(true);
   const [inviteData, setInviteData] = useState<{
     valid: boolean;
-    role_code?: string;
-    description?: string | null;
-    is_multi_user?: boolean;
     error?: string;
   } | null>(null);
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [isMultiUser, setIsMultiUser] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -70,7 +56,6 @@ function SignupContent() {
         const data = await res.json();
         if (res.ok && data.valid) {
           setInviteData(data);
-          setIsMultiUser(Boolean(data.is_multi_user));
         } else {
           setInviteData({ valid: false, error: data.error || "This invitation link is invalid or has expired." });
         }
@@ -84,81 +69,12 @@ function SignupContent() {
     void checkToken();
   }, [token]);
 
-  // Password Strength Evaluation
-  const passwordCriteria = useMemo(() => {
-    const hasMinLength = password.length >= 8;
-    const hasUppercase = /[A-Z]/.test(password);
-    const hasLowercase = /[a-z]/.test(password);
-    const hasNumber = /[0-9]/.test(password);
-    const hasSpecial = /[^A-Za-z0-9]/.test(password);
-    const hasGoodLength = password.length >= 12;
-
-    let score = 0;
-    if (hasMinLength) score += 1;
-    if (hasUppercase && hasLowercase) score += 1;
-    if (hasNumber) score += 1;
-    if (hasSpecial) score += 1;
-    if (hasGoodLength) score += 1;
-
-    let label = "Very Weak";
-    let color = "bg-rose-500";
-    let textColor = "text-rose-600";
-    let width = "20%";
-
-    if (password.length === 0) {
-      label = "";
-      color = "bg-slate-200";
-      textColor = "text-slate-400";
-      width = "0%";
-    } else if (score === 1) {
-      label = "Very Weak";
-      color = "bg-rose-500";
-      textColor = "text-rose-600";
-      width = "20%";
-    } else if (score === 2) {
-      label = "Weak";
-      color = "bg-orange-500";
-      textColor = "text-orange-600";
-      width = "40%";
-    } else if (score === 3) {
-      label = "Fair";
-      color = "bg-amber-500";
-      textColor = "text-amber-600";
-      width = "60%";
-    } else if (score === 4) {
-      label = "Good";
-      color = "bg-emerald-500";
-      textColor = "text-emerald-600";
-      width = "80%";
-    } else if (score >= 5) {
-      label = "Strong";
-      color = "bg-emerald-600";
-      textColor = "text-emerald-700 font-bold";
-      width = "100%";
-    }
-
-    return {
-      hasMinLength,
-      hasUppercase,
-      hasLowercase,
-      hasUpperAndLower: hasUppercase && hasLowercase,
-      hasNumber,
-      hasSpecial,
-      hasGoodLength,
-      score,
-      label,
-      color,
-      textColor,
-      width,
-    };
-  }, [password]);
-
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
   const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
   const isFormValid =
     fullName.trim().length > 0 &&
     email.trim().length > 0 &&
-    passwordCriteria.hasMinLength &&
+    password.length >= 8 &&
     passwordsMatch;
 
   async function handleSignup(e: React.FormEvent) {
@@ -170,7 +86,7 @@ function SignupContent() {
       return;
     }
 
-    if (!passwordCriteria.hasMinLength) {
+    if (password.length < 8) {
       setError("Password must be at least 8 characters long.");
       return;
     }
@@ -192,7 +108,6 @@ function SignupContent() {
           email: email.trim(),
           password,
           fullName: fullName.trim(),
-          is_multi_user: isMultiUser,
         }),
       });
 
@@ -249,36 +164,11 @@ function SignupContent() {
           </div>
         ) : (
           <div className="space-y-5 text-left">
-            {/* Invitation Details Banner */}
-            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2">
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                <ShieldCheck className="h-4 w-4 text-zinc-900" />
-                <span>Role</span>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                <Badge className="bg-zinc-900 text-white font-semibold hover:bg-zinc-800 px-2.5 py-1 text-xs">
-                  {formatRole(inviteData.role_code || "")}
-                </Badge>
-              </div>
-              {inviteData.description && (
-                <p className="text-xs text-slate-500 italic pt-0.5">&ldquo;{inviteData.description}&rdquo;</p>
-              )}
-            </div>
-
             <form className="space-y-4" onSubmit={handleSignup}>
-              <label className="flex items-start gap-2.5 text-sm">
-                <Checkbox className="mt-0.5" checked={isMultiUser} onCheckedChange={setIsMultiUser} disabled={busy} />
-                <span>
-                  <span className="block font-medium">Shared account</span>
-                  <span className="block text-muted-foreground">Choose a payee when submitting each claim.</span>
-                </span>
-              </label>
-
-              {/* Full Name */}
+              {/* Full name */}
               <div className="space-y-1.5">
                 <label htmlFor="full-name" className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Full Name</span>
+                  <span>Full name</span>
                 </label>
                 <Input
                   id="full-name"
@@ -293,11 +183,10 @@ function SignupContent() {
                 />
               </div>
 
-              {/* Email Address */}
+              {/* Email address */}
               <div className="space-y-1.5">
                 <label htmlFor="email" className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Email Address</span>
+                  <span>Email address</span>
                 </label>
                 <Input
                   id="email"
@@ -316,21 +205,16 @@ function SignupContent() {
               <div className="space-y-1.5">
                 <label htmlFor="password" className="text-xs font-semibold text-slate-700 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5 text-slate-400" />
                     <span>Password</span>
                   </span>
-                  {password && (
-                    <span className={`text-[11px] font-semibold ${passwordCriteria.textColor}`}>
-                      {passwordCriteria.label}
-                    </span>
-                  )}
                 </label>
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
                     autoComplete="new-password"
-                    placeholder="Create a strong password"
+                    aria-describedby="password-hint"
+                    minLength={8}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -340,79 +224,22 @@ function SignupContent() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    tabIndex={-1}
+                    className="absolute right-1 top-0 grid h-11 w-8 place-items-center text-slate-400 hover:text-slate-600"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
 
-                {/* Password Strength Meter Bar */}
-                {password.length > 0 && (
-                  <div className="space-y-2 pt-1">
-                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full transition-all duration-300 rounded-full ${passwordCriteria.color}`}
-                        style={{ width: passwordCriteria.width }}
-                      />
-                    </div>
-
-                    {/* Criteria Checklist */}
-                    <div className="grid grid-cols-2 gap-1.5 pt-1 text-[11px] text-slate-500">
-                      <div className={`flex items-center gap-1.5 ${passwordCriteria.hasMinLength ? "text-emerald-700 font-medium" : ""}`}>
-                        {passwordCriteria.hasMinLength ? (
-                          <Check className="w-3 h-3 text-emerald-600 shrink-0" />
-                        ) : (
-                          <span className="w-1.5 h-1.5 rounded-full bg-slate-300 ml-1 mr-0.5 shrink-0" />
-                        )}
-                        <span>8+ characters</span>
-                      </div>
-
-                      <div className={`flex items-center gap-1.5 ${passwordCriteria.hasUpperAndLower ? "text-emerald-700 font-medium" : ""}`}>
-                        {passwordCriteria.hasUpperAndLower ? (
-                          <Check className="w-3 h-3 text-emerald-600 shrink-0" />
-                        ) : (
-                          <span className="w-1.5 h-1.5 rounded-full bg-slate-300 ml-1 mr-0.5 shrink-0" />
-                        )}
-                        <span>Upper & lower case</span>
-                      </div>
-
-                      <div className={`flex items-center gap-1.5 ${passwordCriteria.hasNumber ? "text-emerald-700 font-medium" : ""}`}>
-                        {passwordCriteria.hasNumber ? (
-                          <Check className="w-3 h-3 text-emerald-600 shrink-0" />
-                        ) : (
-                          <span className="w-1.5 h-1.5 rounded-full bg-slate-300 ml-1 mr-0.5 shrink-0" />
-                        )}
-                        <span>At least 1 number</span>
-                      </div>
-
-                      <div className={`flex items-center gap-1.5 ${passwordCriteria.hasSpecial ? "text-emerald-700 font-medium" : ""}`}>
-                        {passwordCriteria.hasSpecial ? (
-                          <Check className="w-3 h-3 text-emerald-600 shrink-0" />
-                        ) : (
-                          <span className="w-1.5 h-1.5 rounded-full bg-slate-300 ml-1 mr-0.5 shrink-0" />
-                        )}
-                        <span>1 special symbol</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <p id="password-hint" className="text-sm text-muted-foreground">Use at least 8 characters.</p>
               </div>
 
-              {/* Confirm Password */}
+              {/* Confirm password */}
               <div className="space-y-1.5">
                 <label htmlFor="confirm-password" className="text-xs font-semibold text-slate-700 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Confirm Password</span>
+                    <span>Confirm password</span>
                   </span>
-                  {passwordsMatch && (
-                    <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
-                      Passwords match
-                    </span>
-                  )}
                   {passwordsMismatch && (
                     <span className="text-[11px] font-semibold text-rose-600 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" />
@@ -425,7 +252,6 @@ function SignupContent() {
                     id="confirm-password"
                     type={showConfirm ? "text" : "password"}
                     autoComplete="new-password"
-                    placeholder="Re-enter password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
@@ -441,8 +267,7 @@ function SignupContent() {
                   <button
                     type="button"
                     onClick={() => setShowConfirm(!showConfirm)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    tabIndex={-1}
+                    className="absolute right-1 top-0 grid h-11 w-8 place-items-center text-slate-400 hover:text-slate-600"
                     aria-label={showConfirm ? "Hide password" : "Show password"}
                   >
                     {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -465,7 +290,7 @@ function SignupContent() {
               >
                 {!busy && (
                   <>
-                    <span>Create Account & Sign In</span>
+                    <span>Create account</span>
                     <ArrowRight className="h-4 w-4" />
                   </>
                 )}

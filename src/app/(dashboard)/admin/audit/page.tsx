@@ -71,7 +71,7 @@ export default function AuditTrailPage() {
                 <div className="sm:hidden divide-y divide-slate-100">
                   {filtered.map((l) => (
                     <div key={l.id} className="p-4 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-1.5 [overflow-wrap:anywhere]">
                         <div>
                           <span className="font-mono font-bold text-xs text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                             {l.action}
@@ -80,7 +80,7 @@ export default function AuditTrailPage() {
                             {l.actor_name} <span className="text-[11px] text-slate-400 font-normal">({l.actor_email})</span>
                           </p>
                         </div>
-                        <span className="text-[11px] text-slate-500 font-mono whitespace-nowrap">
+                        <span className="block text-[11px] text-slate-500 font-mono">
                           {formatDateTime(l.created_at)}
                         </span>
                       </div>

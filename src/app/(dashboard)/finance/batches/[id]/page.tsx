@@ -385,15 +385,6 @@ export default function FinanceBatchDetailPage() {
                           <Hash className="w-3 h-3 text-zinc-400" />
                           {inst.payment_description}
                         </span>
-                        <span
-                          className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded ${
-                            inst.payment_mode === "LIP"
-                              ? "bg-blue-50 text-blue-800 border border-blue-200"
-                              : "bg-zinc-100 text-zinc-800 border border-zinc-200"
-                          }`}
-                        >
-                          {inst.payment_mode}
-                        </span>
                       </div>
                       <p className="font-semibold text-xs text-zinc-900">{inst.beneficiary_name}</p>
                       <p className="font-mono text-[11px] text-zinc-600">
@@ -478,7 +469,6 @@ export default function FinanceBatchDetailPage() {
                   <tr className="bg-zinc-50/40 border-b border-zinc-100 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
                     <th className="py-2.5 px-3">#</th>
                     <th className="py-2.5 px-3">Payment Desc</th>
-                    <th className="py-2.5 px-3">Mode</th>
                     <th className="py-2.5 px-3">Beneficiary Name</th>
                     <th className="py-2.5 px-3">Masked Account</th>
                     <th className="py-2.5 px-3">Bank Code</th>
@@ -498,17 +488,6 @@ export default function FinanceBatchDetailPage() {
                         <span className="inline-flex items-center gap-1 bg-zinc-100 px-2 py-0.5 rounded">
                           <Hash className="w-3 h-3 text-zinc-400" />
                           {inst.payment_description}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3">
-                        <span
-                          className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded ${
-                            inst.payment_mode === "LIP"
-                              ? "bg-blue-50 text-blue-800 border border-blue-200"
-                              : "bg-zinc-100 text-zinc-800 border border-zinc-200"
-                          }`}
-                        >
-                          {inst.payment_mode}
                         </span>
                       </td>
                       <td className="py-3 px-3 font-medium text-zinc-900">
@@ -685,10 +664,9 @@ export default function FinanceBatchDetailPage() {
                   </strong>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-zinc-500">Bank / Mode:</span>
+                  <span className="text-zinc-500">Bank code</span>
                   <span className="font-mono">
-                    {reconcileTarget.instruction.beneficiary_bank_code} (
-                    {reconcileTarget.instruction.payment_mode})
+                    {reconcileTarget.instruction.beneficiary_bank_code}
                   </span>
                 </div>
                 <div className="flex justify-between">

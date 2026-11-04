@@ -25,7 +25,6 @@ import {
   AlertCircle,
   Landmark,
   CreditCard,
-  Users,
 } from "lucide-react";
 import { showToast } from "@/lib/utils/toast";
 
@@ -33,7 +32,7 @@ export function NamePromptDialog() {
   const { user, refreshUser } = useAuth();
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
-  const [isMultiUser, setIsMultiUser] = useState(false);
+  const isMultiUser = Boolean(user?.is_multi_user);
   const [bankCode, setBankCode] = useState("");
   const [bankAccountHolderName, setBankAccountHolderName] = useState("");
   const [bankAccountNumber, setBankAccountNumber] = useState("");
@@ -64,7 +63,6 @@ export function NamePromptDialog() {
       const validName = isRealFullName(user.full_name, user.email);
       setFullName(validName ? user.full_name : "");
       setPhone(user.phone || "");
-      setIsMultiUser(Boolean(user.is_multi_user));
       const resolved = resolveCanonicalBank(user.bank_code || user.bank_name);
       setBankCode(resolved?.swiftCode || "");
       setBankAccountHolderName(
@@ -123,7 +121,6 @@ export function NamePromptDialog() {
       await iamClient.completeOnboarding({
         full_name: trimmed,
         phone: phone.trim() || undefined,
-        is_multi_user: isMultiUser,
         ...(selectedBank && !isMultiUser
           ? {
               bank_name: selectedBank.name,
@@ -135,9 +132,7 @@ export function NamePromptDialog() {
       });
       await refreshUser();
       showToast.success(
-        isMultiUser
-          ? "Multi-user account configured. You can select or add claimant bank profiles directly on the Claim page."
-          : "Profile and reimbursement bank details linked to your account.",
+        "Your profile is ready.",
         "Profile Saved"
       );
     } catch (err: unknown) {
@@ -157,12 +152,11 @@ export function NamePromptDialog() {
             <UserCheck className="w-5 h-5 text-zinc-900 dark:text-zinc-100" />
           </div>
           <DialogTitle className="text-base font-bold">
-            Complete Your Profile & Disbursement Setup
+            Finish setting up
           </DialogTitle>
         </div>
         <p className="text-xs text-slate-500 leading-relaxed">
-          Link your profile to your bank account so selecting your name on a
-          claim automatically connects your disbursement details.
+          Add the details needed to submit a claim.
           {emailAlias && !hasValidName && (
             <span className="block mt-1.5 text-[11px] text-amber-700 bg-amber-50 p-2 rounded border border-amber-200">
               Note: Email username (<strong>{emailAlias}</strong>) cannot be
@@ -173,34 +167,6 @@ export function NamePromptDialog() {
       </DialogHeader>
 
       <form onSubmit={handleSubmit} className="space-y-3.5 my-2 text-xs">
-        {/* Multi-User Account Toggle */}
-        <label className="flex items-start justify-between gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50/80 cursor-pointer hover:bg-slate-100/70 transition-colors">
-          <div className="flex items-start gap-2.5">
-            <Users className="w-4 h-4 text-zinc-800 mt-0.5 shrink-0" />
-            <div>
-              <div className="font-semibold text-slate-900">
-                Multi-User Account (Shared Ministry Login)
-              </div>
-              <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                Enable if multiple people submit claims under this account.
-                Personal bank details won&apos;t be required here — you can
-                select or add each person&apos;s bank profile during the Claim
-                page workflow.
-              </div>
-            </div>
-          </div>
-          <input
-            type="checkbox"
-            checked={isMultiUser}
-            onChange={(e) => {
-              setIsMultiUser(e.target.checked);
-              setError("");
-            }}
-            disabled={isSaving}
-            className="mt-1 h-4 w-4 rounded border-slate-300 text-zinc-900 focus:ring-zinc-900 accent-zinc-900 shrink-0"
-          />
-        </label>
-
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <label
@@ -264,7 +230,7 @@ export function NamePromptDialog() {
               </div>
               {selectedBank && (
                 <span className="text-[10px] font-mono font-semibold bg-zinc-100 text-zinc-800 px-2 py-0.5 rounded">
-                  {selectedBank.swiftCode} &middot; {selectedBank.paymentMode}
+                  {selectedBank.swiftCode}
                 </span>
               )}
             </div>
@@ -292,7 +258,7 @@ export function NamePromptDialog() {
                 </option>
                 {MALAYSIAN_BANKS.map((bank) => (
                   <option key={bank.swiftCode} value={bank.swiftCode}>
-                    {bank.name} ({bank.swiftCode})
+                    {bank.name}
                   </option>
                 ))}
               </Select>
@@ -359,11 +325,7 @@ export function NamePromptDialog() {
             disabled={isSaving || !fullName.trim()}
             className="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-xs shadow-md h-10"
           >
-            {isSaving
-              ? "Saving Profile..."
-              : isMultiUser
-                ? "Save Multi-User Account & Continue"
-                : "Save Profile & Bank Details"}
+            {isSaving ? "Saving…" : "Save profile"}
           </Button>
         </DialogFooter>
       </form>

@@ -20,8 +20,10 @@ import { showToast } from "@/lib/utils/toast";
 const roles = Object.keys(roleLabels) as RoleCode[];
 const field = "space-y-1.5";
 const form = "space-y-4 text-sm";
-const row = "grid gap-3 px-4 py-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1fr)_14rem] md:items-center md:gap-4 md:px-5";
-const rowActions = "table-actions w-fit md:justify-self-end";
+const row = "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 px-4 py-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_7.5rem_13rem] md:items-center md:gap-4 md:px-5";
+const rowIdentity = "col-span-2 min-w-0 break-words md:col-span-1";
+const rowStatus = "justify-self-end md:justify-self-start";
+const rowActions = "table-actions col-span-2 w-fit md:col-span-1 md:justify-self-end";
 
 function RoleOptions({ value, onChange }: { value: RoleCode[]; onChange: (roles: RoleCode[]) => void }) {
   return (
@@ -65,23 +67,22 @@ function UserList({ profiles, onEdit, onStatus }: {
           const active = profile.status === "ACTIVE";
           return (
             <li key={profile.id} className={row}>
-              <div className="min-w-0 break-words">
+              <div className={rowIdentity}>
                 <p className="font-medium">{profile.full_name || "Pending setup"}</p>
-                <p className="text-sm text-muted-foreground">{profile.email}</p>
-                {profile.phone && <p className="text-sm text-muted-foreground">{profile.phone}</p>}
+                <p className="mt-0.5 text-sm text-muted-foreground">{profile.email}</p>
               </div>
               <div className="text-sm">
                 <p>{profile.roles?.length ? profile.roles.map(formatRole).join(", ") : profile.is_payee_only ? "Saved payee" : "No role"}</p>
                 {profile.is_multi_user && <p className="text-muted-foreground">Shared account</p>}
               </div>
-              <div>
+              <div className={rowStatus}>
                 <Badge variant={active ? profile.onboarding_completed_at ? "success" : "warning" : "secondary"}>
                   {active ? profile.onboarding_completed_at ? "Active" : "Pending setup" : profile.status === "SUSPENDED" ? "Suspended" : "Inactive"}
                 </Badge>
               </div>
               <div className={rowActions}>
-                <Button size="sm" variant="outline" onClick={() => onEdit(profile)}>Edit</Button>
-                <Button size="sm" variant="ghost" onClick={() => onStatus(profile)}>
+                <Button variant="outline" className="min-h-11" onClick={() => onEdit(profile)}>Edit</Button>
+                <Button variant="ghost" className="min-h-11 min-w-28" onClick={() => onStatus(profile)}>
                   {active ? "Deactivate" : "Activate"}
                 </Button>
               </div>
@@ -117,6 +118,25 @@ export default function UserManagementPage() {
     setProfiles(iamClient.getProfiles());
     setInvitations(iamClient.getSignupInvitations());
   }), []);
+
+  useEffect(() => {
+    if (activeTab !== "invitations") return;
+
+    const refresh = () => {
+      if (document.visibilityState === "visible") {
+        void iamClient.refreshInvitations().catch(() => {
+          // Keep the last count visible while the connection is unavailable.
+        });
+      }
+    };
+    refresh();
+    const interval = window.setInterval(refresh, 5000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [activeTab]);
 
   function openDialog(next: typeof dialog) {
     setError("");
@@ -298,7 +318,7 @@ export default function UserManagementPage() {
                   const url = links[invite.id];
                   return (
                     <li key={invite.id} className={row}>
-                      <div className="min-w-0 break-words">
+                      <div className={rowIdentity}>
                         <p className="font-medium">{formatRole(invite.role_code)}</p>
                         {invite.description && <p className="text-sm text-muted-foreground">{invite.description}</p>}
                       </div>
@@ -306,11 +326,11 @@ export default function UserManagementPage() {
                         <p>{invite.use_count} of {invite.max_uses} used</p>
                         <p className="text-muted-foreground">Expires {new Date(invite.expires_at).toLocaleDateString()}</p>
                       </div>
-                      <div><Badge variant={status === "Active" ? "success" : "secondary"}>{status}</Badge></div>
+                      <div className={rowStatus}><Badge variant={status === "Active" ? "success" : "secondary"}>{status}</Badge></div>
                       <div className={rowActions}>
-                        {status === "Active" && url && <Button size="sm" variant="outline" onClick={() => copyLink(url)}>Copy link</Button>}
-                        {status === "Active" && <Button size="sm" variant="ghost" onClick={() => revokeInvite(invite.id)}>Revoke</Button>}
-                        <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { setDeletingInvite(invite); openDialog("delete"); }}>Delete</Button>
+                        {status === "Active" && url && <Button size="sm" variant="outline" className="min-h-11" onClick={() => copyLink(url)}>Copy link</Button>}
+                        {status === "Active" && <Button size="sm" variant="ghost" className="min-h-11" onClick={() => revokeInvite(invite.id)}>Revoke</Button>}
+                        <Button size="sm" variant="ghost" className="min-h-11 text-destructive" onClick={() => { setDeletingInvite(invite); openDialog("delete"); }}>Delete</Button>
                       </div>
                     </li>
                   );

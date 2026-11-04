@@ -97,10 +97,13 @@ export class IamClient {
     );
   }
 
+  refreshInvitations(): Promise<void> {
+    return workspaceStore.refreshDomain(IAM_ENDPOINT);
+  }
+
   async completeOnboarding(data: {
     full_name: string;
     phone?: string;
-    is_multi_user?: boolean;
     bank_name?: string;
     bank_code?: string;
     bank_account_holder_name?: string;
