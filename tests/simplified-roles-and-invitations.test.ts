@@ -43,14 +43,12 @@ describe("Simplified Role Model & Signup Invitations", () => {
   });
 
   describe("2. Admin Signup Invitation Generation", () => {
-    it("should require a ministry assignment when creating an invitation for MINISTRY_LEADER", () => {
-      expect(() => {
-        db.createSignupInvitation({
-          role_code: "MINISTRY_LEADER",
-          ministry_id: null,
-          created_by: adminUser.id,
-        });
-      }).toThrow(/ministry assignment is required/i);
+    it("creates a claimant invitation without a ministry", () => {
+      const result = db.createSignupInvitation({
+        role_code: "CLAIMANT",
+        created_by: adminUser.id,
+      });
+      expect(result.invitation.ministry_id).toBeNull();
     });
 
     it("should allow creating an invitation for FINANCE_OFFICER without ministry assignment", () => {
@@ -73,8 +71,7 @@ describe("Simplified Role Model & Signup Invitations", () => {
 
     it("should create multi-use invitation with configured usage limits and expiration", () => {
       const result = db.createSignupInvitation({
-        role_code: "MINISTRY_LEADER",
-        ministry_id: "m-youth-01",
+        role_code: "CLAIMANT",
         created_by: adminUser.id,
         description: "Youth Ministry Core Leaders",
         expires_in_days: 30,
@@ -82,7 +79,7 @@ describe("Simplified Role Model & Signup Invitations", () => {
       });
 
       expect(result.invitation.max_uses).toBe(5);
-      expect(result.invitation.ministry_id).toBe("m-youth-01");
+      expect(result.invitation.ministry_id).toBeNull();
       expect(result.invitation.use_count).toBe(0);
     });
   });
@@ -90,15 +87,14 @@ describe("Simplified Role Model & Signup Invitations", () => {
   describe("3. Invitation Token Validation & Consumption", () => {
     it("should validate an active invitation token and return role details", () => {
       const { raw_token } = db.createSignupInvitation({
-        role_code: "MINISTRY_LEADER",
-        ministry_id: "m-youth-01",
+        role_code: "CLAIMANT",
         created_by: adminUser.id,
       });
 
       const validation = db.validateSignupInvitation(raw_token);
       expect(validation.valid).toBe(true);
-      expect(validation.invitation?.role_code).toBe("MINISTRY_LEADER");
-      expect(validation.invitation?.ministry_id).toBe("m-youth-01");
+      expect(validation.invitation?.role_code).toBe("CLAIMANT");
+      expect(validation.invitation?.ministry_id).toBeNull();
     });
 
     it("should reject invalid, revoked, or non-existent tokens", () => {
@@ -116,10 +112,9 @@ describe("Simplified Role Model & Signup Invitations", () => {
       expect(revoked.reason).toContain("revoked");
     });
 
-    it("should consume token upon user registration, assigning role and ministry", () => {
+    it("should consume token upon user registration, assigning a role without a ministry", () => {
       const { raw_token } = db.createSignupInvitation({
-        role_code: "MINISTRY_LEADER",
-        ministry_id: "m-youth-01",
+        role_code: "CLAIMANT",
         created_by: adminUser.id,
         max_uses: 1,
       });
@@ -138,8 +133,8 @@ describe("Simplified Role Model & Signup Invitations", () => {
       db.getProfiles().push(newProfile);
 
       const updated = db.consumeSignupInvitation(raw_token, newUserId);
-      expect(updated.roles).toEqual(["MINISTRY_LEADER"]);
-      expect(updated.ministry_id).toBe("m-youth-01");
+      expect(updated.roles).toEqual(["CLAIMANT"]);
+      expect(updated.ministry_id).toBeNull();
       expect(updated.onboarding_completed_at).toBeNull();
 
       // Single-use token is now exhausted
@@ -215,10 +210,10 @@ describe("Simplified Role Model & Signup Invitations", () => {
     const leader: Profile = {
       id: "u-leader",
       email: "leader@example.com",
-      full_name: "Ministry Leader",
+      full_name: "Claimant",
       status: "ACTIVE",
       onboarding_completed_at: "2026-01-01T00:00:00Z",
-      roles: ["MINISTRY_LEADER"],
+      roles: ["CLAIMANT"],
       created_at: "",
       updated_at: "",
     };
@@ -245,7 +240,7 @@ describe("Simplified Role Model & Signup Invitations", () => {
       updated_at: "",
     };
 
-    it("canUserCreateClaim allows MINISTRY_LEADER and SYSTEM_ADMIN", () => {
+    it("canUserCreateClaim allows CLAIMANT and SYSTEM_ADMIN", () => {
       expect(canUserCreateClaim(leader)).toBe(true);
       expect(canUserCreateClaim(admin)).toBe(true);
       expect(canUserCreateClaim(finance)).toBe(false);
@@ -346,8 +341,7 @@ describe("Simplified Role Model & Signup Invitations", () => {
 
     it("should persist full_name upon consuming invitation and creating profile", () => {
       const { raw_token } = db.createSignupInvitation({
-        role_code: "MINISTRY_LEADER",
-        ministry_id: "m-youth-01",
+        role_code: "CLAIMANT",
         created_by: adminUser.id,
       });
 
@@ -365,7 +359,7 @@ describe("Simplified Role Model & Signup Invitations", () => {
 
       const consumed = db.consumeSignupInvitation(raw_token, newUserId);
       expect(consumed.full_name).toBe("Pastor David Tan");
-      expect(consumed.roles).toEqual(["MINISTRY_LEADER"]);
+      expect(consumed.roles).toEqual(["CLAIMANT"]);
     });
   });
 });

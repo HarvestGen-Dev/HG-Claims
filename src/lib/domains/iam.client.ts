@@ -69,7 +69,6 @@ export class IamClient {
 
   async createSignupInvitation(data: {
     role_code: RoleCode;
-    ministry_id?: string | null;
     max_uses?: number;
     expires_in_days?: number;
     description?: string;
@@ -150,7 +149,6 @@ export class IamClient {
     full_name?: string;
     phone?: string;
     roles: RoleCode[];
-    ministry_id?: string | null;
     is_multi_user?: boolean;
   }): Promise<{ success: boolean; user_id?: string }> {
     const response = await fetch("/api/users/invite", {

@@ -627,7 +627,7 @@ export default function FinanceBatchDetailPage() {
             </p>
             <div className="space-y-1">
               <label className="font-semibold text-zinc-700 block">
-                Bank Portal Batch / Upload Reference (Optional)
+                Bank Portal Batch / Upload Reference
               </label>
               <Input
                 value={bankUploadRef}

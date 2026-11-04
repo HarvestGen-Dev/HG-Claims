@@ -1,13 +1,13 @@
 export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
 
 export type RoleCode =
-  | 'MINISTRY_LEADER'
+  | 'CLAIMANT'
   | 'FINANCE_OFFICER'
   | 'SYSTEM_ADMIN';
 
 export type LegacyRoleCode =
   | RoleCode
-  | 'CLAIMANT'
+  | 'MINISTRY_LEADER'
   | 'FINAL_APPROVER';
 
 export type ClaimStatus =

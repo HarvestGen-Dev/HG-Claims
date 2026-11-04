@@ -970,7 +970,7 @@ export default function FinanceBatchesPage() {
 
             <div className="space-y-1">
               <label className="font-semibold text-zinc-700 block">
-                Batch Notes / Internal Reference (Optional)
+                Batch Notes / Internal Reference
               </label>
               <Input
                 value={batchNotes}

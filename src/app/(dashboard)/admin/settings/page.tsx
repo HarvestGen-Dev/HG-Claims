@@ -65,7 +65,6 @@ export default function SystemSettingsPage() {
 
   const [declarationText, setDeclarationText] = useState(formConfigSetting.declaration_text);
   const [guidanceBanner, setGuidanceBanner] = useState(formConfigSetting.form_guidance_banner || "");
-  const [allowMinistryChange, setAllowMinistryChange] = useState(formConfigSetting.allow_claimant_change_ministry);
   const [requireVendor, setRequireVendor] = useState(formConfigSetting.require_vendor_name || false);
   const [requireReceipt, setRequireReceipt] = useState(formConfigSetting.require_receipt_for_all_expenses);
   const [enableInternalRef, setEnableInternalRef] = useState(formConfigSetting.enable_internal_reference);
@@ -97,7 +96,7 @@ export default function SystemSettingsPage() {
         } },
         { key: "claim_form_config", value: {
         declaration_text: declarationText,
-        allow_claimant_change_ministry: allowMinistryChange,
+        allow_claimant_change_ministry: true,
         require_vendor_name: requireVendor,
         require_receipt_for_all_expenses: requireReceipt,
         enable_internal_reference: enableInternalRef,
@@ -206,19 +205,6 @@ export default function SystemSettingsPage() {
 
             {/* Field Toggles Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={allowMinistryChange}
-                  onChange={(e) => setAllowMinistryChange(e.target.checked)}
-                  className="mt-0.5 rounded text-zinc-900 focus:ring-zinc-900 accent-zinc-900"
-                />
-                <div>
-                  <strong className="text-slate-800 block">Allow Claimant to Change Ministry</strong>
-                  <span className="text-[11px] text-slate-500">If unchecked, claims are locked to the user&apos;s assigned default ministry.</span>
-                </div>
-              </label>
-
               <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors">
                 <input
                   type="checkbox"

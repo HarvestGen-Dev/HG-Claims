@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { hasSameRequestOrigin } from "@/lib/utils/request-origin";
 import { createClient } from "@/lib/supabase/server";
 
 export const NO_STORE_HEADERS = { "Cache-Control": "private, no-store" };
@@ -22,7 +23,17 @@ export async function executeRpcCommand(
   const { data, error } = await client.rpc("nlcc_command", { action, payload });
   if (error) {
     const expected = ["P0001", "42501", "PT409"].includes(error.code);
-    if (!expected) console.error("Domain command failed", { action, code: error.code });
+    // Server-side only: log the full Postgres diagnostics (never the payload,
+    // which may contain bank details) so unexpected failures are diagnosable.
+    if (!expected) {
+      console.error("Domain command failed", {
+        action,
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      });
+    }
     return {
       error: expected
         ? error.message
@@ -69,7 +80,15 @@ export async function fetchAuthorizedSnapshot(
       ({ data, error } = await client.rpc("nlcc_snapshot"));
     }
     if (error) {
-      if (error.code !== "42501") console.error("Workspace snapshot failed", { domain, code: error.code });
+      if (error.code !== "42501") {
+        console.error("Workspace snapshot failed", {
+          domain,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+        });
+      }
       return {
         error:
           error.code === "42501"
@@ -92,8 +111,7 @@ export async function handleDomainCommandRequest(
   request: NextRequest,
   executor: DomainExecutor
 ): Promise<NextResponse> {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== request.nextUrl.origin) {
+  if (!hasSameRequestOrigin(request)) {
     return NextResponse.json(
       { error: "Invalid request origin." },
       { status: 403, headers: NO_STORE_HEADERS }

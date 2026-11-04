@@ -1,5 +1,7 @@
 "use client";
 
+import { formatRole } from "@/lib/auth/roles";
+
 import { useEffect, useState, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -9,17 +11,16 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
-  Building2,
   CheckCircle2,
   Check,
   User,
   Mail,
   Lock,
-  Users,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -34,7 +35,6 @@ function SignupContent() {
   const [inviteData, setInviteData] = useState<{
     valid: boolean;
     role_code?: string;
-    ministry_name?: string | null;
     description?: string | null;
     is_multi_user?: boolean;
     error?: string;
@@ -208,18 +208,12 @@ function SignupContent() {
       } else {
         router.replace("/login");
       }
-    } catch (cause: any) {
+    } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Registration failed.");
     } finally {
       setBusy(false);
     }
   }
-
-  const roleLabels: Record<string, string> = {
-    MINISTRY_LEADER: "Ministry Leader",
-    FINANCE_OFFICER: "Finance Officer",
-    SYSTEM_ADMIN: "System Administrator",
-  };
 
   return (
     <div className="auth-page">
@@ -227,8 +221,7 @@ function SignupContent() {
         <BrandLogo priority />
       </header>
       <main className="auth-content max-w-md">
-        <p className="text-sm font-medium text-zinc-600 mb-2">Account Registration</p>
-        <h1 className="text-3xl font-semibold mb-6">Create Your Account</h1>
+        <h1 className="text-3xl font-semibold mb-6">Create your account</h1>
 
         {loadingInvite ? (
           <div className="py-12 flex flex-col items-center justify-center space-y-3 text-slate-500">
@@ -260,18 +253,12 @@ function SignupContent() {
             <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2">
               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                 <ShieldCheck className="h-4 w-4 text-zinc-900" />
-                <span>Invited System Role</span>
+                <span>Role</span>
               </div>
               <div className="flex flex-wrap items-center gap-2 pt-0.5">
                 <Badge className="bg-zinc-900 text-white font-semibold hover:bg-zinc-800 px-2.5 py-1 text-xs">
-                  {roleLabels[inviteData.role_code || ""] || inviteData.role_code}
+                  {formatRole(inviteData.role_code || "")}
                 </Badge>
-                {inviteData.ministry_name && (
-                  <Badge variant="outline" className="text-slate-700 flex items-center gap-1 text-xs bg-white border-slate-300">
-                    <Building2 className="h-3 w-3 text-slate-400" />
-                    {inviteData.ministry_name}
-                  </Badge>
-                )}
               </div>
               {inviteData.description && (
                 <p className="text-xs text-slate-500 italic pt-0.5">&ldquo;{inviteData.description}&rdquo;</p>
@@ -279,26 +266,12 @@ function SignupContent() {
             </div>
 
             <form className="space-y-4" onSubmit={handleSignup}>
-              {/* Multi-User Account Toggle */}
-              <label className="flex items-start justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50/80 cursor-pointer hover:bg-slate-100/70 transition-colors">
-                <div className="flex items-start gap-2.5">
-                  <Users className="h-4 w-4 text-zinc-900 mt-0.5 shrink-0" />
-                  <div>
-                    <div className="text-xs font-semibold text-slate-900">
-                      Multi-User Account (Shared by Multiple Claimants)
-                    </div>
-                    <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                      Enable if multiple people use this account. You won&apos;t be prompted for a personal bank account after creation — bank profiles are selected or added on the Claim page.
-                    </div>
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={isMultiUser}
-                  onChange={(e) => setIsMultiUser(e.target.checked)}
-                  disabled={busy}
-                  className="mt-1 h-4 w-4 rounded border-slate-300 text-zinc-900 focus:ring-zinc-900 accent-zinc-900 shrink-0"
-                />
+              <label className="flex items-start gap-2.5 text-sm">
+                <Checkbox className="mt-0.5" checked={isMultiUser} onCheckedChange={setIsMultiUser} disabled={busy} />
+                <span>
+                  <span className="block font-medium">Shared account</span>
+                  <span className="block text-muted-foreground">Choose a payee when submitting each claim.</span>
+                </span>
               </label>
 
               {/* Full Name */}

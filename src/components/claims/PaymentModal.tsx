@@ -60,7 +60,7 @@ export function PaymentModal({
   };
 
   const claimantName = claim.claimant_name || claim.claimant?.full_name || "Payee";
-  const submitterName = claim.submitted_by?.full_name || claim.claimant?.full_name || "Ministry Head";
+  const submitterName = claim.submitted_by?.full_name || claim.claimant?.full_name || "Claimant";
 
   const handleCopyAccount = () => {
     if (claim.bank_account_number) {
@@ -176,7 +176,7 @@ export function PaymentModal({
           {/* Internal Notes */}
           <div className="sm:col-span-2 space-y-1">
             <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-              Finance Notes (Optional)
+              Finance Notes
             </label>
             <Input
               type="text"

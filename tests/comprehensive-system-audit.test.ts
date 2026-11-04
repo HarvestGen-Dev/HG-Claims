@@ -34,7 +34,7 @@ describe("Comprehensive NLCC System & Workflow Test Suite", () => {
     status: "ACTIVE",
     ministry_id: "m-worship-02",
     onboarding_completed_at: "2026-01-01T00:00:00Z",
-    roles: ["MINISTRY_LEADER"],
+    roles: ["CLAIMANT"],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };

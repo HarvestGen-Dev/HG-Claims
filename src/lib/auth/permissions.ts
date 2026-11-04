@@ -8,7 +8,7 @@ export function userHasRole(user: Profile | null | undefined, role: RoleCode): b
 
 export function canUserCreateClaim(user: Profile | null | undefined): boolean {
   if (!user || user.status !== "ACTIVE" || !user.roles) return false;
-  return user.roles.includes("MINISTRY_LEADER") || user.roles.includes("SYSTEM_ADMIN");
+  return user.roles.includes("CLAIMANT") || user.roles.includes("SYSTEM_ADMIN");
 }
 
 export function isClaimSubmitter(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
@@ -70,9 +70,7 @@ export function canUserViewClaim(user: Profile | null | undefined, claim: Claim 
   if (!user || !claim || user.status !== "ACTIVE" || !user.roles) return false;
   if (user.roles.includes("SYSTEM_ADMIN")) return true;
   if (user.roles.includes("FINANCE_OFFICER")) return true;
-  if (isClaimSubmitter(user, claim)) return true;
-  if (user.roles.includes("MINISTRY_LEADER") && user.ministry_id && user.ministry_id === claim.ministry_id) return true;
-  return false;
+  return isClaimSubmitter(user, claim) || claim.claimant_id === user.id;
 }
 
 export function isRealFullName(name?: string | null, email?: string | null): boolean {

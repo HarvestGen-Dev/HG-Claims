@@ -1,5 +1,6 @@
 "use client";
 
+import { formatRole } from "@/lib/auth/roles";
 import React, { useState } from "react";
 import { MessageSquare, Send, Lock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -85,7 +86,7 @@ export function ClaimComments({
                       {c.author?.full_name || "User"}
                     </span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                      {c.author_role.replace(/_/g, " ")}
+                      {formatRole(c.author_role)}
                     </span>
                     {isInternalNote && (
                       <span className="flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded dark:bg-amber-900 dark:text-amber-200">

@@ -4,7 +4,7 @@ import type { Claim, ClaimStatus, Profile, RoleCode } from "@/lib/types/database
 
 const user: Profile = {
   id: "reviewer", email: "reviewer@example.com", full_name: "Reviewer",
-  status: "ACTIVE", roles: ["MINISTRY_LEADER", "FINANCE_OFFICER", "SYSTEM_ADMIN"],
+  status: "ACTIVE", roles: ["CLAIMANT", "FINANCE_OFFICER", "SYSTEM_ADMIN"],
   created_at: "2026-09-18", updated_at: "2026-09-18",
 };
 const claim: Claim = {
@@ -41,7 +41,7 @@ describe("Finance verification eligibility", () => {
   });
 
   it("blocks users without finance or administrator access", () => {
-    expect(canUserVerifyClaim({ ...user, roles: ["MINISTRY_LEADER"] }, claim)).toBe(false);
+    expect(canUserVerifyClaim({ ...user, roles: ["CLAIMANT"] }, claim)).toBe(false);
   });
 
   it("blocks inactive accounts and missing user or claim data", () => {

@@ -1,3 +1,4 @@
+import { canUserViewClaim } from "@/lib/auth/permissions";
 import {
   Claim,
   ClaimExpense,
@@ -498,25 +499,8 @@ class DatabaseRepository {
   }): Claim[] {
     let result = this.claims.map(c => this.enrichClaim(c));
 
-    // RBAC scoping
     if (currentUser) {
-      const isSuper = currentUser.roles?.includes("SYSTEM_ADMIN") || currentUser.roles?.includes("FINANCE_OFFICER");
-      const isLeader = currentUser.roles?.includes("MINISTRY_LEADER");
-
-      if (!isSuper) {
-        result = result.filter(c => {
-          // Submitter or claimant sees own claims
-          if ((c.submitted_by_user_id && c.submitted_by_user_id === currentUser.id) || c.claimant_id === currentUser.id) return true;
-
-          // Ministry leader sees claims for their ministry
-          if (isLeader) {
-            const min = this.ministries.find(m => m.id === c.ministry_id);
-            if (min && (min.leader_id === currentUser.id || currentUser.ministry_id === c.ministry_id) && c.status !== "DRAFT") return true;
-          }
-
-          return false;
-        });
-      }
+      result = result.filter(claim => canUserViewClaim(currentUser, claim));
     }
 
     if (filters) {
@@ -862,7 +846,7 @@ class DatabaseRepository {
       id: `act-${Date.now()}`,
       claim_id: claim.id,
       actor_id: submitterId,
-      actor_role: submitterProfile?.roles?.[0] || "MINISTRY_LEADER",
+      actor_role: submitterProfile?.roles?.[0] || "CLAIMANT",
       action: "SUBMIT",
       comment: `Claim submitted for ${claim.claimant_name} (Total: RM ${total_amount.toFixed(2)})`,
       previous_status: "DRAFT",
@@ -876,7 +860,7 @@ class DatabaseRepository {
       claim_id: claim.id,
       type: "CLAIM_SUBMITTED",
       title: "New Claim Awaiting Finance Review",
-      message: `${submitterProfile?.full_name || "A ministry leader"} submitted ${claim.claim_number} (RM ${total_amount.toFixed(2)}) for ${claim.claimant_name}.`,
+      message: `${submitterProfile?.full_name || "A claimant"} submitted ${claim.claim_number} (RM ${total_amount.toFixed(2)}) for ${claim.claimant_name}.`,
       link: `/finance/claims/${claim.id}`,
     });
 
@@ -1183,7 +1167,7 @@ class DatabaseRepository {
       id: `act-${Date.now()}`,
       claim_id: claim.id,
       actor_id: params.claimant.id,
-      actor_role: params.claimant.roles?.[0] || "MINISTRY_LEADER",
+      actor_role: params.claimant.roles?.[0] || "CLAIMANT",
       action: "RESUBMIT",
       comment: params.response_comment || "Claim updated with requested clarifications and resubmitted.",
       previous_status: "RETURNED_FOR_CLARIFICATION",
@@ -1577,10 +1561,6 @@ class DatabaseRepository {
     is_multi_user?: boolean;
     created_by: string;
   }): { invitation: SignupInvitation; raw_token: string; signup_url: string } {
-    if (params.role_code === "MINISTRY_LEADER" && !params.ministry_id) {
-      throw new Error("A ministry assignment is required when creating an invitation for a Ministry Leader.");
-    }
-
     const raw_token = generateSecureToken(32);
     const token_hash = hashToken(raw_token);
     const now = new Date();
@@ -1591,7 +1571,7 @@ class DatabaseRepository {
       id: `inv-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       token_hash,
       role_code: params.role_code,
-      ministry_id: params.role_code === "MINISTRY_LEADER" ? params.ministry_id : null,
+      ministry_id: null,
       created_by: params.created_by,
       description: params.description || null,
       expires_at,
@@ -1610,7 +1590,7 @@ class DatabaseRepository {
       action: "CREATE_SIGNUP_INVITATION",
       entity_type: "SIGNUP_INVITATION",
       entity_id: newInv.id,
-      after_data: { role_code: params.role_code, ministry_id: params.ministry_id, max_uses: newInv.max_uses, expires_at },
+      after_data: { role_code: params.role_code, max_uses: newInv.max_uses, expires_at },
     });
     this.persist();
 
@@ -1668,8 +1648,8 @@ class DatabaseRepository {
 
     const updated = this.updateProfile(userId, {
       roles: [validation.invitation.role_code],
-      ministry_id: validation.invitation.ministry_id || null,
-      default_ministry_id: validation.invitation.ministry_id || null,
+      ministry_id: null,
+      default_ministry_id: null,
       is_multi_user: Boolean(validation.invitation.is_multi_user),
     });
 

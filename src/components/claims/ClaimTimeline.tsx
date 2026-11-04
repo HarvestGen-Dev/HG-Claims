@@ -1,3 +1,4 @@
+import { formatRole } from "@/lib/auth/roles";
 import React from "react";
 import { CheckCircle2, Circle, Clock, XCircle, RotateCcw } from "lucide-react";
 import { ClaimWorkflowStep, ApprovalAction } from "@/lib/types/database";
@@ -76,7 +77,7 @@ export function ClaimTimeline({ steps }: ClaimTimelineProps) {
                 {step.assigned_user ? (
                   <span>Assigned: <strong className="text-zinc-700 dark:text-zinc-300">{step.assigned_user.full_name}</strong></span>
                 ) : (
-                  <span>Role: <strong className="text-zinc-700 dark:text-zinc-300">{(step.approver_role || "Approver").replace(/_/g, " ")}</strong></span>
+                  <span>Role: <strong className="text-zinc-700 dark:text-zinc-300">{formatRole(step.approver_role || "Approver")}</strong></span>
                 )}
 
                 {step.completed_at && (

@@ -1,5 +1,7 @@
 "use client";
 
+import { formatRole } from "@/lib/auth/roles";
+
 import { Select } from "@/components/ui/select";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -16,13 +18,13 @@ import {
   ShieldCheck,
   Landmark,
   CreditCard,
-  Users,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
 import { iamClient } from "@/lib/domains";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { BrandLogo } from "@/components/BrandLogo";
 import { showToast } from "@/lib/utils/toast";
@@ -191,12 +193,6 @@ function OnboardingContent() {
     }
   }
 
-  const roleLabels: Record<string, string> = {
-    MINISTRY_LEADER: "Ministry Leader",
-    FINANCE_OFFICER: "Finance Officer",
-    SYSTEM_ADMIN: "System Administrator",
-  };
-
   if (isLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center text-sm text-slate-500">
@@ -219,7 +215,7 @@ function OnboardingContent() {
             Welcome to Harvest Generation
           </h1>
           <p className="mt-1.5 text-xs sm:text-sm text-slate-600">
-            Complete your personal profile, default reimbursement bank account, and password.
+            Set up your profile to start using the portal.
           </p>
         </div>
 
@@ -238,14 +234,12 @@ function OnboardingContent() {
             </div>
             {user.roles && user.roles.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-1">
-                {user.roles
-                  .filter((r) => r !== "CLAIMANT")
-                  .map((r) => (
+                {user.roles.map((r) => (
                     <Badge
                       key={r}
                       className="bg-zinc-900 text-white hover:bg-zinc-800 text-[10px] px-2 py-0.5"
                     >
-                      {roleLabels[r] || r}
+                      {formatRole(r)}
                     </Badge>
                   ))}
               </div>
@@ -253,35 +247,18 @@ function OnboardingContent() {
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
-            {/* Multi-User Account Toggle */}
-            <label className="flex items-start justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50/80 cursor-pointer hover:bg-slate-100/70 transition-colors">
-              <div className="flex items-start gap-2.5">
-                <Users className="h-4 w-4 text-zinc-900 mt-0.5 shrink-0" />
-                <div>
-                  <div className="text-xs font-semibold text-slate-900">
-                    Multi-User Account (Shared by Multiple Claimants)
-                  </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                    Enable if multiple people use this account. Personal bank details will not be required here — you can select or add each person&apos;s bank profile during the Claim page workflow.
-                  </div>
-                </div>
-              </div>
-              <input
-                type="checkbox"
-                checked={isMultiUser}
-                onChange={(e) => {
-                  setIsMultiUser(e.target.checked);
-                  setError("");
-                }}
-                disabled={busy}
-                className="mt-1 h-4 w-4 rounded border-slate-300 text-zinc-900 focus:ring-zinc-900 accent-zinc-900 shrink-0"
-              />
+            <label className="flex items-start gap-2.5 text-sm">
+              <Checkbox className="mt-0.5" checked={isMultiUser} onCheckedChange={(checked) => { setIsMultiUser(checked); setError(""); }} disabled={busy} />
+              <span>
+                <span className="block font-medium">Shared account</span>
+                <span className="block text-muted-foreground">Choose a payee when submitting each claim.</span>
+              </span>
             </label>
 
             {/* Section 1: Personal Details */}
             <div className="space-y-3">
               <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-                1. Personal Details
+                Personal details
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -339,7 +316,7 @@ function OnboardingContent() {
             <div className="pt-3 border-t border-slate-100 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-                  2. Reimbursement Bank Details
+                  Bank details
                 </span>
                 {selectedBank && (
                   <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold bg-zinc-100 text-zinc-800 px-2 py-0.5 rounded">
@@ -430,7 +407,7 @@ function OnboardingContent() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200/70">
                     <div className="space-y-1">
                       <label className="text-[11px] font-medium text-slate-600 block">
-                        New IC No. (Optional)
+                        New IC No.
                       </label>
                       <Input
                         type="text"
@@ -443,7 +420,7 @@ function OnboardingContent() {
                     </div>
                     <div className="space-y-1">
                       <label className="text-[11px] font-medium text-slate-600 block">
-                        Beneficiary Address (Optional)
+                        Beneficiary Address
                       </label>
                       <Input
                         type="text"
@@ -463,7 +440,7 @@ function OnboardingContent() {
             {/* Section 3: Password Setup */}
             <div className="pt-3 border-t border-slate-100 space-y-3">
               <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-                3. Account Security
+                Account security
               </div>
 
               <div className="space-y-1.5">
@@ -473,11 +450,7 @@ function OnboardingContent() {
                 >
                   <Lock className="h-3.5 w-3.5 text-slate-400" />
                   Set Account Password{" "}
-                  {isInviteFlow ? (
-                    <span className="text-red-500">*</span>
-                  ) : (
-                    <span className="text-slate-400 text-[11px] font-normal">(Optional)</span>
-                  )}
+                  {isInviteFlow && <span className="text-red-500">*</span>}
                 </label>
                 <div className="relative">
                   <Input
@@ -548,7 +521,7 @@ function OnboardingContent() {
               type="submit"
             >
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-              {busy ? "Completing Registration..." : "Complete Registration & Enter Portal"}
+              {busy ? "Saving…" : "Finish setup"}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </form>

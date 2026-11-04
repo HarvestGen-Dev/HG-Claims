@@ -77,12 +77,12 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         className={cn(
           "flex min-h-11 items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors group",
           isActive
-            ? "bg-brand-blue text-brand-charcoal font-semibold shadow-sm"
+            ? "bg-brand-cream/15 text-brand-cream font-semibold"
             : "text-brand-cream hover:bg-brand-cream/10"
         )}
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className={cn("transition-colors shrink-0", isActive ? "text-brand-charcoal" : "text-brand-cream/70 group-hover:text-brand-cream")}>
+          <span className={cn("transition-colors shrink-0", isActive ? "text-brand-cream" : "text-brand-cream/70 group-hover:text-brand-cream")}>
             {icon}
           </span>
           <span className="truncate">{label}</span>
@@ -109,9 +109,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       <div className="px-3 py-2 mb-6 flex items-start justify-between">
         <div>
           <Link href="/dashboard" onClick={onNavigate} aria-label="Harvest Generation dashboard" className="block w-fit">
-            <BrandLogo priority className="text-brand-cream dark:text-brand-cream" />
+            <BrandLogo priority className="text-[1.3125rem] text-brand-cream sm:text-[1.375rem]" />
           </Link>
-          <p className="mt-1 text-xs text-brand-cream/75">Claims Management</p>
+          <p className="mt-1 text-xs text-brand-cream/75">Expense claims</p>
         </div>
         {onNavigate && (
           <button
@@ -125,7 +125,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         )}
       </div>
 
-      {/* Primary Action - Only for Ministry Leaders and Admins */}
+      {/* Primary Action - Only for Claimants and Admins */}
       {canCreate && (
         <div className="px-1 mb-3">
           <Link
@@ -180,7 +180,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
               Admin
             </div>
             {navItem("/admin", "Overview", <ShieldCheck className="w-4 h-4" />, undefined, true)}
-            {navItem("/admin/users", "Users & Roles", <Users className="w-4 h-4" />)}
+            {navItem("/admin/users", "Users & invitations", <Users className="w-4 h-4" />)}
             {navItem("/admin/ministries", "Ministries", <Building2 className="w-4 h-4" />)}
             {navItem("/admin/workflows", "Workflows", <GitBranch className="w-4 h-4" />)}
             {navItem("/admin/audit", "Audit Trail", <History className="w-4 h-4" />)}

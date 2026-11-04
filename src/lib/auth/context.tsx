@@ -29,7 +29,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<Profile | null>(null);
-  const [activeRole, setActiveRole] = useState<RoleCode>("MINISTRY_LEADER");
+  const [activeRole, setActiveRole] = useState<RoleCode>("CLAIMANT");
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshUser = useCallback(async () => {
     const profile = await workspaceStore.refresh();
     setUser(profile);
-    const primaryRole = (profile?.roles?.[0] as RoleCode) || "MINISTRY_LEADER";
+    const primaryRole = (profile?.roles?.[0] as RoleCode) || "CLAIMANT";
     setActiveRole(primaryRole);
     setError("");
   }, []);

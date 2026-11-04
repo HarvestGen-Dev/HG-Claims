@@ -31,6 +31,17 @@ describe("Production workspace API", () => {
     expect((await POST(request({ action: "save_draft", payload: [] }))).status).toBe(400);
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
+  it("uses the browser's loopback origin for writes on a numeric local host", async () => {
+    mocks.rpc.mockResolvedValue({ data: { id: "record" }, error: null });
+    const loopbackRequest = (origin: string) => new NextRequest("http://127.0.0.1:3167/api/workspace", {
+      method: "POST",
+      headers: { "content-type": "application/json", host: "127.0.0.1:3167", origin },
+      body: JSON.stringify({ action: "delete_claim", payload: { id: "record" } }),
+    });
+    expect((await POST(loopbackRequest("http://127.0.0.1:3167"))).status).toBe(200);
+    expect((await POST(loopbackRequest("http://localhost:3167"))).status).toBe(403);
+    expect((await POST(loopbackRequest("http://127.0.0.1:3168"))).status).toBe(403);
+  });
   it("rejects unauthenticated and cross-origin writes", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
     expect((await POST(request({ action: "delete_claim", payload: {} }))).status).toBe(401);
