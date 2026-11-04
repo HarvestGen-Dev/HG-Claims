@@ -182,14 +182,14 @@ export default function FinancialReportsPage() {
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <Card className="lg:col-span-12 border-zinc-200/80 shadow-2xs">
+          <Card className="min-w-0 lg:col-span-12 border-zinc-200/80 shadow-2xs">
             <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                 Expenditure by Ministry
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4">
-              <div className="h-64 w-full">
+              <div className="h-64 w-full overflow-hidden">
                 <FinanceReportChart data={ministryChartData} />
               </div>
             </CardContent>
