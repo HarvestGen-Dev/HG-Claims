@@ -333,11 +333,11 @@ export default function FinanceBatchDetailPage() {
             </span>
           </div>
 
-          <div className="p-3.5 rounded-xl border border-zinc-200 bg-zinc-900 text-white">
+          <div className="p-3.5 rounded-xl border border-zinc-200 bg-accent text-accent-foreground">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block">
               Frozen Total (MYR)
             </span>
-            <span className="text-lg font-bold font-mono text-emerald-400 tabular-nums">
+            <span className="text-lg font-bold font-mono text-primary tabular-nums">
               {formatCurrency(batch.total_amount)}
             </span>
           </div>
@@ -655,7 +655,7 @@ export default function FinanceBatchDetailPage() {
                 onClick={handleRecordBankUpload}
                 loading={busy}
                 disabled={busy}
-                className="bg-zinc-900 hover:bg-zinc-800 text-white"
+                className="bg-primary text-primary-foreground"
               >
                 Save Upload Status
               </Button>

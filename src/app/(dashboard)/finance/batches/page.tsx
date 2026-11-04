@@ -309,11 +309,11 @@ export default function FinanceBatchesPage() {
                 </span>
               </div>
 
-              <div className="p-3 rounded-xl border border-zinc-200 bg-zinc-900 text-white">
+              <div className="p-3 rounded-xl border border-zinc-200 bg-accent text-accent-foreground">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block">
                   Batch Total (MYR)
                 </span>
-                <span className="text-lg font-bold font-mono text-emerald-400 tabular-nums">
+                <span className="text-lg font-bold font-mono text-primary tabular-nums">
                   {formatCurrency(preview.totalAmount)}
                 </span>
                 <span className="text-[10px] text-zinc-400 block">
@@ -409,7 +409,7 @@ export default function FinanceBatchesPage() {
                     setFinalizeError("");
                     setConfirmModalOpen(true);
                   }}
-                  className="h-8 bg-zinc-900 hover:bg-zinc-800 text-white text-xs gap-1.5"
+                  className="h-8 bg-primary text-primary-foreground text-xs gap-1.5"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
                   <span>
@@ -639,14 +639,14 @@ export default function FinanceBatchesPage() {
             {/* Proposed Consolidated Bank Transfer Rows Preview */}
             {preview.proposedInstructions.length > 0 && (
               <Card className="border-zinc-200/80 shadow-2xs overflow-hidden">
-                <CardHeader className="py-2.5 px-4 bg-zinc-900 text-white flex flex-row items-center justify-between">
+                <CardHeader className="py-2.5 px-4 bg-accent text-accent-foreground flex flex-row items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Landmark className="w-4 h-4 text-emerald-400" />
-                    <CardTitle className="text-xs font-semibold uppercase tracking-wider text-white">
+                    <Landmark className="w-4 h-4 text-primary" />
+                    <CardTitle className="text-xs font-semibold uppercase tracking-wider text-accent-foreground">
                       2. Proposed Alliance Bank Transfer Rows Preview ({preview.totalTransfers} Rows)
                     </CardTitle>
                   </div>
-                  <span className="text-[11px] font-mono text-emerald-300">
+                  <span className="text-[11px] font-mono text-primary">
                     Total: {formatCurrency(preview.totalAmount)}
                   </span>
                 </CardHeader>
@@ -717,7 +717,7 @@ export default function FinanceBatchesPage() {
                                   </span>
                                 </td>
                                 <td className="py-2.5 px-3 text-center">
-                                  <Badge className="bg-zinc-900 text-white text-[10px]">
+                                  <Badge className="bg-accent text-accent-foreground text-[10px]">
                                     {inst.claimIds.length}{" "}
                                     {inst.claimIds.length === 1
                                       ? "Claim"
@@ -1002,7 +1002,7 @@ export default function FinanceBatchesPage() {
                 onClick={handleFinalizeBatch}
                 loading={finalizing}
                 disabled={finalizing}
-                className="bg-zinc-900 hover:bg-zinc-800 text-white"
+                className="bg-primary text-primary-foreground"
               >
                 {finalizing ? "Generating .xls..." : "Generate & Download .xls File"}
               </Button>
