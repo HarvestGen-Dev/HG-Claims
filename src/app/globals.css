@@ -10,17 +10,17 @@
     --brand-olive: 91 108 50; /* #5B6C32 */
     --brand-terracotta: 217 95 59; /* #D95F3B */
     --brand-blue: 163 191 217; /* #A3BFD9 */
-    --background: var(--brand-cream);
+    --background: 250 248 245;
     --foreground: var(--brand-charcoal);
 
-    --card: var(--brand-cream);
+    --card: 255 254 252;
     --card-foreground: var(--brand-charcoal);
 
-    --popover: var(--brand-cream);
+    --popover: var(--card);
     --popover-foreground: var(--brand-charcoal);
 
-    --primary: var(--brand-terracotta);
-    --primary-foreground: var(--brand-cream);
+    --primary: 174 63 39;
+    --primary-foreground: 255 255 255;
 
     --secondary: var(--brand-blue);
     --secondary-foreground: var(--brand-charcoal);
@@ -34,8 +34,8 @@
     --destructive: 220 40 40;
     --destructive-foreground: 250 250 250;
 
-    --border: 225 213 203;
-    --input: 202 188 175;
+    --border: 229 223 216;
+    --input: 207 199 190;
     --ring: var(--brand-terracotta);
 
     --radius: 0.625rem;
@@ -51,8 +51,8 @@
     --popover: var(--brand-charcoal);
     --popover-foreground: var(--brand-cream);
 
-    --primary: var(--brand-terracotta);
-    --primary-foreground: var(--brand-cream);
+    --primary: 174 63 39;
+    --primary-foreground: 255 255 255;
 
     --secondary: var(--brand-blue);
     --secondary-foreground: var(--brand-charcoal);
@@ -79,10 +79,8 @@
 }
 
 @layer utilities {
-  .text-xs { font-size: 0.875rem; line-height: 1.4rem; }
+  .text-xs { font-size: 0.8125rem; line-height: 1.25rem; }
   .text-\[10px\], .text-\[11px\] { font-size: 0.75rem; line-height: 1.125rem; }
-  .rounded-xl, .rounded-2xl { border-radius: 0.875rem; }
-  .tracking-tight, .tracking-wide, .tracking-wider, .tracking-widest { letter-spacing: 0; }
 }
 
 .auth-page { min-height: 100dvh; background: rgb(var(--background)); display: flex; flex-direction: column; padding: 32px; border-top: 3px solid rgb(var(--primary)); }
@@ -94,21 +92,14 @@
 .workspace-content h3, .workspace-content label { text-transform: none; }
 .workspace-content input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
 .workspace-content select { min-height: 44px; }
-.workspace-content button { min-height: 40px; }
 .workspace-content button.bg-zinc-900 { background-color: rgb(var(--primary)); color: rgb(var(--primary-foreground)); }
 .workspace-content button.bg-zinc-900:hover { filter: brightness(.9); }
-.workspace-content th { white-space: nowrap; color: #52525b; text-transform: none; font-weight: 500; }
+.workspace-content th { white-space: nowrap; color: rgb(var(--muted-foreground)); text-transform: none; font-weight: 500; }
 .workspace-content td { vertical-align: middle; }
 .workspace-content td.font-mono, .workspace-content td.text-right { white-space: nowrap; }
 .workspace-content .grid > * { min-width: 0; }
-/* Church palette: cream, terracotta, sky blue, and olive. */
-.claim-summary > a > div { border: 1px solid rgb(var(--border)); border-top: 3px solid #a3bfd9; border-radius: 12px; padding: 16px; background: rgb(var(--brand-blue)); box-shadow: 0 2px 8px #3a3a3a05; }
-.claim-summary > a:nth-child(2) > div { border-top-color: rgb(var(--brand-terracotta)); background: rgb(var(--brand-cream)); }
-.claim-summary > a:nth-child(3) > div { border-top-color: rgb(var(--brand-terracotta)); background: rgb(var(--brand-cream)); }
-.claim-summary > a:nth-child(4) > div { border-top-color: rgb(var(--brand-blue)); background: rgb(var(--brand-cream)); }
-.claim-summary > a:nth-child(5) > div { border-top-color: rgb(var(--brand-olive)); background: rgb(var(--brand-cream)); }
-.claim-summary > a:hover > div { border-color: rgb(var(--primary)); box-shadow: 0 4px 14px #3a3a3a10; }
-.dark .claim-summary > a > div { background: rgb(var(--card)); border-color: rgb(var(--border)); border-top-color: rgb(var(--primary)); }
+.claim-summary > a > div { border: 1px solid rgb(var(--border)); border-radius: 12px; padding: 16px; background: rgb(var(--card)); }
+.claim-summary > a:hover > div { border-color: rgb(var(--primary)); }
 .claim-form .claim-section .grid > div:has(> span) { background: transparent; border: 0; padding-left: 0; overflow-wrap: anywhere; }
 .claim-form input[type="checkbox"] { flex-shrink: 0; width: 18px; height: 18px; }
 .claim-form #paymentMethod { text-overflow: ellipsis; }

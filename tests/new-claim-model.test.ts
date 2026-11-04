@@ -4,13 +4,13 @@ import { Profile } from "@/lib/types/database";
 import { canUserCreateClaim } from "@/lib/auth/permissions";
 import { generateClaimsCsv } from "@/lib/utils/export-csv";
 
-describe("Ministry Head Submitter Model & Receipt-Level Cost Centres", () => {
-  const ministryLeader: Profile = {
+describe("Claimant Submitter Model & Receipt-Level Cost Centres", () => {
+  const claimant: Profile = {
     id: "u-pastor-peter",
     email: "peter@newlife.org.my",
     full_name: "Pastor Peter",
     status: "ACTIVE",
-    roles: ["MINISTRY_LEADER"],
+    roles: ["CLAIMANT"],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -25,12 +25,12 @@ describe("Ministry Head Submitter Model & Receipt-Level Cost Centres", () => {
     updated_at: new Date().toISOString(),
   };
 
-  const basicClaimant: Profile = {
+  const unassignedUser: Profile = {
     id: "u-member-john",
     email: "john@example.com",
     full_name: "John Member",
     status: "ACTIVE",
-    roles: ["CLAIMANT"],
+    roles: [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -46,13 +46,13 @@ describe("Ministry Head Submitter Model & Receipt-Level Cost Centres", () => {
   };
 
   describe("1. Claim Creation Role Guards", () => {
-    it("should allow MINISTRY_LEADER and SYSTEM_ADMIN to create claims", () => {
-      expect(canUserCreateClaim(ministryLeader)).toBe(true);
+    it("should allow CLAIMANT and SYSTEM_ADMIN to create claims", () => {
+      expect(canUserCreateClaim(claimant)).toBe(true);
       expect(canUserCreateClaim(systemAdmin)).toBe(true);
     });
 
-    it("should deny pure CLAIMANT from creating claims in the new submitter model", () => {
-      expect(canUserCreateClaim(basicClaimant)).toBe(false);
+    it("denies claim creation without a role", () => {
+      expect(canUserCreateClaim(unassignedUser)).toBe(false);
       expect(canUserCreateClaim(null)).toBe(false);
     });
   });
@@ -60,7 +60,7 @@ describe("Ministry Head Submitter Model & Receipt-Level Cost Centres", () => {
   describe("2. Submitter & Claimant Snapshot", () => {
     it("should record submitted_by_user_id and snapshot claimant details on claim submission", () => {
       const claim = db.submitClaim({
-        submitted_by_user_id: ministryLeader.id,
+        submitted_by_user_id: claimant.id,
         claimant_name: "Alice Tan (Worship Team)",
         claimant_email: "alice.tan@gmail.com",
         claimant_phone: "+60 17-888 1234",
@@ -88,12 +88,12 @@ describe("Ministry Head Submitter Model & Receipt-Level Cost Centres", () => {
             file_size: 15000,
             mime_type: "application/pdf",
             file_category: "RECEIPT",
-            uploaded_by: ministryLeader.id,
+            uploaded_by: claimant.id,
           },
         ],
       });
 
-      expect(claim.submitted_by_user_id).toBe(ministryLeader.id);
+      expect(claim.submitted_by_user_id).toBe(claimant.id);
       expect(claim.claimant_name).toBe("Alice Tan (Worship Team)");
       expect(claim.claimant_email).toBe("alice.tan@gmail.com");
       expect(claim.claimant_phone).toBe("+60 17-888 1234");
@@ -105,7 +105,7 @@ describe("Ministry Head Submitter Model & Receipt-Level Cost Centres", () => {
   describe("3. Self-Approval Security Enforcement", () => {
     it("should strictly prevent submitter from approving their own submitted claim, even on behalf of another claimant", () => {
       const claim = db.submitClaim({
-        submitted_by_user_id: ministryLeader.id,
+        submitted_by_user_id: claimant.id,
         claimant_name: "External Speaker Pastor David",
         claimant_email: "david@overseaschurch.org",
         claimant_phone: "+65 9123 4567",
@@ -133,14 +133,14 @@ describe("Ministry Head Submitter Model & Receipt-Level Cost Centres", () => {
             file_size: 12000,
             mime_type: "application/pdf",
             file_category: "RECEIPT",
-            uploaded_by: ministryLeader.id,
+            uploaded_by: claimant.id,
           },
         ],
       });
 
-      // Ministry leader attempts to approve the step
+      // The claimant attempts to approve their own claim
       expect(() => {
-        db.approveStep(claim.id, ministryLeader, "Self-approval attempt by submitter");
+        db.approveStep(claim.id, claimant, "Self-approval attempt by submitter");
       }).toThrow(/cannot approve/i);
     });
   });
@@ -148,7 +148,7 @@ describe("Ministry Head Submitter Model & Receipt-Level Cost Centres", () => {
   describe("4. Receipt-Level Cost Centres (Distinct Cost Centres per Receipt)", () => {
     it("should support different cost centres on individual receipt items within the same claim", () => {
       const claim = db.submitClaim({
-        submitted_by_user_id: ministryLeader.id,
+        submitted_by_user_id: claimant.id,
         claimant_name: "Mark Lee",
         claimant_email: "mark.lee@example.com",
         claimant_phone: "+60 12-345 6789",
@@ -186,7 +186,7 @@ describe("Ministry Head Submitter Model & Receipt-Level Cost Centres", () => {
             file_size: 20000,
             mime_type: "application/pdf",
             file_category: "RECEIPT",
-            uploaded_by: ministryLeader.id,
+            uploaded_by: claimant.id,
           },
           {
             temp_id: "r2",
@@ -195,7 +195,7 @@ describe("Ministry Head Submitter Model & Receipt-Level Cost Centres", () => {
             file_size: 5000,
             mime_type: "image/jpeg",
             file_category: "RECEIPT",
-            uploaded_by: ministryLeader.id,
+            uploaded_by: claimant.id,
           },
         ],
       });

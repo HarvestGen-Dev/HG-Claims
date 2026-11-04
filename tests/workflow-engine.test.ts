@@ -8,7 +8,7 @@ describe("Simplified Approval Workflow Engine", () => {
     email: "test.leader@example.com",
     full_name: "Test Leader",
     status: "ACTIVE",
-    roles: ["MINISTRY_LEADER"],
+    roles: ["CLAIMANT"],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -28,7 +28,7 @@ describe("Simplified Approval Workflow Engine", () => {
     email: "test.dual@example.com",
     full_name: "Test Dual Role",
     status: "ACTIVE",
-    roles: ["MINISTRY_LEADER", "FINANCE_OFFICER"],
+    roles: ["CLAIMANT", "FINANCE_OFFICER"],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };

@@ -1,5 +1,6 @@
 "use client";
 
+import { formatRole } from "@/lib/auth/roles";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -213,7 +214,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
   const isEditable = canEdit(claim);
 
   const claimantName = claim.claimant_name || claim.claimant?.full_name || "Unknown Claimant";
-  const submitterName = claim.submitted_by?.full_name || claim.claimant?.full_name || "Ministry Head";
+  const submitterName = claim.submitted_by?.full_name || claim.claimant?.full_name || "Claimant";
 
   return (
     <div className="space-y-5 max-w-5xl mx-auto pb-12">
@@ -464,7 +465,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                   )}
                 </div>
                 <div className="pt-1.5 border-t border-zinc-100 dark:border-zinc-800">
-                  <p className="text-[10px] text-zinc-400">Submitted By (Ministry Head)</p>
+                  <p className="text-[10px] text-zinc-400">Submitted by</p>
                   <p className="font-medium text-zinc-800 dark:text-zinc-200">{submitterName}</p>
                 </div>
               </CardContent>
@@ -750,7 +751,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                     <tr key={act.id} className="hover:bg-zinc-50/50">
                       <td className="py-2.5 px-4 text-zinc-500 font-mono text-[11px]">{formatDateTime(act.created_at)}</td>
                       <td className="py-2.5 px-4 font-medium text-zinc-800 dark:text-zinc-200">
-                        {act.actor?.full_name || "User"} ({act.actor_role})
+                        {act.actor?.full_name || "User"} ({formatRole(act.actor_role)})
                       </td>
                       <td className="py-2.5 px-4 font-mono text-zinc-900 dark:text-zinc-100 font-semibold text-[11px]">{act.action}</td>
                       <td className="py-2.5 px-4 text-zinc-500">{act.comment || "-"}</td>

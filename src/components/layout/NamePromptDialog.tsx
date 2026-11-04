@@ -209,7 +209,7 @@ export function NamePromptDialog() {
             >
               <User className="w-3.5 h-3.5 text-slate-400" />
               <span>
-                {isMultiUser ? "Account / Ministry Leader Name *" : "Full Name *"}
+                {isMultiUser ? "Account name *" : "Full Name *"}
               </span>
             </label>
             <Input
@@ -239,12 +239,7 @@ export function NamePromptDialog() {
               className="font-semibold text-slate-700 flex items-center gap-1.5"
             >
               <Phone className="w-3.5 h-3.5 text-slate-400" />
-              <span>
-                Mobile Phone{" "}
-                <span className="text-slate-400 text-[10px] font-normal">
-                  (Optional)
-                </span>
-              </span>
+              Mobile phone
             </label>
             <Input
               id="modal-phone"

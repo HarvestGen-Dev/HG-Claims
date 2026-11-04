@@ -24,13 +24,14 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
     const keydown = (event: KeyboardEvent) => {
       if (event.key === "Escape") close.current(false);
       if (event.key !== "Tab") return;
-      const elements = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]') || []).filter(element => element.getClientRects().length);
+      const elements = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]') || []).filter(element => element.getClientRects().length);
       const first = elements[0];
       const last = elements[elements.length - 1];
       if (!first) { event.preventDefault(); return; }
-      if (event.shiftKey && (document.activeElement === first || document.activeElement === panel.current)) {
+      const focusOutsideControls = document.activeElement === panel.current || !panel.current?.contains(document.activeElement);
+      if (event.shiftKey && (document.activeElement === first || focusOutsideControls)) {
         event.preventDefault(); last.focus();
-      } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === panel.current)) {
+      } else if (!event.shiftKey && (document.activeElement === last || focusOutsideControls)) {
         event.preventDefault(); first.focus();
       }
     };
@@ -42,14 +43,14 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
       <div
-        className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-zinc-950/45 transition-opacity"
         onClick={() => onOpenChange(false)}
       />
-      <div ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative z-50 w-full max-w-lg max-h-[88dvh] overflow-y-auto rounded-xl bg-white p-4 sm:p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+      <div ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative z-50 w-full max-w-lg max-h-[88dvh] overflow-y-auto rounded-xl border border-border bg-card p-5 text-card-foreground shadow-xl sm:p-6">
         <button
           type="button"
           onClick={() => onOpenChange(false)}
-          className="absolute right-3 top-3 sm:right-4 sm:top-4 p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors focus:outline-none min-h-[36px] min-w-[36px] flex items-center justify-center touch-manipulation"
+          className="absolute right-3 top-3 sm:right-4 sm:top-4 p-1 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center touch-manipulation"
           aria-label="Close dialog"
         >
           <X className="h-5 w-5" />
@@ -69,13 +70,13 @@ export function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLD
 
 export function DialogTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
   const id = React.useContext(DialogTitleContext);
-  return <h2 id={id} className={cn("text-lg font-semibold leading-snug pr-8 text-slate-900 dark:text-slate-100", className)} {...props} />;
+  return <h2 id={id} className={cn("text-xl font-semibold leading-snug pr-9 text-foreground", className)} {...props} />;
 }
 
 export function DialogDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cn("text-sm text-slate-500 dark:text-slate-400", className)} {...props} />;
+  return <p className={cn("text-sm text-muted-foreground", className)} {...props} />;
 }
 
 export function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-6", className)} {...props} />;
+  return <div className={cn("mt-6 flex flex-wrap justify-end gap-2", className)} {...props} />;
 }

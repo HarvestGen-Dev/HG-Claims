@@ -252,7 +252,7 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div className="space-y-1">
                 <label htmlFor="profile-new-ic" className="text-sm font-medium text-zinc-600">
-                  New IC number <span className="text-zinc-500 font-normal">(optional)</span>
+                  New IC number
                 </label>
                 <Input
                   id="profile-new-ic"
@@ -265,7 +265,7 @@ export default function ProfilePage() {
 
               <div className="space-y-1">
                 <label htmlFor="profile-address" className="text-sm font-medium text-zinc-600">
-                  Beneficiary address <span className="text-zinc-500 font-normal">(optional)</span>
+                  Beneficiary address
                 </label>
                 <Input
                   id="profile-address"

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { hasSameRequestOrigin } from "@/lib/utils/request-origin";
 import { createClient } from "@/lib/supabase/server";
 
 export const NO_STORE_HEADERS = { "Cache-Control": "private, no-store" };
@@ -110,8 +111,7 @@ export async function handleDomainCommandRequest(
   request: NextRequest,
   executor: DomainExecutor
 ): Promise<NextResponse> {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== request.nextUrl.origin) {
+  if (!hasSameRequestOrigin(request)) {
     return NextResponse.json(
       { error: "Invalid request origin." },
       { status: 403, headers: NO_STORE_HEADERS }

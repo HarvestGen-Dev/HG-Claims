@@ -68,7 +68,7 @@ project, authenticate with `supabase login`, link the intended project, review
 
 Use `node tools/bootstrap-admin.mjs PROJECT_REFERENCE ADMIN_EMAIL` for the first
 administrator. It creates an unverified account without a password or outgoing email.
-Assign Ministry Leaders, Finance Officers, and System Admins. Submitted claims go directly to Finance Review; an independent Finance Officer or System Admin verifies and approves them.
+Assign Claimants, Finance Officers, and System Admins. Claimants choose a ministry for each claim. Submitted claims go directly to Finance Review; an independent Finance Officer or System Admin verifies and approves them.
 See `PRODUCTION_SETUP.md` for verified setup status and outstanding launch work.
 
 See [SITE_AUDIT.md](SITE_AUDIT.md) for the latest functional audit, fixes, verification, and remaining configuration items.

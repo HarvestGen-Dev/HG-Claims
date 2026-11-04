@@ -19,14 +19,16 @@ async function transition(client, action, claimId, payload = {}) {
   const claim = (await snapshot(client)).claims.find(c => c.id === claimId);
   return command(client, action, { claim_id: claimId, version: claim.version, ...payload });
 }
-for (const [name, role] of Object.entries({ admin: "SYSTEM_ADMIN", claimant: "MINISTRY_LEADER", leader: "MINISTRY_LEADER", outsider: "MINISTRY_LEADER", finance: "FINANCE_OFFICER" })) {
+for (const [name, role] of Object.entries({ admin: "SYSTEM_ADMIN", claimant: "CLAIMANT", leader: "CLAIMANT", outsider: "CLAIMANT", finance: "FINANCE_OFFICER" })) {
   const email = name + "-" + suffix + "@nlcc-test.invalid";
   const { data, error } = await service.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: name } });
   assert.ifError(error);
-  const { data: roleRow, error: roleError } = await service.from("roles").select("id").eq("code",role).single();
-  assert.ifError(roleError);
-  const grant = await service.from("user_roles").upsert({ user_id: data.user.id, role_id: roleRow.id }, { onConflict: "user_id,role_id" });
-  assert.ifError(grant.error);
+  if (name !== "claimant") {
+    const { data: roleRow, error: roleError } = await service.from("roles").select("id").eq("code", role).single();
+    assert.ifError(roleError);
+    const grant = await service.from("user_roles").upsert({ user_id: data.user.id, role_id: roleRow.id }, { onConflict: "user_id,role_id" });
+    assert.ifError(grant.error);
+  }
   const client = createClient(status.API_URL, status.ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
   const login = await client.auth.signInWithPassword({ email, password });
   assert.ifError(login.error);
@@ -36,7 +38,7 @@ for (const [name, role] of Object.entries({ admin: "SYSTEM_ADMIN", claimant: "MI
   });
   users[name] = { client: authenticated, id: data.user.id, email };
 }
-const { admin, claimant, leader, outsider, finance, final } = users;
+const { admin, claimant, leader, outsider, finance } = users;
 check(!!(await anonymous.rpc("nlcc_snapshot")).error, "Anonymous snapshot denied");
 check(!!(await claimant.client.from("claims").insert({ claimant_id: claimant.id })).error, "Direct claim writes denied");
 check(!!(await claimant.client.rpc("instantiate_claim_workflow", { p_claim_id: randomUUID() })).error, "Legacy privileged RPC denied");
@@ -46,6 +48,16 @@ check(!(await snapshot(claimant.client)).profiles.find(p => p.id === claimant.id
 check(!(await snapshot(outsider.client)).profiles.find(p => p.id === claimant.id).bank_account_number, "Bank details hidden from unrelated user");
 
 const ministry = await command(admin.client, "master_save", { table: "ministries", data: { code: "TEST-" + suffix, name: "Test ministry", leader_id: leader.id } });
+const draft = { request_key: randomUUID(), ministry_id: ministry.id, claim_date: "2026-09-10", purpose: "Unprovisioned", expenses: [] };
+await denied(claimant.client, "save_draft", draft);
+const tokenHash = randomUUID().replaceAll("-", "") + randomUUID().replaceAll("-", "");
+const invitation = { role_code: "CLAIMANT", token_hash: tokenHash, expires_in_days: 7, max_uses: 1 };
+await denied(outsider.client, "create_invitation", invitation);
+await command(admin.client, "create_invitation", invitation);
+assert.ifError((await service.rpc("nlcc_redeem_invitation", { token_hash: tokenHash, user_id: claimant.id })).error);
+const registered = (await snapshot(claimant.client)).profiles.find(p => p.id === claimant.id);
+check(registered.roles.includes("CLAIMANT") && !registered.ministry_id && !registered.default_ministry_id, "Redeemed claimant invitation grants access without a ministry");
+check(!!(await service.rpc("nlcc_redeem_invitation", { token_hash: tokenHash, user_id: outsider.id })).error, "Claimant invitation cannot be redeemed twice");
 const costCentre = await command(admin.client, "master_save", { table: "cost_centres", data: { code: "CC-" + suffix, name: "Test budget", ministry_id: ministry.id } });
 const payee = await command(claimant.client, "create_payee_profile", {
   full_name: "Fixture payee " + suffix,
@@ -92,7 +104,8 @@ const saved = await command(claimant.client, "submit_claim", { ...payload, total
 let claim = (await snapshot(claimant.client)).claims.find(c => c.id === saved.id);
 check(claim.total_amount === 25.5 && claim.claimant_id === claimant.id, "Totals and actor computed on server");
 check((await command(claimant.client, "submit_claim", payload)).id === saved.id, "Submission retries are idempotent");
-check(!(await snapshot(outsider.client)).claims.some(c => c.id === saved.id), "Other ministry cannot read claim");
+check(!(await snapshot(outsider.client)).claims.some(c => c.id === saved.id), "Another claimant cannot read the claim");
+check(!(await snapshot(leader.client)).claims.some(c => c.id === saved.id), "A ministry contact has no access to another claimant's submission");
 await denied(outsider.client, "approve", { claim_id: saved.id, version: claim.version });
 await denied(claimant.client, "approve", { claim_id: saved.id, version: claim.version });
 await transition(finance.client, "return", saved.id, { reason: "Clarify purpose" });

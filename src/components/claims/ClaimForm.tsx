@@ -11,7 +11,6 @@ import {
   ArrowLeft,
   AlertCircle,
   HelpCircle,
-  Lock,
   UserCheck,
   Building2,
   Receipt,
@@ -124,7 +123,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
 
   // 02: Claim Details State
   const [ministryId, setMinistryId] = useState(
-    initialClaim?.ministry_id || user?.ministry_id || ministries[0]?.id || ""
+    initialClaim?.ministry_id || ""
   );
   const [claimDate, setClaimDate] = useState(initialClaim?.claim_date || today);
   const [purpose, setPurpose] = useState(initialClaim?.purpose || "");
@@ -306,7 +305,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         bank_account_holder_name:
           newProfileHolderName.trim() || newProfileName.trim(),
         bank_account_number: acctValidation.normalized,
-        ministry_id: ministryId || user?.ministry_id || null,
+        ministry_id: ministryId || null,
       });
       setProfiles(iamClient.getProfiles());
       handleSelectClaimantProfile(savedProfile);
@@ -395,6 +394,11 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   };
 
   const handleSaveDraft = async () => {
+    if (!ministryId) {
+      setError("Choose a ministry before saving.");
+      errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     setIsSavingDraft(true);
     setError(null);
     try {
@@ -633,7 +637,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                 Submitted by
               </span>
               <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                {user?.full_name || "Ministry Head"}
+                {user?.full_name || "Claimant"}
               </span>
               <span className="break-all text-zinc-500">{user?.email}</span>
               {user?.is_multi_user && (
@@ -980,22 +984,17 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
             {/* Ministry */}
             <div className="space-y-1">
               <label htmlFor="ministryId" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider flex items-center justify-between">
-                <span>Ministry / Department *</span>
-                {!formConfig.allow_claimant_change_ministry && (
-                  <span className="text-[10px] text-zinc-400 flex items-center gap-0.5">
-                    <Lock className="w-2.5 h-2.5" /> Locked
-                  </span>
-                )}
+                Ministry / department *
               </label>
               <Select
                 id="ministryId"
                 value={ministryId}
                 onChange={(e) => setMinistryId(e.target.value)}
-                disabled={!formConfig.allow_claimant_change_ministry}
                 className="w-full"
                 required
               >
-                {ministries.map((m) => (
+                <option value="">Select a ministry</option>
+                {ministries.filter((m) => m.is_active || m.id === initialClaim?.ministry_id).map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name}
                   </option>
@@ -1022,7 +1021,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
             {formConfig.enable_internal_reference !== false && (
               <div className="space-y-1">
                 <label htmlFor="internalRef" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-                  Reference Code (Optional)
+                  Reference code
                 </label>
                 <Input
                   type="text"
@@ -1038,11 +1037,11 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
             {/* Ministry Purpose */}
             <div className="col-span-1 sm:col-span-3 space-y-1">
               <label htmlFor="purpose" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-                Ministry Purpose / Justification *
+                Expense purpose *
               </label>
               <Textarea
                 rows={2}
-                placeholder="Explain the church ministry purpose and justification for these expenses..."
+                placeholder="What were these expenses for?"
                 id="purpose"
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value)}
@@ -1183,7 +1182,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label htmlFor="newProfileEmail" className="font-semibold text-zinc-700 block">
-                Email Address <span className="text-zinc-400 font-normal">(Optional)</span>
+                Email Address
               </label>
               <Input
                 id="newProfileEmail"
@@ -1198,7 +1197,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
 
             <div className="space-y-1">
               <label htmlFor="newProfilePhone" className="font-semibold text-zinc-700 block">
-                Mobile Phone <span className="text-zinc-400 font-normal">(Optional)</span>
+                Mobile Phone
               </label>
               <Input
                 id="newProfilePhone"

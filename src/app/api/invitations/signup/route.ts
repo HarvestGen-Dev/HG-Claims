@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { hasSameRequestOrigin } from "@/lib/utils/request-origin";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hashToken } from "@/lib/utils/token";
@@ -11,8 +12,7 @@ const signupSchema = z.object({
 }).strict();
 const headers = { "Cache-Control": "private, no-store" };
 export async function POST(request: NextRequest) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== request.nextUrl.origin) return NextResponse.json({ error: "Invalid request origin." }, { status: 403, headers });
+  if (!hasSameRequestOrigin(request)) return NextResponse.json({ error: "Invalid request origin." }, { status: 403, headers });
   try {
     const text = await request.text();
     if (text.length > 16384) return NextResponse.json({ error: "Request is too large." }, { status: 413, headers });

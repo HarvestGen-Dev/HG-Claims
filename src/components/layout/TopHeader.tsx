@@ -1,5 +1,7 @@
 "use client";
 
+import { formatRole } from "@/lib/auth/roles";
+
 import React, { useState, useRef, useEffect } from "react";
 import {
   Search,
@@ -50,15 +52,9 @@ export function TopHeader({ onToggleMobileMenu, mobileMenuOpen = false }: TopHea
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const roleLabelMap: Record<string, string> = {
-    MINISTRY_LEADER: "Ministry Leader",
-    FINANCE_OFFICER: "Finance Officer",
-    SYSTEM_ADMIN: "System Administrator",
-  };
-
   return (
-    <header className="sticky top-0 z-40 flex shrink-0 h-14 w-full items-center justify-between border-b border-border bg-background/95 px-3 sm:px-6 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/90">
-      <div className="flex items-center gap-2 sm:gap-3">
+    <header className="sticky top-0 z-40 flex shrink-0 h-14 w-full items-center justify-between border-b border-border bg-card px-3 sm:px-6">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <button
           onClick={onToggleMobileMenu}
           className="p-2 -ml-1 text-zinc-600 hover:text-zinc-900 rounded-lg lg:hidden hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
@@ -69,15 +65,12 @@ export function TopHeader({ onToggleMobileMenu, mobileMenuOpen = false }: TopHea
           <Menu className="w-5 h-5" />
         </button>
 
-        <Link href="/dashboard" className="flex flex-col leading-none lg:hidden py-1 min-w-0">
+        <Link href="/dashboard" className="block min-w-0 lg:hidden">
           <BrandLogo compact className="truncate" />
-          <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
-            Claims Management
-          </span>
         </Link>
 
         {/* Global Search */}
-        <form onSubmit={handleSearchSubmit} className="hidden md:flex items-center relative w-64 lg:w-72">
+        <form onSubmit={handleSearchSubmit} className="hidden md:flex items-center relative w-44 lg:w-72">
           <Search className="absolute left-2.5 w-3.5 h-3.5 text-zinc-400" />
           <input
             type="text"
@@ -113,7 +106,7 @@ export function TopHeader({ onToggleMobileMenu, mobileMenuOpen = false }: TopHea
             </div>
             <div className="hidden md:flex flex-col text-left leading-tight">
               <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">{user?.full_name}</span>
-              <span className="text-[10px] text-zinc-400">{roleLabelMap[user?.roles?.[0] || ""] || user?.roles?.[0]}</span>
+              <span className="text-[10px] text-zinc-400">{formatRole(user?.roles?.[0] || "")}</span>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-zinc-400 hidden sm:inline" />
           </button>
@@ -130,7 +123,7 @@ export function TopHeader({ onToggleMobileMenu, mobileMenuOpen = false }: TopHea
                       key={role}
                       className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
                     >
-                      {roleLabelMap[role] || role}
+                      {formatRole(role)}
                     </span>
                   ))}
                 </div>

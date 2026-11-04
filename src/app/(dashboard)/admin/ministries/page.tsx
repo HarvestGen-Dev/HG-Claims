@@ -1,21 +1,19 @@
 "use client";
 
-import { Select } from "@/components/ui/select";
 import React, { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { iamClient, masterDataClient, workspaceStore } from "@/lib/domains";
-import { Ministry, Profile } from "@/lib/types/database";
-import { Building2, Plus, Edit, CheckCircle2, UserCheck, Trash2 } from "lucide-react";
+import { masterDataClient, workspaceStore } from "@/lib/domains";
+import { Ministry } from "@/lib/types/database";
+import { Building2, Plus, Edit, Trash2 } from "lucide-react";
 import { showToast } from "@/lib/utils/toast";
 
 export default function MinistryManagementPage() {
   const [ministries, setMinistries] = useState<Ministry[]>(masterDataClient.getMinistries());
-  const [profiles, setProfiles] = useState<Profile[]>(iamClient.getProfiles());
 
   const [editingMin, setEditingMin] = useState<Ministry | null>(null);
   const [deletingMin, setDeletingMin] = useState<Ministry | null>(null);
@@ -26,20 +24,17 @@ export default function MinistryManagementPage() {
     code: "",
     name: "",
     description: "",
-    leader_id: "",
     is_active: true,
   });
   const [error, setError] = useState("");
 
   const refresh = () => {
     setMinistries(masterDataClient.getMinistries());
-    setProfiles(iamClient.getProfiles());
   };
 
   React.useEffect(() => {
-    const unsub = workspaceStore.subscribeDomains(["master-data", "iam"], () => {
+    const unsub = workspaceStore.subscribeDomains(["master-data"], () => {
       setMinistries(masterDataClient.getMinistries());
-      setProfiles(iamClient.getProfiles());
     });
     return unsub;
   }, []);
@@ -49,7 +44,6 @@ export default function MinistryManagementPage() {
       code: "",
       name: "",
       description: "",
-      leader_id: profiles[0]?.id || "",
       is_active: true,
     });
     setError("");
@@ -62,7 +56,6 @@ export default function MinistryManagementPage() {
       code: m.code,
       name: m.name,
       description: m.description || "",
-      leader_id: m.leader_id || "",
       is_active: m.is_active,
     });
     setError("");
@@ -81,7 +74,6 @@ export default function MinistryManagementPage() {
           code: formData.code.trim().toUpperCase(),
           name: formData.name.trim(),
           description: formData.description.trim(),
-          leader_id: formData.leader_id || null,
           is_active: formData.is_active,
         });
         setIsCreating(false);
@@ -91,7 +83,6 @@ export default function MinistryManagementPage() {
           code: formData.code.trim().toUpperCase(),
           name: formData.name.trim(),
           description: formData.description.trim(),
-          leader_id: formData.leader_id || null,
           is_active: formData.is_active,
         });
         setEditingMin(null);
@@ -138,10 +129,10 @@ export default function MinistryManagementPage() {
           <div>
             <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight flex items-center gap-2">
               <Building2 className="w-5 h-5 text-zinc-900 dark:text-zinc-100" />
-              Ministries & Department Leaders
+              Ministries
             </h1>
             <p className="text-xs text-zinc-500 mt-0.5">
-              Create, edit and configure ministries and assign approving ministry leaders.
+              Manage the ministries available on claim forms.
             </p>
           </div>
 
@@ -168,14 +159,6 @@ export default function MinistryManagementPage() {
                           {m.code}
                         </span>
                       </div>
-                      {m.leader ? (
-                        <p className="text-xs text-emerald-800 font-medium flex items-center gap-1 mt-1">
-                          <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Leader: {m.leader.full_name}</span>
-                        </p>
-                      ) : (
-                        <p className="text-xs text-slate-400 italic mt-1">Leader unassigned</p>
-                      )}
                     </div>
 
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -229,7 +212,6 @@ export default function MinistryManagementPage() {
                   <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
                     <th className="py-3 px-4">Code</th>
                     <th className="py-3 px-4">Ministry Name</th>
-                    <th className="py-3 px-4">Designated Approving Leader</th>
                     <th className="py-3 px-4">Description</th>
                     <th className="py-3 px-4 text-center">Status</th>
                     <th className="py-3 px-4 text-right">Actions</th>
@@ -241,15 +223,7 @@ export default function MinistryManagementPage() {
                       <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{m.code}</td>
                       <td className="py-3.5 px-4 font-semibold text-slate-800">{m.name}</td>
                       <td className="py-3.5 px-4">
-                        {m.leader ? (
-                          <div className="flex items-center gap-1.5 text-emerald-800 font-medium">
-                            <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>{m.leader.full_name}</span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 italic">Unassigned</span>
-                        )}
-                      </td>
+                        </td>
                       <td className="py-3.5 px-4 text-slate-500 max-w-sm truncate">{m.description || "-"}</td>
                       <td className="py-3.5 px-4 text-center">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -322,20 +296,6 @@ export default function MinistryManagementPage() {
                   required
                 />
               </div>
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="ministries-select-1" className="font-semibold text-slate-700">Designated Approver (Ministry Leader)</label>
-              <Select id="ministries-select-1"
-                value={formData.leader_id}
-                onChange={(e) => setFormData({ ...formData, leader_id: e.target.value })}
-                className="w-full"
-              >
-                <option value="">-- No Leader Assigned --</option>
-                {(profiles || []).map((p) => (
-                  <option key={p.id} value={p.id}>{p.full_name} ({p.email})</option>
-                ))}
-              </Select>
             </div>
 
             <div className="space-y-1">

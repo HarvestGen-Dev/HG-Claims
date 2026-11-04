@@ -567,7 +567,7 @@ describe("BIFF8 .xls Generation, Round-Trip Verification, Leading Zeroes & Secur
       .find((p) => p.roles?.includes("FINANCE_OFFICER"))!;
     const leaderProfile = db
       .getProfiles()
-      .find((p) => p.roles?.includes("MINISTRY_LEADER"))!;
+      .find((p) => p.roles?.includes("CLAIMANT"))!;
 
     // 1. Complete onboarding for a Multi-User shared ministry account without requiring personal bank details
     const sharedLeader = db.completeOnboarding(leaderProfile.id, {

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { hasSameRequestOrigin } from "@/lib/utils/request-origin";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const roleEnum = z.enum(["MINISTRY_LEADER", "FINANCE_OFFICER", "SYSTEM_ADMIN"]);
+const roleEnum = z.enum(["CLAIMANT", "FINANCE_OFFICER", "SYSTEM_ADMIN"]);
 
 const schema = z
   .object({
@@ -18,7 +19,7 @@ const schema = z
   .strict();
 
 export async function POST(request: NextRequest) {
-  if (request.headers.get("origin") !== request.nextUrl.origin) {
+  if (!hasSameRequestOrigin(request, true)) {
     return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
   }
   try {
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
     const assignedRoles =
       body.roles && body.roles.length > 0
         ? body.roles
-        : [body.role_code || "MINISTRY_LEADER"];
+        : [body.role_code || "CLAIMANT"];
 
     // Provision profile and roles through the audited domain command
     const { error: profileError } = await client.rpc("nlcc_command", {
@@ -82,8 +83,6 @@ export async function POST(request: NextRequest) {
         data: {
           full_name: fallbackName,
           phone: body.phone || null,
-          ministry_id: body.ministry_id || null,
-          default_ministry_id: body.ministry_id || null,
           is_multi_user: Boolean(body.is_multi_user),
           status: "ACTIVE",
           roles: assignedRoles,

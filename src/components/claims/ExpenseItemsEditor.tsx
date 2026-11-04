@@ -208,7 +208,7 @@ const ExpenseReceiptCard = React.memo(function ExpenseReceiptCard({
         {/* Vendor */}
         <div className="md:col-span-6 space-y-1">
           <label htmlFor={`receipt-${index}-vendor`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-            Vendor / Merchant (Optional)
+            Vendor / Merchant
           </label>
           <Input
             type="text"
@@ -224,7 +224,7 @@ const ExpenseReceiptCard = React.memo(function ExpenseReceiptCard({
         {/* Notes */}
         <div className="md:col-span-6 space-y-1">
           <label htmlFor={`receipt-${index}-notes`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-            Notes (Optional)
+            Notes
           </label>
           <Input
             type="text"
