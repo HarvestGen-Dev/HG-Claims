@@ -265,7 +265,7 @@ export default function FinanceBatchesPage() {
             }`}
           >
             <Layers className="w-3.5 h-3.5 shrink-0" />
-            <span>Approved — Awaiting Reimbursement ({eligibleClaims.length})</span>
+            <span>To reimburse ({eligibleClaims.length})</span>
           </button>
           <button
             type="button"
@@ -277,7 +277,7 @@ export default function FinanceBatchesPage() {
             }`}
           >
             <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
-            <span>Reimbursement Batches ({batches.length})</span>
+            <span>Batch history ({batches.length})</span>
           </button>
         </div>
 
@@ -391,11 +391,11 @@ export default function FinanceBatchesPage() {
                   size="sm"
                   onClick={handleToggleSelectAllVisible}
                   disabled={visibleSelectableIds.length === 0}
-                  className="h-8 text-xs"
+                  className="min-h-11"
                 >
                   {allVisibleSelected
-                    ? `Deselect Visible (${visibleSelectableIds.length})`
-                    : `Select All Visible Eligible (${visibleSelectableIds.length})`}
+                    ? `Deselect all (${visibleSelectableIds.length})`
+                    : `Select eligible (${visibleSelectableIds.length})`}
                 </Button>
 
                 <Button
@@ -409,13 +409,10 @@ export default function FinanceBatchesPage() {
                     setFinalizeError("");
                     setConfirmModalOpen(true);
                   }}
-                  className="h-8 bg-primary text-primary-foreground text-xs gap-1.5"
+                  className="min-h-11 gap-1.5"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
-                  <span>
-                    Generate &amp; Download .xls ({preview.totalSelectedClaims} Claims &rarr;{" "}
-                    {preview.totalTransfers} Transfers)
-                  </span>
+                  <span>Generate .xls</span>
                 </Button>
               </div>
             </div>
@@ -486,7 +483,7 @@ export default function FinanceBatchesPage() {
                               </p>
                               <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                                 <span className="font-mono text-[11px] text-zinc-700">
-                                  {ev.bankCode ? `${ev.bankCode} (${ev.paymentMode})` : ev.bankName || "Missing Bank"} &middot; {ev.maskedAccountNumber}
+                                  {ev.bankName || ev.bankCode || "Bank not selected"} &middot; {ev.maskedAccountNumber}
                                 </span>
                                 {ev.eligible ? (
                                   <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
@@ -584,7 +581,7 @@ export default function FinanceBatchesPage() {
                                       {ev.bankName}
                                     </span>
                                     <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-800 font-semibold">
-                                      {ev.bankCode} &middot; {ev.paymentMode}
+                                      {ev.bankCode}
                                     </span>
                                   </div>
                                 ) : (
@@ -656,7 +653,6 @@ export default function FinanceBatchesPage() {
                       <thead>
                         <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 text-[10px] font-semibold uppercase tracking-wider">
                           <th className="py-2.5 px-3 w-8" />
-                          <th className="py-2.5 px-3">Mode</th>
                           <th className="py-2.5 px-3">Beneficiary Name</th>
                           <th className="py-2.5 px-3">Masked Account</th>
                           <th className="py-2.5 px-3">Bank Code (SWIFT)</th>
@@ -682,17 +678,6 @@ export default function FinanceBatchesPage() {
                                   ) : (
                                     <ChevronRight className="w-4 h-4" />
                                   )}
-                                </td>
-                                <td className="py-2.5 px-3">
-                                  <span
-                                    className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded ${
-                                      inst.paymentMode === "LIP"
-                                        ? "bg-blue-50 text-blue-800 border border-blue-200"
-                                        : "bg-zinc-100 text-zinc-800 border border-zinc-200"
-                                    }`}
-                                  >
-                                    {inst.paymentMode}
-                                  </span>
                                 </td>
                                 <td className="py-2.5 px-3 font-semibold text-zinc-900">
                                   {inst.beneficiaryName}
@@ -730,7 +715,7 @@ export default function FinanceBatchesPage() {
                               </tr>
                               {isExpanded && (
                                 <tr className="bg-zinc-50/70">
-                                  <td colSpan={8} className="p-3 pl-10">
+                                  <td colSpan={7} className="p-3 pl-10">
                                     <div className="text-[11px] font-semibold text-zinc-600 mb-1.5">
                                       Source Claims Combined into Transfer Row #{inst.lineOrder}:
                                     </div>

@@ -30,6 +30,16 @@ describe("Invitation signup integrity", () => {
     expect((await POST(request())).status).toBe(400);
     expect(mocks.deleteUser).toHaveBeenCalledWith("new-user");
   });
+  it("rejects an exhausted invitation before creating an account", async () => {
+    mocks.lookup.mockResolvedValue({
+      data: { id: "inv", is_active: true, expires_at: "2099-01-01", use_count: 1, max_uses: 1 },
+      error: null,
+    });
+    expect((await POST(request())).status).toBe(400);
+    expect(mocks.createUser).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
   it("does not accept the stored hash as a fallback token", async () => {
     mocks.lookup.mockResolvedValue({ data: null, error: null });
     expect((await POST(request())).status).toBe(400);

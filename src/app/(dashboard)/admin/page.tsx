@@ -7,7 +7,6 @@ import {
   Users, 
   Building2, 
   PieChart, 
-  GitBranch, 
   History, 
   Settings,
   ArrowRight
@@ -25,15 +24,9 @@ export default function AdminOverviewPage() {
     },
     {
       title: "Ministries & Departments",
-      desc: "Configure church ministries and assign department leaders who approve claims.",
+      desc: "Manage the ministries available on claim forms.",
       icon: <Building2 className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />,
       href: "/admin/ministries",
-    },
-    {
-      title: "Approval Workflows",
-      desc: "View the direct Finance Review and payment process.",
-      icon: <GitBranch className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />,
-      href: "/admin/workflows",
     },
     {
       title: "Security Audit Trail",
@@ -57,7 +50,7 @@ export default function AdminOverviewPage() {
             System Administration
           </h1>
           <p className="text-xs text-zinc-500">
-            Configure master records, dynamic workflow routing, user permissions, and compliance settings.
+            Manage users, ministries, and claim settings.
           </p>
         </div>
 

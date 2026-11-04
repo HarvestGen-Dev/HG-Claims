@@ -9,13 +9,13 @@ export async function GET(request: NextRequest) {
   if (!token || token.length > 256) return NextResponse.json({ valid: false, error: "Invitation token is missing or invalid." }, { status: 400, headers });
   try {
     const { data: invitation, error } = await createAdminClient().from("signup_invitations")
-      .select("role_code,description,expires_at,use_count,max_uses,is_active,is_multi_user")
+      .select("expires_at,use_count,max_uses,is_active")
       .eq("token_hash", hashToken(token)).maybeSingle();
     if (error) throw error;
     if (!invitation || !invitation.is_active || new Date(invitation.expires_at).getTime() <= Date.now() || invitation.use_count >= invitation.max_uses) {
       return NextResponse.json({ valid: false, error: "Invitation link is invalid, expired, or fully used." }, { status: 400, headers });
     }
-    return NextResponse.json({ valid: true, role_code: invitation.role_code, description: invitation.description, is_multi_user: Boolean(invitation.is_multi_user) }, { headers });
+    return NextResponse.json({ valid: true }, { headers });
   } catch {
     return NextResponse.json({ valid: false, error: "Unable to validate the invitation. Please try again." }, { status: 503, headers });
   }

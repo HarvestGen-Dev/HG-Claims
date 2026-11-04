@@ -1,6 +1,5 @@
 "use client";
 
-import { formatRole } from "@/lib/auth/roles";
 
 import { Select } from "@/components/ui/select";
 import { useState, useEffect, Suspense } from "react";
@@ -8,14 +7,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowRight,
   Loader2,
-  UserCheck,
   Phone,
   User,
   Lock,
   Eye,
   EyeOff,
-  Mail,
-  ShieldCheck,
   Landmark,
   CreditCard,
 } from "lucide-react";
@@ -24,8 +20,6 @@ import { iamClient } from "@/lib/domains";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import { BrandLogo } from "@/components/BrandLogo";
 import { showToast } from "@/lib/utils/toast";
 import { isRealFullName } from "@/lib/auth/permissions";
@@ -43,7 +37,7 @@ function OnboardingContent() {
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
-  const [isMultiUser, setIsMultiUser] = useState(false);
+  const isMultiUser = Boolean(user?.is_multi_user);
   const [bankCode, setBankCode] = useState("");
   const [bankAccountHolderName, setBankAccountHolderName] = useState("");
   const [bankAccountNumber, setBankAccountNumber] = useState("");
@@ -79,7 +73,6 @@ function OnboardingContent() {
         if (user.phone) {
           setPhone(user.phone);
         }
-        setIsMultiUser(Boolean(user.is_multi_user));
         const resolved = resolveCanonicalBank(user.bank_code || user.bank_name);
         if (resolved) {
           setBankCode(resolved.swiftCode);
@@ -158,7 +151,6 @@ function OnboardingContent() {
       await iamClient.completeOnboarding({
         full_name: trimmed,
         phone: phone.trim() || undefined,
-        is_multi_user: isMultiUser,
         ...(selectedBank && !isMultiUser
           ? {
               bank_name: selectedBank.name,
@@ -176,7 +168,7 @@ function OnboardingContent() {
 
       // 4. Flash welcome toast
       showToast.flashSuccess(
-        "Your Harvest Generation profile and reimbursement bank details are saved.",
+        "Your profile is ready.",
         "Registration Complete"
       );
 
@@ -203,58 +195,20 @@ function OnboardingContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-between py-10 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-background flex flex-col justify-between py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-lg w-full mx-auto space-y-6">
         <div className="text-center">
           <BrandLogo className="mx-auto" priority />
-          <div className="inline-flex items-center gap-1.5 bg-zinc-100 border border-zinc-200 text-zinc-800 text-xs font-semibold px-3 py-1 rounded-full mt-5">
-            <UserCheck className="h-3.5 w-3.5" />
-            Account Registration & Reimbursement Setup
-          </div>
           <h1 className="mt-3 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-            Welcome to Harvest Generation
+            Finish setting up
           </h1>
-          <p className="mt-1.5 text-xs sm:text-sm text-slate-600">
-            Set up your profile to start using the portal.
+          <p className="mt-1.5 break-all text-sm text-muted-foreground">
+            {user.email}
           </p>
         </div>
 
         <div className="bg-white py-6 px-6 shadow-sm border border-slate-200 rounded-xl sm:px-8 space-y-5">
-          {/* Account Summary Banner */}
-          <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-500 flex items-center gap-1.5 font-medium">
-                <Mail className="h-3.5 w-3.5 text-slate-400" />
-                {user.email}
-              </span>
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-700">
-                <ShieldCheck className="h-3.5 w-3.5 text-zinc-900" />
-                Verified Invite
-              </span>
-            </div>
-            {user.roles && user.roles.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {user.roles.map((r) => (
-                    <Badge
-                      key={r}
-                      className="bg-zinc-900 text-white hover:bg-zinc-800 text-[10px] px-2 py-0.5"
-                    >
-                      {formatRole(r)}
-                    </Badge>
-                  ))}
-              </div>
-            )}
-          </div>
-
           <form className="space-y-4" onSubmit={handleSubmit}>
-            <label className="flex items-start gap-2.5 text-sm">
-              <Checkbox className="mt-0.5" checked={isMultiUser} onCheckedChange={(checked) => { setIsMultiUser(checked); setError(""); }} disabled={busy} />
-              <span>
-                <span className="block font-medium">Shared account</span>
-                <span className="block text-muted-foreground">Choose a payee when submitting each claim.</span>
-              </span>
-            </label>
-
             {/* Section 1: Personal Details */}
             <div className="space-y-3">
               <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
@@ -285,7 +239,7 @@ function OnboardingContent() {
                     }}
                     required
                     disabled={busy}
-                    className="h-9 text-xs"
+                    className="h-11"
                   />
                 </div>
 
@@ -305,7 +259,7 @@ function OnboardingContent() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     disabled={busy}
-                    className="h-9 text-xs"
+                    className="h-11"
                   />
                 </div>
               </div>
@@ -318,11 +272,6 @@ function OnboardingContent() {
                 <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
                   Bank details
                 </span>
-                {selectedBank && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold bg-zinc-100 text-zinc-800 px-2 py-0.5 rounded">
-                    {selectedBank.swiftCode} &middot; {selectedBank.paymentMode}
-                  </span>
-                )}
               </div>
 
               <div className="space-y-1.5">
@@ -331,7 +280,7 @@ function OnboardingContent() {
                   className="text-xs font-semibold text-slate-700 flex items-center gap-1.5"
                 >
                   <Landmark className="h-3.5 w-3.5 text-slate-400" />
-                  Beneficiary Bank <span className="text-red-500">*</span>
+                  Bank <span className="text-red-500">*</span>
                 </label>
                 <Select
                   id="bankCode"
@@ -341,10 +290,10 @@ function OnboardingContent() {
                   disabled={busy}
                   className="w-full"
                 >
-                  <option value="">-- Select Bank from Directory --</option>
+                  <option value="">Choose a bank</option>
                   {MALAYSIAN_BANKS.map((bank) => (
                     <option key={bank.swiftCode} value={bank.swiftCode}>
-                      {bank.name} ({bank.swiftCode})
+                      {bank.name}
                     </option>
                   ))}
                 </Select>
@@ -366,7 +315,7 @@ function OnboardingContent() {
                     onChange={(e) => setBankAccountHolderName(e.target.value)}
                     required={!isMultiUser}
                     disabled={busy}
-                    className="h-9 text-xs"
+                    className="h-11"
                   />
                 </div>
 
@@ -387,7 +336,7 @@ function OnboardingContent() {
                     onChange={(e) => setBankAccountNumber(e.target.value)}
                     required={!isMultiUser}
                     disabled={busy}
-                    className="h-9 text-xs font-mono tracking-wider"
+                    className="h-11 font-mono tracking-wider"
                   />
                 </div>
               </div>

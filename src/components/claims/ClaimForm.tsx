@@ -892,13 +892,12 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
               <div className="flex items-center gap-1.5">
                 <Landmark className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
-                  Reimbursement Banking Details (SBP Directory)
+                  Bank details
                 </span>
               </div>
               {resolveCanonicalBank(bankCode || bankName) && (
                 <span className="text-[10px] font-mono font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 px-2 py-0.5 rounded">
-                  {resolveCanonicalBank(bankCode || bankName)?.swiftCode} &middot;{" "}
-                  {resolveCanonicalBank(bankCode || bankName)?.paymentMode}
+                  {resolveCanonicalBank(bankCode || bankName)?.swiftCode}
                 </span>
               )}
             </div>
@@ -925,7 +924,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                   </option>
                   {MALAYSIAN_BANKS.map((bank) => (
                     <option key={bank.swiftCode} value={bank.swiftCode}>
-                      {bank.name} ({bank.swiftCode})
+                      {bank.name}
                     </option>
                   ))}
                 </Select>
@@ -1225,7 +1224,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
             >
               {MALAYSIAN_BANKS.map((bank) => (
                 <option key={bank.swiftCode} value={bank.swiftCode}>
-                  {bank.name} ({bank.swiftCode} · {bank.paymentMode})
+                  {bank.name}
                 </option>
               ))}
             </Select>

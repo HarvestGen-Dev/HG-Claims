@@ -13,7 +13,6 @@ import {
   Settings,
   Users,
   Layers,
-  GitBranch,
   History,
   Bell,
   Building2,
@@ -182,7 +181,6 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             {navItem("/admin", "Overview", <ShieldCheck className="w-4 h-4" />, undefined, true)}
             {navItem("/admin/users", "Users & invitations", <Users className="w-4 h-4" />)}
             {navItem("/admin/ministries", "Ministries", <Building2 className="w-4 h-4" />)}
-            {navItem("/admin/workflows", "Workflows", <GitBranch className="w-4 h-4" />)}
             {navItem("/admin/audit", "Audit Trail", <History className="w-4 h-4" />)}
             {navItem("/admin/settings", "Form & Settings", <Settings className="w-4 h-4" />)}
           </div>
