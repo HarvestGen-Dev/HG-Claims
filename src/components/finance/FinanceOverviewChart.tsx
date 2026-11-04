@@ -33,7 +33,8 @@ export default function FinanceOverviewChart({ data }: FinanceOverviewChartProps
           tickLine={false}
         />
         <Tooltip
-          formatter={(val: any) => [`RM ${Number(val).toFixed(2)}`, "Total Spend"]}
+          cursor={{ fill: "rgb(var(--muted))", opacity: 0.55 }}
+          formatter={(val: number | string) => [`RM ${Number(val).toFixed(2)}`, "Total Spend"]}
           contentStyle={{
             borderRadius: "8px",
             fontSize: "11px",
@@ -41,7 +42,13 @@ export default function FinanceOverviewChart({ data }: FinanceOverviewChartProps
             boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
           }}
         />
-        <Bar dataKey="total" fill="#18181b" radius={[4, 4, 0, 0]} />
+        <Bar
+          dataKey="total"
+          fill="rgb(var(--primary))"
+          maxBarSize={56}
+          radius={[4, 4, 0, 0]}
+          isAnimationActive={false}
+        />
       </BarChart>
     </ResponsiveContainer>
   );

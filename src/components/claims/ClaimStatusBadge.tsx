@@ -31,7 +31,7 @@ const REIMBURSEMENT_BADGE_MAP: Record<
   },
   PAID: {
     label: "Disbursed",
-    classes: "bg-zinc-900 text-white border-zinc-900",
+    classes: "bg-emerald-50 text-emerald-800 border-emerald-200",
   },
   FAILED: {
     label: "Bank Transfer Failed",

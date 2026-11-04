@@ -10,7 +10,7 @@ import {
   Download
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth/context";
 import { claimsClient, financeClient, workspaceStore } from "@/lib/domains";
@@ -59,31 +59,19 @@ export default function FinanceDashboardPage() {
               Finance Overview
             </h1>
             <p className="text-xs text-zinc-500">
-              Review receipts, verify budgets, schedule bank payouts, and inspect expenditure analytics.
+              Track claims, payouts, and spending by ministry.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExport}
-              className="h-8 gap-1.5 border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 text-xs"
-            >
-              <Download className="w-3.5 h-3.5 text-zinc-400" />
-              <span>Export Ledger</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={handleExport} className="min-h-11 gap-2">
+              <Download className="size-4" /> Export ledger
             </Button>
-            <Link href="/finance/batches">
-              <Button variant="outline" size="sm" className="h-8 gap-1.5 border-zinc-200 text-zinc-800 hover:bg-zinc-50 text-xs font-medium">
-                <Wallet className="w-3.5 h-3.5" />
-                <span>Bulk Bank Batches (.xls)</span>
-              </Button>
+            <Link href="/finance/batches" className={buttonVariants({ variant: "outline", className: "min-h-11 gap-2" })}>
+              <Wallet className="size-4" /> Bank batches
             </Link>
-            <Link href="/finance/claims">
-              <Button size="sm" className="h-8 bg-zinc-900 hover:bg-zinc-800 text-white gap-1.5 text-xs shadow-2xs font-medium">
-                <Layers className="w-3.5 h-3.5" />
-                <span>Process & Disburse</span>
-              </Button>
+            <Link href="/finance/claims" className={buttonVariants({ className: "min-h-11 gap-2" })}>
+              <Layers className="size-4" /> Reimbursements
             </Link>
           </div>
         </div>
@@ -121,15 +109,15 @@ export default function FinanceDashboardPage() {
             <span className="text-[10px] text-zinc-400 block mt-0.5">Settled this period</span>
           </div>
 
-          <div className="p-3.5 rounded-xl border border-zinc-200/80 bg-zinc-900 text-white dark:border-zinc-800 dark:bg-zinc-900 shadow-2xs">
+          <div className="p-3.5 rounded-xl border border-primary/20 bg-accent text-accent-foreground">
             <div className="flex items-center justify-between text-zinc-400 mb-1.5">
-              <span className="text-[11px] font-medium tracking-wide text-zinc-400">Total Disbursed</span>
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <span className="text-[11px] font-medium tracking-wide text-muted-foreground">Total Disbursed</span>
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
             </div>
-            <p className="text-xl font-bold font-mono text-emerald-400 tabular-nums">
+            <p className="text-xl font-bold font-mono text-primary tabular-nums">
               {formatCurrency(stats?.totalPaidAmount || 0)}
             </p>
-            <span className="text-[10px] text-zinc-400 block mt-0.5">Fiscal year total</span>
+            <span className="text-[10px] text-muted-foreground block mt-0.5">Fiscal year total</span>
           </div>
         </div>
 
