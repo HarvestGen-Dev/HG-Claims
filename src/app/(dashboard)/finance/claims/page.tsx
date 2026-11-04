@@ -666,45 +666,47 @@ function FinanceClaimsContent() {
                             )}
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-right space-x-1.5 whitespace-nowrap">
-                          {c.status === "PENDING_FINANCE_REVIEW" &&
-                            canApprove(c) && (
+                        <td className="py-3 px-4 text-right w-px">
+                          <div className="table-actions">
+                            {c.status === "PENDING_FINANCE_REVIEW" &&
+                              canApprove(c) && (
+                                <Button
+                                  size="sm"
+                                  loading={approvingClaimId === c.id}
+                                  disabled={approvingClaimId === c.id}
+                                  onClick={() => handleQuickApprove(c)}
+                                  className="h-7 text-xs bg-zinc-900 hover:bg-zinc-800 text-white gap-1 shadow-2xs font-medium px-2.5"
+                                >
+                                  {approvingClaimId !== c.id && (
+                                    <CheckCircle2 className="w-3 h-3" />
+                                  )}
+                                  <span>Approve</span>
+                                </Button>
+                              )}
+
+                            {isEligibleForXls && (
                               <Button
                                 size="sm"
-                                loading={approvingClaimId === c.id}
-                                disabled={approvingClaimId === c.id}
-                                onClick={() => handleQuickApprove(c)}
-                                className="h-7 text-xs bg-zinc-900 hover:bg-zinc-800 text-white gap-1 shadow-2xs font-medium px-2.5"
+                                variant="outline"
+                                disabled={generatingXls}
+                                onClick={() => handleGenerateXlsForSelected([c.id])}
+                                className="h-7 text-xs border-zinc-300 text-zinc-900 hover:bg-zinc-100 gap-1 font-medium px-2.5"
                               >
-                                {approvingClaimId !== c.id && (
-                                  <CheckCircle2 className="w-3 h-3" />
-                                )}
-                                <span>Approve</span>
+                                <FileSpreadsheet className="w-3 h-3" />
+                                <span>Generate .xls</span>
                               </Button>
                             )}
 
-                          {isEligibleForXls && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={generatingXls}
-                              onClick={() => handleGenerateXlsForSelected([c.id])}
-                              className="h-7 text-xs border-zinc-300 text-zinc-900 hover:bg-zinc-100 gap-1 font-medium px-2.5"
-                            >
-                              <FileSpreadsheet className="w-3 h-3" />
-                              <span>Generate .xls</span>
-                            </Button>
-                          )}
-
-                          <Link href={`/finance/claims/${c.id}`}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 text-xs text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-2"
-                            >
-                              View
-                            </Button>
-                          </Link>
+                            <Link href={`/finance/claims/${c.id}`}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-xs text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-2"
+                              >
+                                View
+                              </Button>
+                            </Link>
+                          </div>
                         </td>
                       </tr>
                     );

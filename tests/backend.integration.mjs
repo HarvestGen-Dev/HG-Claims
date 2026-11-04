@@ -36,10 +36,12 @@ for (const [name, role] of Object.entries({ admin: "SYSTEM_ADMIN", claimant: "CL
   const authenticated = createClient(status.API_URL, status.ANON_KEY, {
     accessToken: async () => login.data.session.access_token,
   });
-  users[name] = { client: authenticated, id: data.user.id, email };
+  users[name] = { client: authenticated, id: data.user.id, email, session: login.data.session };
 }
 const { admin, claimant, leader, outsider, finance } = users;
 check(!!(await anonymous.rpc("nlcc_snapshot")).error, "Anonymous snapshot denied");
+check(!!(await anonymous.rpc("hg_session_expires_at")).error, "Anonymous session lookup denied");
+check(!!(await claimant.client.from("profiles").select("bank_account_number")).error, "Direct bank detail reads denied");
 check(!!(await claimant.client.from("claims").insert({ claimant_id: claimant.id })).error, "Direct claim writes denied");
 check(!!(await claimant.client.rpc("instantiate_claim_workflow", { p_claim_id: randomUUID() })).error, "Legacy privileged RPC denied");
 await denied(claimant.client, "master_save", { table: "ministries", data: { code: "ATTACK", name: "Attack" } });
@@ -89,6 +91,9 @@ const path = claimant.id + "/" + randomUUID() + "/receipt.png";
 const bytes = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64");
 assert.ifError((await claimant.client.storage.from("receipts").upload(path, bytes, { contentType: "image/png" })).error);
 check(!!(await outsider.client.storage.from("receipts").download(path)).error, "Unrelated receipt download denied");
+check(!!(await finance.client.storage.from("receipts").download(path)).error, "Finance cannot download an unattached receipt");
+check(!!(await claimant.client.storage.from("receipts").createSignedUrl(path, 86400)).error, "Even the receipt owner cannot mint a signed download link");
+check(!!(await claimant.client.storage.from("receipts").createSignedUploadUrl(claimant.id + "/signed.png")).error, "Signed uploads cannot bypass the receipt session check");
 const payload = {
   request_key: randomUUID(), ministry_id: ministry.id, claimant_name: "Integration Claimant",
   claim_date: "2026-09-10", purpose: "Transport", payment_method: "PERSONAL_REIMBURSEMENT", declaration_accepted: true,
@@ -128,5 +133,54 @@ check(payments.filter(p => !p.error).length === 1, "Concurrent payment is record
 check((await snapshot(claimant.client)).claims.find(c => c.id === saved.id).status === "PAID", "Paid status is visible to claimant");
 check(!!(await claimant.client.from("audit_logs").insert({ action: "FAKE" })).error, "Audit forgery denied");
 check((await snapshot(admin.client)).auditLogs.some(a => a.entity_id === saved.id), "Audit records exist");
+// Age the original Auth session while its signed JWT is still valid.
+const { data: deadline, error: deadlineError } = await claimant.client.rpc("hg_session_expires_at");
+assert.ifError(deadlineError);
+check(Date.parse(deadline) - Date.now() > 3500_000, "New sign-in has a one-hour deadline");
+const active = createClient(status.API_URL, status.ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+const refreshed = await active.auth.refreshSession({ refresh_token: claimant.session.refresh_token });
+assert.ifError(refreshed.error);
+const refreshedClient = createClient(status.API_URL, status.ANON_KEY, { accessToken: async () => refreshed.data.session.access_token });
+check((await refreshedClient.rpc("hg_session_expires_at")).data === deadline, "Refreshing the bearer token preserves the deadline");
+check(!(await claimant.client.storage.from("receipts").download(path)).error, "Owner can download a receipt with an active session");
+check(!(await finance.client.storage.from("receipts").download(path)).error, "Finance can download receipts attached to submitted claims");
+check(!!(await outsider.client.rpc("nlcc_claim_detail", { p_claim_id: saved.id })).error, "Unrelated user cannot fetch claim details directly");
+
+const db = new URL(status.DB_URL);
+assert.match(db.hostname, /^(127\.0\.0\.1|localhost)$/);
+function updateFixture(sql, variables) {
+  const args = Object.entries(variables).flatMap(([key, value]) => ["-v", `${key}=${value}`]);
+  execFileSync("psql", [db.href, "-X", "-v", "ON_ERROR_STOP=1", ...args], { input: sql, stdio: ["pipe", "ignore", "ignore"] });
+}
+
+updateFixture(`
+  UPDATE public.claim_workflow_steps SET assigned_user_id = :'reviewer' WHERE claim_id = :'claim';
+  UPDATE public.claims SET approved_snapshot = '{"bank_account_number":"9999999999"}'::jsonb WHERE id = :'claim';
+`, { reviewer: outsider.id, claim: saved.id });
+const reviewerDetail = await outsider.client.rpc("nlcc_claim_detail", { p_claim_id: saved.id });
+assert.ifError(reviewerDetail.error);
+check(!reviewerDetail.data.claim.approved_snapshot, "An assigned reviewer cannot read the frozen bank snapshot");
+const financeDetail = await finance.client.rpc("nlcc_claim_detail", { p_claim_id: saved.id });
+assert.ifError(financeDetail.error);
+check(financeDetail.data.claim.approved_snapshot.bank_account_number === "9999999999", "Finance keeps access to the frozen bank snapshot");
+
+const jwt = JSON.parse(Buffer.from(refreshed.data.session.access_token.split(".")[1], "base64url").toString());
+assert.match(jwt.session_id, /^[a-f0-9-]{36}$/);
+assert.ok(jwt.exp > Date.now() / 1000);
+updateFixture(
+  "UPDATE auth.sessions SET created_at = now() - interval '1 hour 1 second' WHERE id = :'session_id';",
+  { session_id: jwt.session_id }
+);
+check(!!(await refreshedClient.rpc("nlcc_snapshot")).error, "Valid JWT cannot read the workspace after the session deadline");
+check(!!(await refreshedClient.rpc("nlcc_claim_detail", { p_claim_id: saved.id })).error, "Expired session cannot read its own claim");
+await denied(refreshedClient, "save_draft", { ...draft, request_key: randomUUID() });
+check(!!(await refreshedClient.storage.from("receipts").download(path)).error, "Expired session cannot download its own receipt");
+check(!!(await refreshedClient.storage.from("receipts").upload(claimant.id + "/expired.png", bytes, { contentType: "image/png" })).error, "Expired session cannot upload a receipt");
+check(!!(await active.auth.refreshSession()).error, "Auth time box refuses to refresh the old session");
+const signedInAgain = await active.auth.signInWithPassword({ email: claimant.email, password });
+assert.ifError(signedInAgain.error);
+check(Date.parse((await active.rpc("hg_session_expires_at")).data) > Date.parse(deadline), "Signing in again starts a new session");
+check(!(await active.storage.from("receipts").download(path)).error, "Signing in again restores access to the owner's receipt");
+
 console.log("PASS: " + assertions + " production backend assertions, including concurrent approval/payment and receipt isolation.");
 console.log("Local integration fixtures retained with suffix " + suffix + " for inspection.");

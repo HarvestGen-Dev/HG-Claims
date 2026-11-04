@@ -1,5 +1,6 @@
 -- Verify the migrated workflow without retaining approvals, reviews, or audit records.
 BEGIN;
+\ir helpers/test-session.sql
 DO $$
 DECLARE c public.claims; reviewer uuid; reviewer_role text; action_name text; v integer;
 BEGIN
@@ -8,7 +9,7 @@ BEGIN
       WHERE w.claim_id=c.id AND w.is_current) <> 1 THEN
     RAISE EXCEPTION 'Expected one current review step';
   END IF;
-  PERFORM set_config('request.jwt.claim.sub',COALESCE(c.submitted_by_user_id,c.claimant_id)::text,true);
+  PERFORM pg_temp.sign_in_as(COALESCE(c.submitted_by_user_id,c.claimant_id));
   FOREACH action_name IN ARRAY ARRAY['verify','approve'] LOOP
     BEGIN
       PERFORM public.nlcc_command(action_name,jsonb_build_object('claim_id',c.id,'version',c.version));
@@ -24,7 +25,7 @@ BEGIN
       LIMIT 1;
     IF reviewer IS NULL THEN RAISE EXCEPTION 'Missing independent reviewer for %',reviewer_role; END IF;
     BEGIN
-      PERFORM set_config('request.jwt.claim.sub',reviewer::text,true);
+      PERFORM pg_temp.sign_in_as(reviewer);
       PERFORM public.nlcc_command('verify',jsonb_build_object('claim_id',c.id,'version',c.version));
       SELECT version INTO v FROM public.claims WHERE id=c.id;
       PERFORM public.nlcc_command('approve',jsonb_build_object('claim_id',c.id,'version',v));

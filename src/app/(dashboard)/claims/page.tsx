@@ -260,23 +260,25 @@ function ClaimsContent() {
                           reimbursementStatus={c.reimbursement_status}
                         />
                       </td>
-                      <td className="py-3 px-4 text-right space-x-1">
-                        <Link href={`/claims/${c.id}`}>
-                          <Button variant="ghost" size="sm" className="h-7 text-xs text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-2.5">
-                            View
-                          </Button>
-                        </Link>
-                        {(c.status === "DRAFT" || c.status === "CANCELLED") && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setDeletingClaim(c)}
-                            className="h-7 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 px-2"
-                            title="Delete Claim"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        )}
+                      <td className="py-3 px-4 text-right w-px">
+                        <div className="table-actions">
+                          <Link href={`/claims/${c.id}`}>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-2.5">
+                              View
+                            </Button>
+                          </Link>
+                          {(c.status === "DRAFT" || c.status === "CANCELLED") && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeletingClaim(c)}
+                              className="h-7 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 px-2"
+                              title="Delete Claim"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

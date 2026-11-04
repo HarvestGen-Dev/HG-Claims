@@ -141,20 +141,20 @@ export default function MinistryManagementPage() {
             className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs gap-1.5 shadow-sm"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Add New Ministry</span>
+            <span>Add ministry</span>
           </Button>
         </div>
 
-        <Card>
+        <Card className="overflow-hidden">
           <CardContent className="p-0">
             {/* Mobile Ministries Card List */}
-            <div className="sm:hidden divide-y divide-slate-100">
+            <div className="sm:hidden divide-y divide-border">
               {(ministries || []).map((m) => (
                 <div key={m.id} className="p-4 space-y-2.5">
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-slate-900 text-sm">{m.name}</span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="break-words font-semibold text-foreground text-sm">{m.name}</span>
                         <span className="font-mono text-[11px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">
                           {m.code}
                         </span>
@@ -164,12 +164,12 @@ export default function MinistryManagementPage() {
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                       m.is_active ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
                     }`}>
-                      {m.is_active ? "ACTIVE" : "INACTIVE"}
+                      {m.is_active ? "Active" : "Inactive"}
                     </span>
                   </div>
 
                   {m.description && (
-                    <p className="text-xs text-slate-600">{m.description}</p>
+                    <p className="text-xs text-muted-foreground">{m.description}</p>
                   )}
 
                   <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100">
@@ -195,6 +195,7 @@ export default function MinistryManagementPage() {
                       size="sm"
                       onClick={() => setDeletingMin(m)}
                       className="text-xs h-8 px-2.5 text-red-600 hover:bg-red-50"
+                      aria-label={`Delete ${m.name}`}
                       title="Delete Ministry"
                     >
                       <Trash2 className="w-3.5 h-3.5 mr-1" />
@@ -209,56 +210,57 @@ export default function MinistryManagementPage() {
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                  <tr className="bg-muted/50 border-b border-border">
                     <th className="py-3 px-4">Code</th>
-                    <th className="py-3 px-4">Ministry Name</th>
+                    <th className="py-3 px-4">Ministry</th>
                     <th className="py-3 px-4">Description</th>
                     <th className="py-3 px-4 text-center">Status</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-border">
                   {(ministries || []).map((m) => (
-                    <tr key={m.id} className="hover:bg-slate-50/70">
-                      <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{m.code}</td>
-                      <td className="py-3.5 px-4 font-semibold text-slate-800">{m.name}</td>
-                      <td className="py-3.5 px-4">
-                        </td>
-                      <td className="py-3.5 px-4 text-slate-500 max-w-sm truncate">{m.description || "-"}</td>
+                    <tr key={m.id} className="hover:bg-muted/40">
+                      <td className="py-3.5 px-4 font-mono font-bold text-foreground">{m.code}</td>
+                      <td className="py-3.5 px-4 font-semibold text-foreground">{m.name}</td>
+                      <td className="py-3.5 px-4 text-muted-foreground max-w-sm truncate">{m.description || "-"}</td>
                       <td className="py-3.5 px-4 text-center">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           m.is_active ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
                         }`}>
-                          {m.is_active ? "ACTIVE" : "INACTIVE"}
+                          {m.is_active ? "Active" : "Inactive"}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-right space-x-1.5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleOpenEdit(m)}
-                          className="text-xs h-7 px-2.5"
-                        >
-                          <Edit className="w-3 h-3 mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleToggleStatus(m)}
-                          className={`text-xs h-7 px-2.5 ${m.is_active ? "text-amber-600 hover:bg-amber-50" : "text-emerald-600 hover:bg-emerald-50"}`}
-                        >
-                          {m.is_active ? "Deactivate" : "Activate"}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeletingMin(m)}
-                          className="text-xs h-7 px-2 text-red-600 hover:bg-red-50"
-                          title="Delete Ministry"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
+                      <td className="py-3.5 px-4 text-right w-px">
+                        <div className="table-actions">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenEdit(m)}
+                            className="text-xs h-7 px-2.5"
+                          >
+                            <Edit className="w-3 h-3 mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggleStatus(m)}
+                            className={`text-xs h-7 px-2.5 ${m.is_active ? "text-amber-600 hover:bg-amber-50" : "text-emerald-600 hover:bg-emerald-50"}`}
+                          >
+                            {m.is_active ? "Deactivate" : "Activate"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeletingMin(m)}
+                            className="text-xs h-7 px-2 text-red-600 hover:bg-red-50"
+                            aria-label={`Delete ${m.name}`}
+                            title="Delete Ministry"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -315,7 +317,7 @@ export default function MinistryManagementPage() {
                 onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                 className="rounded text-zinc-900 focus:ring-zinc-900 accent-zinc-900"
               />
-              <span className="font-semibold text-slate-800">Ministry Active & Available in Claim Forms</span>
+              <span className="font-semibold text-foreground">Ministry Active & Available in Claim Forms</span>
             </label>
 
             {error && <p className="text-xs text-red-600 font-medium">{error}</p>}
@@ -338,8 +340,8 @@ export default function MinistryManagementPage() {
             <DialogTitle>Delete Ministry</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 my-2 text-xs">
-            <p className="text-slate-600">
-              Are you sure you want to delete the ministry <strong className="text-slate-900">{deletingMin.name} ({deletingMin.code})</strong>?
+            <p className="text-muted-foreground">
+              Are you sure you want to delete the ministry <strong className="text-foreground">{deletingMin.name} ({deletingMin.code})</strong>?
             </p>
             <p className="text-slate-500">
               This will remove the ministry from the system and prevent future claims under this ministry.

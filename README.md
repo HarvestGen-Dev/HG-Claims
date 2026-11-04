@@ -57,6 +57,12 @@ Redeploy after changing environment variables.
 6. Test invitation and password recovery emails on the deployed domain. The initial
    administrator can use Forgot password to verify the mailbox and set a password.
 
+The database enforces a one-hour sign-in limit for claims, bank details, and receipts.
+Apply the hourly-session migration before deploying the corresponding app code.
+Set the hosted JWT expiry to 3,600 seconds. If your Supabase plan includes time-boxed
+sessions, set the time box to one hour so Auth also stops refreshing expired sessions.
+Users signed in for more than an hour will need to sign in again after rollout.
+
 The application does not currently send claim-status emails. Those are distinct
 from Supabase Auth invitations/recovery. In-app claim notifications are implemented.
 

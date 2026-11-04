@@ -33,14 +33,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null);
   const pathname = usePathname();
+  const expireSession = useCallback(async () => {
+    workspaceStore.clear();
+    setUser(null);
+    setSessionExpiresAt(null);
+    try {
+      await createClient().auth.signOut({ scope: "local" });
+    } finally {
+      if (window.location.pathname !== "/login" || window.location.search !== "?expired=1") {
+        window.location.replace("/login?expired=1");
+      }
+    }
+  }, []);
+
   const refreshUser = useCallback(async () => {
+    const { data, error } = await createClient().rpc("hg_session_expires_at");
+    if (error) throw new Error("Unable to verify your session. Please sign in again.");
+    const deadline = typeof data === "string" ? Date.parse(data) : NaN;
+    if (!Number.isFinite(deadline) || deadline <= Date.now()) {
+      await expireSession();
+      return;
+    }
+    setSessionExpiresAt(deadline);
     const profile = await workspaceStore.refresh();
+    if (Date.now() >= deadline) {
+      await expireSession();
+      return;
+    }
     setUser(profile);
     const primaryRole = (profile?.roles?.[0] as RoleCode) || "CLAIMANT";
     setActiveRole(primaryRole);
     setError("");
-  }, []);
+  }, [expireSession]);
+
+  useEffect(() => {
+    if (sessionExpiresAt === null) return;
+    const checkExpiry = () => {
+      if (Date.now() >= sessionExpiresAt) void expireSession();
+    };
+    const timer = window.setTimeout(checkExpiry, Math.max(0, sessionExpiresAt - Date.now()));
+    document.addEventListener("visibilitychange", checkExpiry);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", checkExpiry);
+    };
+  }, [expireSession, sessionExpiresAt]);
+
   useEffect(() => {
     let cancelled = false;
     let redirecting = false;
@@ -79,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { user: authenticated } } = await client.auth.getUser();
         if (authenticated && !cancelled) await refreshUser();
         const { data } = client.auth.onAuthStateChange(event => {
-          if (event === "SIGNED_OUT") { workspaceStore.clear(); setUser(null); }
+          if (event === "SIGNED_OUT") { workspaceStore.clear(); setUser(null); setSessionExpiresAt(null); }
         });
         unsubscribe = () => data.subscription.unsubscribe();
       } catch (cause) { if (!cancelled) setError(cause instanceof Error ? cause.message : "Unable to load your account."); }
