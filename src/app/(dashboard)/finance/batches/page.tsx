@@ -808,14 +808,14 @@ export default function FinanceBatchesPage() {
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-zinc-100">
+                        <div className="table-actions w-full pt-2 border-t border-zinc-100">
                           {b.status !== "VOIDED" && (
                             <a
                               href={`/api/v1/finance/batches/${b.id}/export`}
-                              className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-800"
+                              className="inline-flex items-center gap-1 min-h-11 px-2 rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-800"
                             >
                               <Download className="w-3 h-3" />
-                              <span>Download .xls</span>
+                              <span>Download</span>
                             </a>
                           )}
                           {!["SETTLED", "VOIDED", "REJECTED"].includes(b.status) && (
@@ -824,16 +824,16 @@ export default function FinanceBatchesPage() {
                               loading={disbursingBatchId === b.id}
                               disabled={disbursingBatchId === b.id}
                               onClick={() => handleMarkBatchDisbursed(b)}
-                              className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1 font-semibold"
+                              className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1 font-semibold px-2"
                             >
                               {disbursingBatchId !== b.id && (
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                               )}
-                              <span>Mark Disbursed</span>
+                              <span>Disburse</span>
                             </Button>
                           )}
                           <Link href={`/finance/batches/${b.id}`} className="ml-auto">
-                            <Button variant="outline" size="sm" className="h-7 text-xs">
+                            <Button variant="outline" size="sm" className="h-7 px-2 text-xs">
                               Details
                             </Button>
                           </Link>
@@ -899,39 +899,41 @@ export default function FinanceBatchesPage() {
                                 : "XLS File Created"}
                             </Badge>
                           </td>
-                          <td className="py-3 px-4 text-right space-x-2 whitespace-nowrap">
-                            {b.status !== "VOIDED" && (
-                              <a
-                                href={`/api/v1/finance/batches/${b.id}/export`}
-                                className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-800"
-                              >
-                                <Download className="w-3 h-3" />
-                                <span>Download .xls</span>
-                              </a>
-                            )}
-                            {!["SETTLED", "VOIDED", "REJECTED"].includes(b.status) && (
-                              <Button
-                                size="sm"
-                                loading={disbursingBatchId === b.id}
-                                disabled={disbursingBatchId === b.id}
-                                onClick={() => handleMarkBatchDisbursed(b)}
-                                className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1 font-semibold"
-                              >
-                                {disbursingBatchId !== b.id && (
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                )}
-                                <span>Mark .xls as Disbursed</span>
-                              </Button>
-                            )}
-                            <Link href={`/finance/batches/${b.id}`}>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 text-xs"
-                              >
-                                Details
-                              </Button>
-                            </Link>
+                          <td className="py-3 px-4 text-right w-px">
+                            <div className="table-actions">
+                              {b.status !== "VOIDED" && (
+                                <a
+                                  href={`/api/v1/finance/batches/${b.id}/export`}
+                                  className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-800"
+                                >
+                                  <Download className="w-3 h-3" />
+                                  <span>Download .xls</span>
+                                </a>
+                              )}
+                              {!["SETTLED", "VOIDED", "REJECTED"].includes(b.status) && (
+                                <Button
+                                  size="sm"
+                                  loading={disbursingBatchId === b.id}
+                                  disabled={disbursingBatchId === b.id}
+                                  onClick={() => handleMarkBatchDisbursed(b)}
+                                  className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1 font-semibold"
+                                >
+                                  {disbursingBatchId !== b.id && (
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                  )}
+                                  <span>Mark .xls as Disbursed</span>
+                                </Button>
+                              )}
+                              <Link href={`/finance/batches/${b.id}`}>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                >
+                                  Details
+                                </Button>
+                              </Link>
+                            </div>
                           </td>
                         </tr>
                       ))}

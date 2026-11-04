@@ -129,7 +129,7 @@ function OnboardingContent() {
       normalizedAccount = acctCheck.normalized;
     }
 
-    if (isInviteFlow || password.length > 0) {
+    if (isInviteFlow) {
       if (password.length < 8) {
         setError("Password must be at least 8 characters long.");
         return;
@@ -144,8 +144,8 @@ function OnboardingContent() {
     setError("");
 
     try {
-      // 1. If password provided (email invitation flow), set the user's password in Supabase Auth
-      if (password.length >= 8) {
+      // Email invitations create an account without a password.
+      if (isInviteFlow) {
         const client = createClient();
         const { error: pwError } = await client.auth.updateUser({
           password,
@@ -437,45 +437,44 @@ function OnboardingContent() {
             </div>
             )}
 
-            {/* Section 3: Password Setup */}
-            <div className="pt-3 border-t border-slate-100 space-y-3">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-                Account security
-              </div>
-
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="password"
-                  className="text-xs font-semibold text-slate-700 flex items-center gap-1.5"
-                >
-                  <Lock className="h-3.5 w-3.5 text-slate-400" />
-                  Set Account Password{" "}
-                  {isInviteFlow && <span className="text-red-500">*</span>}
-                </label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="new-password"
-                    placeholder="At least 8 characters"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required={isInviteFlow}
-                    disabled={busy}
-                    className="h-9 pr-10 text-xs"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    tabIndex={-1}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+            {isInviteFlow && (
+              <div className="pt-3 border-t border-slate-100 space-y-3">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                  Account security
                 </div>
-              </div>
 
-              {(isInviteFlow || password.length > 0) && (
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="password"
+                    className="text-xs font-semibold text-slate-700 flex items-center gap-1.5"
+                  >
+                    <Lock className="h-3.5 w-3.5 text-slate-400" />
+                    Set Account Password{" "}
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      placeholder="At least 8 characters"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      disabled={busy}
+                      className="h-9 pr-10 text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
                 <div className="space-y-1.5">
                   <label
                     htmlFor="confirmPassword"
@@ -492,7 +491,7 @@ function OnboardingContent() {
                       placeholder="Re-enter your password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      required={isInviteFlow || password.length > 0}
+                      required
                       disabled={busy}
                       className="h-9 pr-10 text-xs"
                     />
@@ -506,8 +505,8 @@ function OnboardingContent() {
                     </button>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-md text-xs text-red-700">

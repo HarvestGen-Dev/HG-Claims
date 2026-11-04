@@ -1,12 +1,13 @@
 -- Real database regression checks; every mutation is rolled back.
 BEGIN;
+\ir helpers/test-session.sql
 DO $$
 DECLARE admin_id uuid; member_id uuid; c public.claims; snap jsonb; result jsonb; inv uuid; dummy uuid;
 BEGIN
   SELECT p.id INTO STRICT admin_id FROM public.profiles p JOIN public.user_roles ur ON ur.user_id=p.id
     JOIN public.roles r ON r.id=ur.role_id WHERE p.status='ACTIVE' AND r.code='SYSTEM_ADMIN' LIMIT 1;
   SELECT id INTO STRICT member_id FROM public.profiles WHERE status='ACTIVE' AND id<>admin_id LIMIT 1;
-  PERFORM set_config('request.jwt.claim.sub',admin_id::text,true);
+  PERFORM pg_temp.sign_in_as(admin_id);
   -- Unknown actions must fail instead of returning a success with a null ID.
   BEGIN
     PERFORM public.nlcc_command('not_an_action','{}'); RAISE EXCEPTION 'Unknown action accepted' USING ERRCODE='PZ002';

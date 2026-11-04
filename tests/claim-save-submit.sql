@@ -1,6 +1,7 @@
 -- Rollback-only regression test. Requires an active account with an unused uploaded
 -- receipt and an active ministry/cost centre. No fixtures survive this transaction.
 BEGIN;
+\ir helpers/test-session.sql
 DO $$
 DECLARE
   actor uuid; ministry uuid; centre uuid; receipt jsonb; payload jsonb;
@@ -21,8 +22,7 @@ BEGIN
   IF actor IS NULL OR ministry IS NULL THEN
     RAISE EXCEPTION 'Regression prerequisites missing: active account, unused receipt, ministry/cost centre';
   END IF;
-  PERFORM set_config('request.jwt.claim.sub',actor::text,true);
-  PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',actor,'role','authenticated')::text,true);
+  PERFORM pg_temp.sign_in_as(actor);
   payload=jsonb_build_object(
     'request_key',gen_random_uuid(), 'ministry_id',ministry,
     'claimant_name','Rollback regression', 'claim_date',current_date,
@@ -67,7 +67,7 @@ BEGIN
   END;
   SELECT p.id INTO STRICT reviewer FROM public.profiles p JOIN public.user_roles ur ON ur.user_id=p.id
     JOIN public.roles r ON r.id=ur.role_id WHERE p.status='ACTIVE' AND p.id<>actor AND r.code IN ('FINANCE_OFFICER','SYSTEM_ADMIN') LIMIT 1;
-  PERFORM set_config('request.jwt.claim.sub',reviewer::text,true);
+  PERFORM pg_temp.sign_in_as(reviewer);
   SELECT version INTO claim_version FROM public.claims WHERE id=v_claim_id;
   PERFORM public.nlcc_command('verify',jsonb_build_object('claim_id',v_claim_id,'version',claim_version));
   SELECT version INTO claim_version FROM public.claims WHERE id=v_claim_id;
@@ -76,13 +76,13 @@ BEGIN
     RAISE EXCEPTION 'Return reason or reviewer was lost'; END IF;
   -- Make the previous review unambiguously older even within this single transaction.
   UPDATE public.finance_reviews SET created_at=now()-interval '1 day' WHERE claim_id=v_claim_id;
-  PERFORM set_config('request.jwt.claim.sub',actor::text,true);
+  PERFORM pg_temp.sign_in_as(actor);
   SELECT version INTO claim_version FROM public.claims WHERE id=v_claim_id;
   PERFORM public.nlcc_command('submit_claim',payload || jsonb_build_object('id',v_claim_id,'version',claim_version));
   snapshot=public.nlcc_snapshot();
   IF EXISTS(SELECT 1 FROM jsonb_array_elements(snapshot->'claims') x WHERE x->>'id'=v_claim_id::text AND x->'finance_review'<>'null'::jsonb) THEN
     RAISE EXCEPTION 'Stale receipt verification survived resubmission'; END IF;
-  PERFORM set_config('request.jwt.claim.sub',reviewer::text,true);
+  PERFORM pg_temp.sign_in_as(reviewer);
   SELECT version INTO claim_version FROM public.claims WHERE id=v_claim_id;
   BEGIN
     PERFORM public.nlcc_command('approve',jsonb_build_object('claim_id',v_claim_id,'version',claim_version));

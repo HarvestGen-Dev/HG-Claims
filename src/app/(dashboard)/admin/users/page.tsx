@@ -20,8 +20,8 @@ import { showToast } from "@/lib/utils/toast";
 const roles = Object.keys(roleLabels) as RoleCode[];
 const field = "space-y-1.5";
 const form = "space-y-4 text-sm";
-const row = "grid gap-3 px-4 py-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1fr)_12rem] md:items-center md:gap-4 md:px-5";
-const rowActions = "flex flex-wrap items-center gap-2 md:justify-end";
+const row = "grid gap-3 px-4 py-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1fr)_14rem] md:items-center md:gap-4 md:px-5";
+const rowActions = "table-actions w-fit md:justify-self-end";
 
 function RoleOptions({ value, onChange }: { value: RoleCode[]; onChange: (roles: RoleCode[]) => void }) {
   return (

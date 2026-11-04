@@ -568,43 +568,45 @@ export default function FinanceBatchDetailPage() {
                           </div>
                         )}
                       </td>
-                      <td className="py-3 px-3 text-right space-x-1.5">
-                        {!["PAID", "FAILED", "VOIDED"].includes(inst.status) &&
-                          batch.status !== "VOIDED" && (
-                            <>
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setActionError("");
-                                  setBankReference("");
-                                  setReconcileTarget({
-                                    instruction: inst,
-                                    outcome: "PAID",
-                                  });
-                                }}
-                                className="h-7 text-[11px] bg-emerald-700 hover:bg-emerald-800 text-white gap-1 px-2"
-                              >
-                                <CheckCircle2 className="w-3 h-3" />
-                                <span>Mark Paid</span>
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setActionError("");
-                                  setFailureReason("");
-                                  setReconcileTarget({
-                                    instruction: inst,
-                                    outcome: "FAILED",
-                                  });
-                                }}
-                                className="h-7 text-[11px] text-rose-600 border-rose-200 hover:bg-rose-50 gap-1 px-2"
-                              >
-                                <XCircle className="w-3 h-3" />
-                                <span>Failed</span>
-                              </Button>
-                            </>
-                          )}
+                      <td className="py-3 px-3 text-right w-px">
+                        <div className="table-actions">
+                          {!["PAID", "FAILED", "VOIDED"].includes(inst.status) &&
+                            batch.status !== "VOIDED" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    setActionError("");
+                                    setBankReference("");
+                                    setReconcileTarget({
+                                      instruction: inst,
+                                      outcome: "PAID",
+                                    });
+                                  }}
+                                  className="h-7 text-[11px] bg-emerald-700 hover:bg-emerald-800 text-white gap-1 px-2"
+                                >
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  <span>Mark Paid</span>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setActionError("");
+                                    setFailureReason("");
+                                    setReconcileTarget({
+                                      instruction: inst,
+                                      outcome: "FAILED",
+                                    });
+                                  }}
+                                  className="h-7 text-[11px] text-rose-600 border-rose-200 hover:bg-rose-50 gap-1 px-2"
+                                >
+                                  <XCircle className="w-3 h-3" />
+                                  <span>Failed</span>
+                                </Button>
+                              </>
+                            )}
+                        </div>
                       </td>
                     </tr>
                   ))}

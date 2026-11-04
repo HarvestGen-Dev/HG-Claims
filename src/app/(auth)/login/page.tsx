@@ -15,6 +15,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [expired, setExpired] = useState(false);
+  useEffect(() => {
+    setExpired(new URLSearchParams(window.location.search).get("expired") === "1");
+  }, []);
   useEffect(() => {
     if (!isLoading && isAuthenticated) router.replace("/dashboard");
   }, [isLoading, isAuthenticated, router]);
@@ -34,6 +38,7 @@ export default function LoginPage() {
       <main className="auth-content">
         <p className="text-sm text-zinc-600 mb-3">Claims Management</p>
         <h1 className="text-3xl font-semibold mb-8">Sign in</h1>
+        {expired && <p role="status" className="mb-5 text-sm text-muted-foreground">Your session expired. Sign in again to continue.</p>}
         <form className="space-y-5" onSubmit={(event) => { event.preventDefault(); void signIn(email); }}>
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium">Email address</label>

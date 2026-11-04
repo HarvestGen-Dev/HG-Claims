@@ -77,12 +77,12 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         className={cn(
           "flex min-h-11 items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors group",
           isActive
-            ? "bg-brand-cream/15 text-brand-cream font-semibold"
-            : "text-brand-cream hover:bg-brand-cream/10"
+            ? "bg-accent text-accent-foreground font-semibold"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
         )}
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className={cn("transition-colors shrink-0", isActive ? "text-brand-cream" : "text-brand-cream/70 group-hover:text-brand-cream")}>
+          <span className={cn("transition-colors shrink-0", isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground")}>
             {icon}
           </span>
           <span className="truncate">{label}</span>
@@ -90,7 +90,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         {typeof badge === "number" && badge > 0 && (
           <span
             className={cn(
-              "px-1.5 py-0.2 text-[10px] font-semibold tabular-nums rounded-md shrink-0",
+              "px-1.5 py-0.5 text-[10px] font-semibold tabular-nums rounded-md shrink-0",
               isActive
                 ? "bg-primary text-primary-foreground"
                 : "bg-rose-500 text-white"
@@ -104,20 +104,20 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   };
 
   return (
-    <aside className="flex flex-col h-full bg-brand-charcoal text-brand-cream border-r border-brand-cream/15 p-3 select-none">
+    <aside className="flex flex-col h-full bg-card text-card-foreground border-r border-border p-3 select-none">
       {/* Brand Header */}
       <div className="px-3 py-2 mb-6 flex items-start justify-between">
         <div>
           <Link href="/dashboard" onClick={onNavigate} aria-label="Harvest Generation dashboard" className="block w-fit">
-            <BrandLogo priority className="text-[1.3125rem] text-brand-cream sm:text-[1.375rem]" />
+            <BrandLogo priority className="text-[1.3125rem] text-foreground sm:text-[1.375rem]" />
           </Link>
-          <p className="mt-1 text-xs text-brand-cream/75">Expense claims</p>
+          <p className="mt-1 text-xs text-muted-foreground">Expense claims</p>
         </div>
         {onNavigate && (
           <button
             type="button"
             onClick={onNavigate}
-            className="p-1.5 -mr-1 rounded-lg text-brand-cream/75 hover:text-brand-cream hover:bg-brand-cream/10 lg:hidden"
+            className="p-1.5 -mr-1 rounded-lg text-muted-foreground hover:text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"
             aria-label="Close menu"
           >
             <span className="text-xl leading-none">&times;</span>
@@ -143,7 +143,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       <div className="flex-1 space-y-4 overflow-y-auto pr-0.5">
         {/* Workspace */}
         <div className="space-y-0.5">
-          <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-brand-cream/65">
+          <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
             Workspace
           </div>
           {navItem("/dashboard", "Dashboard", <LayoutDashboard className="w-4 h-4" />, undefined, true)}
@@ -153,7 +153,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         {/* Approver Inbox */}
         {isApprover && (
           <div className="space-y-0.5">
-            <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-brand-cream/65">
+            <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               Review
             </div>
             {navItem("/approvals", "Pending Approval", <CheckSquare className="w-4 h-4" />, approvalsCount)}
@@ -163,7 +163,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         {/* Finance */}
         {isFinance && (
           <div className="space-y-0.5">
-            <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-brand-cream/65">
+            <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               Finance
             </div>
             {navItem("/finance", "Finance Overview", <Wallet className="w-4 h-4" />, financeCount, true)}
@@ -176,7 +176,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         {/* Administration */}
         {isAdmin && (
           <div className="space-y-0.5">
-            <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-brand-cream/65">
+            <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               Admin
             </div>
             {navItem("/admin", "Overview", <ShieldCheck className="w-4 h-4" />, undefined, true)}
@@ -190,7 +190,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
 
         {/* Account */}
         <div className="space-y-0.5">
-          <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-brand-cream/65">
+          <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
             Account
           </div>
           {navItem("/notifications", "Notifications", <Bell className="w-4 h-4" />)}
@@ -198,7 +198,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       </div>
 
       {/* Footer Org Info */}
-      <div className="pt-3 mt-auto border-t border-brand-cream/15 px-2 flex items-center justify-between text-[11px] text-brand-cream/65">
+      <div className="pt-3 mt-auto border-t border-border px-2 flex items-center justify-between text-[11px] text-muted-foreground">
         <span className="truncate">{user?.full_name}</span>
       </div>
     </aside>
