@@ -1,36 +1,43 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
+import { buttonVariants } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/context";
-import { isOnboardingCompleted } from "@/lib/auth/permissions";
 
 export default function HomePage() {
-  const router = useRouter();
-  const { user, isAuthenticated, isLoading } = useAuth();
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.location.hash.includes("access_token=")) {
-      return;
-    }
-    if (!isLoading) {
-      if (isAuthenticated) {
-        if (!isOnboardingCompleted(user)) {
-          router.replace("/onboarding?invite=1");
-        } else {
-          router.replace("/dashboard");
-        }
-      } else {
-        router.replace("/login");
-      }
-    }
-  }, [isAuthenticated, isLoading, router, user]);
+  const { isAuthenticated } = useAuth();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-      <div className="flex flex-col items-center gap-3">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-zinc-900 border-t-transparent dark:border-zinc-100" />
-        <p className="text-sm text-zinc-500">Loading Harvest Generation Claims Management...</p>
+    <div className="auth-page">
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col">
+        <header className="auth-brand border-b border-border pb-5">
+          <BrandLogo />
+        </header>
+
+        <main className="flex flex-1 items-center py-16 sm:py-24">
+          <section aria-labelledby="claims-title" className="max-w-xl">
+            <h1 id="claims-title" className="text-5xl font-semibold leading-none tracking-tight sm:text-7xl">
+              Expense claims
+            </h1>
+            <p className="mt-5 max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg">
+              Submit expenses, attach receipts, and track your reimbursements.
+            </p>
+            <Link
+              href={isAuthenticated ? "/dashboard" : "/login"}
+              className={buttonVariants({ size: "lg", className: "mt-8 gap-2 px-5" })}
+            >
+              {isAuthenticated ? "Open dashboard" : "Sign in"}
+              <ArrowRight aria-hidden="true" className="size-4" />
+            </Link>
+            {!isAuthenticated && (
+              <p className="mt-5 text-sm text-muted-foreground">
+                New here? Use the invitation link from your administrator.
+              </p>
+            )}
+          </section>
+        </main>
       </div>
     </div>
   );

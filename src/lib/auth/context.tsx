@@ -1,9 +1,10 @@
 "use client";
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { Profile, RoleCode, Claim } from "@/lib/types/database";
 import { workspaceStore } from "@/lib/domains";
 import { createClient } from "@/lib/supabase/client";
+import { sessionExpiredLoginPath } from "./session-expiry";
 import { userHasRole, canUserCreateClaim, canUserApproveClaim, canUserEditClaim, canUserRecordPayment, canUserVerifyClaim, canUserReviewClaim, isOnboardingCompleted } from "./permissions";
 
 interface AuthContextType {
@@ -35,15 +36,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState("");
   const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null);
   const pathname = usePathname();
+  const expiring = useRef(false);
   const expireSession = useCallback(async () => {
+    if (expiring.current) return;
+    expiring.current = true;
+    setIsLoading(true);
     workspaceStore.clear();
     setUser(null);
     setSessionExpiresAt(null);
     try {
       await createClient().auth.signOut({ scope: "local" });
     } finally {
-      if (window.location.pathname !== "/login" || window.location.search !== "?expired=1") {
-        window.location.replace("/login?expired=1");
+      if (window.location.pathname + window.location.search !== sessionExpiredLoginPath) {
+        window.location.replace(sessionExpiredLoginPath);
+      } else {
+        expiring.current = false;
+        setIsLoading(false);
       }
     }
   }, []);
