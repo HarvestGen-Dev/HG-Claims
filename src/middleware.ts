@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isEndedSessionError, sessionExpiredLoginPath } from "@/lib/auth/session-expiry";
 import { supabaseConfig } from "@/lib/supabase/config";
 
 export async function middleware(request: NextRequest) {
@@ -32,15 +33,21 @@ export async function middleware(request: NextRequest) {
       values.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
     },
   } });
-  const { data: { user } } = await client.auth.getUser();
-  const publicPath = ["/", "/login", "/signup", "/ onboarding", "/onboarding", "/forgot-password", "/reset-password", "/auth/callback", "/api/health"].includes(request.nextUrl.pathname);
-  if (!user && !publicPath && !request.nextUrl.pathname.startsWith("/api/")) {
-    const login = request.nextUrl.clone();
-    login.pathname = "/login";
-    login.search = "";
+  const { data: { user }, error } = await client.auth.getUser();
+  const { pathname, searchParams } = request.nextUrl;
+  const publicPath = ["/", "/login", "/signup", "/onboarding", "/forgot-password", "/reset-password", "/auth/callback"].includes(pathname);
+  const requiresSignIn = !publicPath && !pathname.startsWith("/api/");
+  // The SDK also uses this error for visitors who have no session cookie.
+  const removedSession = error?.name === "AuthSessionMissingError" &&
+    response.cookies.getAll().some(cookie => cookie.maxAge === 0);
+  const sessionEnded = isEndedSessionError(error?.code) || removedSession;
+  const showExpiryNotice = sessionEnded && (pathname === "/" || (pathname === "/login" && searchParams.get("expired") !== "1"));
+
+  if (!user && (requiresSignIn || showExpiryNotice)) {
+    const login = new URL(sessionEnded ? sessionExpiredLoginPath : "/login", request.url);
     const redirect = NextResponse.redirect(login);
     response.cookies.getAll().forEach(cookie => redirect.cookies.set(cookie));
-    return redirect;
+    response = redirect;
   }
   response.headers.set("Cache-Control", "private, no-store");
   response.headers.set("Content-Security-Policy", policy);

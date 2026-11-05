@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
@@ -15,10 +16,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [expired, setExpired] = useState(false);
-  useEffect(() => {
-    setExpired(new URLSearchParams(window.location.search).get("expired") === "1");
-  }, []);
+  const expired = useSearchParams().get("expired") === "1";
   useEffect(() => {
     if (!isLoading && isAuthenticated) router.replace("/dashboard");
   }, [isLoading, isAuthenticated, router]);
@@ -34,11 +32,20 @@ export default function LoginPage() {
   }
   return (
     <div className="auth-page">
-      <header className="auth-brand"><BrandLogo priority /></header>
+      <header className="auth-brand">
+        <Link href="/" className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <BrandLogo />
+        </Link>
+      </header>
       <main className="auth-content">
         <p className="text-sm text-zinc-600 mb-3">Claims Management</p>
         <h1 className="text-3xl font-semibold mb-8">Sign in</h1>
-        {expired && <p role="status" className="mb-5 text-sm text-muted-foreground">Your session expired. Sign in again to continue.</p>}
+        {expired && (
+          <Alert variant="warning" className="mb-5">
+            <p className="font-semibold">Your session has expired</p>
+            <p className="mt-1">Sign in again to continue.</p>
+          </Alert>
+        )}
         <form className="space-y-5" onSubmit={(event) => { event.preventDefault(); void signIn(email); }}>
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium">Email address</label>
