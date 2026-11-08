@@ -90,16 +90,25 @@ export class ClaimsClient {
     let disbursementVoucher = c.disbursement_voucher;
     let batchNumber = c.batch_number;
     let disbursementLineOrder = c.disbursement_line_order;
-    if (!disbursementVoucher && c.active_instruction_id) {
+    if (!disbursementVoucher) {
       const batches = workspaceStore.getState().reimbursementBatches || [];
       for (const b of batches) {
-        const inst = b.instructions?.find((i) => i.id === c.active_instruction_id);
+        const inst = b.instructions?.find((i) =>
+          (c.active_instruction_id && i.id === c.active_instruction_id) ||
+          i.claims?.some((ic) => ic.claim_id === c.id)
+        );
         if (inst) {
           disbursementVoucher = inst.payment_description;
           batchNumber = b.batch_number;
           disbursementLineOrder = inst.line_order;
           break;
         }
+      }
+    }
+    if (!disbursementVoucher && c.payment) {
+      const match = (c.payment.payment_reference || c.payment.notes || "").match(/P\d{6}/);
+      if (match) {
+        disbursementVoucher = match[0];
       }
     }
 

@@ -105,6 +105,8 @@ function FinanceClaimsContent() {
           c.purpose.toLowerCase().includes(q) ||
           (c.payment?.payment_reference &&
             c.payment.payment_reference.toLowerCase().includes(q)) ||
+          (c.payment?.notes &&
+            c.payment.notes.toLowerCase().includes(q)) ||
           (c.disbursement_voucher &&
             c.disbursement_voucher.toLowerCase().includes(q)) ||
           (c.batch_number &&
@@ -277,9 +279,23 @@ function FinanceClaimsContent() {
   };
 
   const isHistory = view === "disbursed";
-  const visibleBatches = batches.filter((batch) =>
-    isHistory ? batch.status === "SETTLED" : batch.status !== "SETTLED" && batch.status !== "VOIDED" && batch.status !== "REJECTED"
-  );
+  const visibleBatches = batches.filter((batch) => {
+    const matchesStatus = isHistory
+      ? batch.status === "SETTLED"
+      : batch.status !== "SETTLED" && batch.status !== "VOIDED" && batch.status !== "REJECTED";
+    if (!matchesStatus) return false;
+    if (deferredSearch.trim()) {
+      const q = deferredSearch.toLowerCase();
+      const matchesBatchNumber = batch.batch_number.toLowerCase().includes(q);
+      const matchesInstruction = batch.instructions?.some((inst) =>
+        inst.payment_description.toLowerCase().includes(q) ||
+        inst.beneficiary_name.toLowerCase().includes(q) ||
+        inst.claims?.some((ic) => ic.claim?.claim_number?.toLowerCase().includes(q))
+      );
+      return matchesBatchNumber || Boolean(matchesInstruction);
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-4">
@@ -310,6 +326,19 @@ function FinanceClaimsContent() {
           Disbursed files
         </button>
       </div>
+
+      {isHistory && (
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none w-3.5 h-3.5 text-zinc-400" />
+          <input
+            type="text"
+            placeholder="Search voucher (e.g. P260001), batch #, beneficiary..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-8 w-full pl-8 pr-2.5 text-xs rounded-lg border border-zinc-200 bg-zinc-50/70 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-900"
+          />
+        </div>
+      )}
 
       {(isHistory || visibleBatches.length > 0) && (
         <section className="rounded-xl border border-border bg-card" aria-label={isHistory ? "Disbursed files" : "Files awaiting disbursement"}>
@@ -424,7 +453,7 @@ function FinanceClaimsContent() {
               <input
                 type="text"
                 id="finance-search"
-                placeholder="Search claimant, submitter, purpose..."
+                placeholder="Search voucher (e.g. P260001), claim #, claimant, purpose..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-8 w-full pl-8 pr-2.5 text-xs rounded-lg border border-zinc-200 bg-zinc-50/70 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-900"

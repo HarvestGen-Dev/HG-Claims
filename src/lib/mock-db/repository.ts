@@ -527,8 +527,35 @@ class DatabaseRepository {
       actor: this.getProfileById(act.actor_id),
     }));
 
+    let disbursement_voucher = claim.disbursement_voucher;
+    let batch_number = claim.batch_number;
+    let disbursement_line_order = claim.disbursement_line_order;
+    if (!disbursement_voucher) {
+      for (const batch of this.reimbursementBatches) {
+        const inst = batch.instructions?.find((i) =>
+          (claim.active_instruction_id && i.id === claim.active_instruction_id) ||
+          i.claims?.some((ic) => ic.claim_id === claim.id)
+        );
+        if (inst) {
+          disbursement_voucher = inst.payment_description;
+          batch_number = batch.batch_number;
+          disbursement_line_order = inst.line_order;
+          break;
+        }
+      }
+      if (!disbursement_voucher && claim.payment) {
+        const match = (claim.payment.payment_reference || claim.payment.notes || "").match(/P\d{6}/);
+        if (match) {
+          disbursement_voucher = match[0];
+        }
+      }
+    }
+
     return {
       ...claim,
+      disbursement_voucher,
+      batch_number,
+      disbursement_line_order,
       claimant,
       submitted_by,
       claimant_name: claim.claimant_name || claimant?.full_name || "Unknown Claimant",
@@ -585,7 +612,10 @@ class DatabaseRepository {
           c.submitted_by?.full_name.toLowerCase().includes(q) ||
           c.ministry?.name.toLowerCase().includes(q) ||
           (c.internal_reference && c.internal_reference.toLowerCase().includes(q)) ||
-          (c.payment?.payment_reference && c.payment.payment_reference.toLowerCase().includes(q))
+          (c.payment?.payment_reference && c.payment.payment_reference.toLowerCase().includes(q)) ||
+          (c.payment?.notes && c.payment.notes.toLowerCase().includes(q)) ||
+          (c.disbursement_voucher && c.disbursement_voucher.toLowerCase().includes(q)) ||
+          (c.batch_number && c.batch_number.toLowerCase().includes(q))
         );
       }
     }

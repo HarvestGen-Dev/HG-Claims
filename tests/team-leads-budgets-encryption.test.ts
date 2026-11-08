@@ -182,5 +182,13 @@ describe("Team Leads, Annual Budgets, and Disbursement Voucher Linking", () => {
     expect(reloadedClaim.disbursement_voucher).toMatch(/^P\d{6}$/);
     expect(reloadedClaim.batch_number).toBe(batch.batch_number);
     expect(reloadedClaim.disbursement_line_order).toBe(1);
+
+    // Search by disbursement voucher code
+    const voucherCode = reloadedClaim.disbursement_voucher!;
+    const searchedClaims = db.getClaims(finance, { search: voucherCode });
+    expect(searchedClaims.some((c) => c.id === submitted.id)).toBe(true);
+
+    const nonMatching = db.getClaims(finance, { search: "P999999" });
+    expect(nonMatching.some((c) => c.id === submitted.id)).toBe(false);
   });
 });

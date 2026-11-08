@@ -95,12 +95,28 @@ export default function FinanceBatchesPage() {
           (c.claim_number && c.claim_number.toLowerCase().includes(q)) ||
           (c.claimant_name && c.claimant_name.toLowerCase().includes(q)) ||
           (c.bank_name && c.bank_name.toLowerCase().includes(q)) ||
-          c.purpose.toLowerCase().includes(q)
+          c.purpose.toLowerCase().includes(q) ||
+          (c.disbursement_voucher && c.disbursement_voucher.toLowerCase().includes(q)) ||
+          (c.batch_number && c.batch_number.toLowerCase().includes(q))
         );
       }
       return true;
     });
   }, [eligibleClaims, selectedMinistry, search]);
+
+  const filteredBatches = useMemo(() => {
+    if (!search.trim()) return batches;
+    const q = search.toLowerCase();
+    return batches.filter((b) => {
+      if (b.batch_number.toLowerCase().includes(q)) return true;
+      if (b.instructions?.some((i) =>
+        i.payment_description.toLowerCase().includes(q) ||
+        i.beneficiary_name.toLowerCase().includes(q) ||
+        i.claims?.some((ic) => ic.claim?.claim_number?.toLowerCase().includes(q))
+      )) return true;
+      return false;
+    });
+  }, [batches, search]);
 
   const preview = useMemo(() => {
     return previewReimbursementSelection(eligibleClaims, selectedIds);
@@ -375,7 +391,7 @@ export default function FinanceBatchesPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none w-3.5 h-3.5 text-zinc-400" />
                     <input
                       type="text"
-                      placeholder="Claim #, claimant, bank, purpose..."
+                      placeholder="Voucher code (e.g. P260001), claim #, claimant, bank..."
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       className="h-8 w-full pl-8 pr-2.5 text-xs rounded-lg border border-zinc-200 bg-white"
@@ -747,17 +763,29 @@ export default function FinanceBatchesPage() {
         )}
 
         {activeTab === "batches" && (
-          <Card className="border-zinc-200/80 shadow-2xs overflow-hidden">
-            <CardContent className="p-0">
-              {batches.length === 0 ? (
-                <div className="py-16 text-center text-xs text-zinc-400">
-                  No reimbursement batches have been finalized yet.
-                </div>
-              ) : (
-                <>
-                  {/* Mobile Card View for Batches */}
-                  <div className="sm:hidden divide-y divide-zinc-200/80">
-                    {batches.map((b) => (
+          <div className="space-y-4">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none w-3.5 h-3.5 text-zinc-400" />
+              <input
+                type="text"
+                placeholder="Search voucher (e.g. P260001), batch #, beneficiary..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 w-full pl-8 pr-2.5 text-xs rounded-lg border border-zinc-200 bg-white"
+              />
+            </div>
+
+            <Card className="border-zinc-200/80 shadow-2xs overflow-hidden">
+              <CardContent className="p-0">
+                {filteredBatches.length === 0 ? (
+                  <div className="py-16 text-center text-xs text-zinc-400">
+                    {search.trim() ? "No batches match your search criteria." : "No reimbursement batches have been finalized yet."}
+                  </div>
+                ) : (
+                  <>
+                    {/* Mobile Card View for Batches */}
+                    <div className="sm:hidden divide-y divide-zinc-200/80">
+                      {filteredBatches.map((b) => (
                       <div key={b.id} className="p-3.5 space-y-2.5">
                         <div className="flex items-start justify-between gap-2">
                           <div>
@@ -842,7 +870,7 @@ export default function FinanceBatchesPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100">
-                      {batches.map((b) => (
+                      {filteredBatches.map((b) => (
                         <tr key={b.id} className="hover:bg-zinc-50/70">
                           <td className="py-3 px-4 font-mono font-semibold text-zinc-900">
                             <Link
@@ -929,6 +957,7 @@ export default function FinanceBatchesPage() {
               )}
             </CardContent>
           </Card>
+          </div>
         )}
 
         {/* Finalize Confirmation Modal */}
