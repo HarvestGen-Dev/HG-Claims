@@ -97,7 +97,11 @@ export async function fetchAuthorizedSnapshot(
         status: error.code === "42501" ? 403 : 503,
       };
     }
-    return { data: (data as Record<string, unknown>) ?? {}, status: 200 };
+    const resultData = (data as Record<string, unknown>) ?? {};
+    if (!resultData.user_id && user?.id) {
+      resultData.user_id = user.id;
+    }
+    return { data: resultData, status: 200 };
   } catch (cause) {
     console.error("Workspace snapshot unavailable", { domain, cause: cause instanceof Error ? cause.name : "unknown" });
     return {

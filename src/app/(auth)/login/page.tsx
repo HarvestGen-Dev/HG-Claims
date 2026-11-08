@@ -18,13 +18,13 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const expired = useSearchParams().get("expired") === "1";
   useEffect(() => {
-    if (!isLoading && isAuthenticated) router.replace("/dashboard");
-  }, [isLoading, isAuthenticated, router]);
+    if (!isLoading && isAuthenticated) window.location.assign("/dashboard");
+  }, [isLoading, isAuthenticated]);
   async function signIn(address: string) {
     setBusy(true);
     setError("");
     try {
-      if (await login(address, password)) router.replace("/dashboard");
+      if (await login(address, password)) window.location.assign("/dashboard");
       else setError("Email or password is incorrect.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to sign in. Please try again.");

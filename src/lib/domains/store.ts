@@ -303,7 +303,7 @@ export class WorkspaceStore {
     this.patchState({ claims: nextClaims });
   }
 
-  async refreshIfStale(maxAgeMs = 15000): Promise<Profile> {
+  async refreshIfStale(maxAgeMs = 15000, hintUserId?: string): Promise<Profile> {
     if (
       this.lastRefreshedAt > 0 &&
       Date.now() - this.lastRefreshedAt < maxAgeMs &&
@@ -312,10 +312,10 @@ export class WorkspaceStore {
       const cached = this.data.profiles.find((p) => p.id === this.data.user_id);
       if (cached) return cached;
     }
-    return this.refresh();
+    return this.refresh(hintUserId);
   }
 
-  async refresh(): Promise<Profile> {
+  async refresh(hintUserId?: string): Promise<Profile> {
     if (this.inflightRefresh) {
       return this.inflightRefresh;
     }
@@ -329,9 +329,10 @@ export class WorkspaceStore {
         }
         // Guard against stale refresh resolving after logout / clear()
         if (this.clearGeneration !== genAtStart) {
+          const effectiveUserId = data?.user_id || hintUserId;
           return (
             (Array.isArray(data?.profiles)
-              ? data.profiles.find((p: Profile) => p.id === data.user_id)
+              ? data.profiles.find((p: Profile) => p.id === effectiveUserId)
               : undefined) as Profile
           );
         }
@@ -342,6 +343,7 @@ export class WorkspaceStore {
         this.data = {
           ...createEmptyWorkspaceState(),
           ...(data && typeof data === "object" ? data : {}),
+          user_id: data?.user_id || hintUserId || this.data.user_id || "",
           profiles: Array.isArray(data?.profiles) ? data.profiles : [],
           claims: Array.isArray(data?.claims) ? data.claims : [],
           ministries: Array.isArray(data?.ministries) ? data.ministries : [],
@@ -384,7 +386,25 @@ export class WorkspaceStore {
             "notifications",
           ])
         );
-        return this.data.profiles.find((p) => p.id === data.user_id)!;
+        const targetUserId =
+          this.data.user_id ||
+          (typeof hintUserId === "string" && hintUserId ? hintUserId : "") ||
+          (typeof data?.user_id === "string" ? data.user_id : "");
+
+        let currentUser = this.data.profiles.find((p) => p.id === targetUserId);
+        if (!currentUser && hintUserId) {
+          currentUser = this.data.profiles.find((p) => p.id === hintUserId);
+        }
+        if (!currentUser && this.data.profiles.length === 1) {
+          currentUser = this.data.profiles[0];
+        }
+        if (!currentUser) {
+          throw new Error("Your user profile could not be found.");
+        }
+        if (!this.data.user_id && currentUser.id) {
+          this.data.user_id = currentUser.id;
+        }
+        return currentUser;
       } finally {
         if (this.clearGeneration === genAtStart) {
           this.inflightRefresh = null;

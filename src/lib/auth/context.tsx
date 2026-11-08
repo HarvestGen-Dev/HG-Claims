@@ -56,8 +56,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const refreshUser = useCallback(async () => {
-    const { data, error } = await createClient().rpc("hg_session_expires_at");
+  const refreshUser = useCallback(async (hintUserId?: string) => {
+    const client = createClient();
+    const { data, error } = await client.rpc("hg_session_expires_at");
     if (error) throw new Error("Unable to verify your session. Please sign in again.");
     const deadline = typeof data === "string" ? Date.parse(data) : NaN;
     if (!Number.isFinite(deadline) || deadline <= Date.now()) {
@@ -65,7 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setSessionExpiresAt(deadline);
-    const profile = await workspaceStore.refresh();
+    const resolvedUserId = hintUserId || (await client.auth.getUser()).data.user?.id;
+    const profile = await workspaceStore.refresh(resolvedUserId);
     if (Date.now() >= deadline) {
       await expireSession();
       return;
@@ -125,7 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
         const { data: { user: authenticated } } = await client.auth.getUser();
-        if (authenticated && !cancelled) await refreshUser();
+        if (authenticated && !cancelled) await refreshUser(authenticated.id);
         const { data } = client.auth.onAuthStateChange(event => {
           if (event === "SIGNED_OUT") { workspaceStore.clear(); setUser(null); setSessionExpiresAt(null); }
         });
@@ -140,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user?.id || ["/","/login","/signup","/forgot-password","/reset-password"].includes(pathname)) return;
     let active = true;
     setIsRefreshing(true);
-    workspaceStore.refreshIfStale(15000)
+    workspaceStore.refreshIfStale(15000, user.id)
       .then(profile => {
         if (active && profile) setUser(profile);
       })
@@ -165,10 +167,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const client = createClient();
-    const { error: signInError } = await client.auth.signInWithPassword({ email, password });
+    const { data: signInData, error: signInError } = await client.auth.signInWithPassword({ email, password });
     if (signInError) return false;
-    try { await refreshUser(); return true; }
-    catch (cause) { await client.auth.signOut(); throw cause; }
+    try {
+      await refreshUser(signInData?.user?.id);
+      return true;
+    } catch (cause) {
+      console.error("Sign in post-auth refresh error:", cause);
+      await client.auth.signOut();
+      throw cause;
+    }
   };
   const logout = async () => {
     const { error: signOutError } = await createClient().auth.signOut();
