@@ -37,7 +37,7 @@ function OnboardingContent() {
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
-  const isMultiUser = Boolean(user?.is_multi_user);
+  const isMultiUser = false;
   const [bankCode, setBankCode] = useState("");
   const [bankAccountHolderName, setBankAccountHolderName] = useState("");
   const [bankAccountNumber, setBankAccountNumber] = useState("");

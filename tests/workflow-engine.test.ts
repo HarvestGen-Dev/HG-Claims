@@ -93,7 +93,7 @@ describe("Simplified Approval Workflow Engine", () => {
     expect(claim.workflow_steps?.[0].status).toBe("IN_PROGRESS");
   });
 
-  it("should prevent dual-role user from approving their own submitted claim", () => {
+  it("should allow finance officer to approve their own claim while blocking non-finance claimant", () => {
     const claim = db.submitClaim({
       submitted_by_user_id: dualRoleUser.id,
       claimant_name: "Volunteer Jane",
@@ -127,13 +127,13 @@ describe("Simplified Approval Workflow Engine", () => {
       ],
     });
 
-    // Dual role user (Leader + Finance) tries to approve own claim
+    // Non-finance claimant is blocked from self-approval
     expect(() => {
-      db.approveStep(claim.id, dualRoleUser, "Self-approval attempt by submitter who is also finance officer");
+      db.approveStep(claim.id, leaderUser, "Self-approval attempt by non-finance claimant");
     }).toThrow(/cannot approve/i);
 
-    // Another Finance Officer CAN approve it
-    const approved = db.approveStep(claim.id, financeUser, "Approved by independent finance officer");
+    // Finance Officer (even if submitter/claimant) CAN approve own claim per updated rules
+    const approved = db.approveStep(claim.id, dualRoleUser, "Self-approval by finance officer");
     expect(approved.status).toBe("APPROVED_FOR_PAYMENT");
   });
 

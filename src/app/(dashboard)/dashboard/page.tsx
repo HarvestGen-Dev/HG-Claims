@@ -19,24 +19,35 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ClaimStatusBadge } from "@/components/claims/ClaimStatusBadge";
 import { MobileClaimList } from "@/components/claims/MobileClaimList";
 import { useAuth } from "@/lib/auth/context";
-import { claimsClient, workspaceStore } from "@/lib/domains";
-import { Claim } from "@/lib/types/database";
+import { claimsClient, masterDataClient, workspaceStore } from "@/lib/domains";
+import { Claim, Ministry } from "@/lib/types/database";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 import { moneyToCents } from "@/lib/utils/calculations";
 
 export default function DashboardPage() {
   const { user, canCreateClaim, hasRole } = useAuth();
   const [claims, setClaims] = useState<Claim[]>([]);
+  const [ministries, setMinistries] = useState<Ministry[]>(masterDataClient.getMinistries());
   const [search, setSearch] = useState("");
   const isFinanceOrAdmin = hasRole("FINANCE_OFFICER") || hasRole("SYSTEM_ADMIN");
 
   useEffect(() => {
     if (!user) return;
     setClaims(claimsClient.getClaims(user));
+    setMinistries(masterDataClient.getMinistries());
     return workspaceStore.subscribeDomains(["claims", "master-data", "iam"], () => {
       setClaims(claimsClient.getClaims(user));
+      setMinistries(masterDataClient.getMinistries());
     });
   }, [user]);
+
+  const currentCalendarYear = new Date().getFullYear();
+  const visibleBudgetMinistries = useMemo(() => {
+    if (isFinanceOrAdmin) {
+      return ministries.filter((m) => m.is_active && (m.budgets?.length || m.team_lead_ids?.length));
+    }
+    return ministries.filter((m) => m.is_active && m.team_lead_ids?.includes(user?.id || ""));
+  }, [ministries, isFinanceOrAdmin, user]);
 
   // Memoize user's claims and single-pass status aggregations
   const {
@@ -73,11 +84,7 @@ export default function DashboardPage() {
 
     if (isFinanceOrAdmin) {
       for (const c of claims) {
-        if (
-          c.status === "PENDING_FINANCE_REVIEW" &&
-          c.submitted_by_user_id !== user?.id &&
-          c.claimant_id !== user?.id
-        ) {
+        if (c.status === "PENDING_FINANCE_REVIEW") {
           approverNeedsAction++;
         } else if (c.status === "APPROVED_FOR_PAYMENT") {
           awaitingPayout++;
@@ -253,6 +260,94 @@ export default function DashboardPage() {
             </div>
           </Link>
         </div>
+
+        {/* Ministry Budgets Overview (For Team Leads & Finance/Admin) */}
+        {visibleBudgetMinistries.length > 0 && (
+          <div className="rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-950 p-4 shadow-2xs space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                  <Banknote className="w-4 h-4 text-emerald-600" />
+                  <span>Ministry Annual Budgets ({currentCalendarYear})</span>
+                </h2>
+                <p className="text-[11px] text-zinc-500">
+                  Track annual spending against claims dated within calendar year {currentCalendarYear}.
+                </p>
+              </div>
+              {isFinanceOrAdmin && (
+                <Link href="/admin/ministries">
+                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                    Manage Budgets
+                  </Button>
+                </Link>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {visibleBudgetMinistries.map((m) => {
+                const b = (m.budgets || []).find((b) => b.year === currentCalendarYear);
+                const ministryClaims = claims.filter(
+                  (c) =>
+                    c.ministry_id === m.id &&
+                    c.status !== "REJECTED" &&
+                    c.status !== "CANCELLED" &&
+                    c.status !== "DRAFT" &&
+                    c.claim_date &&
+                    new Date(c.claim_date).getFullYear() === currentCalendarYear
+                );
+                const spent = ministryClaims.reduce(
+                  (sum, c) => sum + (Number(c.total_amount) || 0),
+                  0
+                );
+                const budgetAmount = b ? Number(b.amount) : 0;
+                const remaining = budgetAmount - spent;
+                const pct = budgetAmount > 0 ? Math.min(100, Math.round((spent / budgetAmount) * 100)) : null;
+
+                return (
+                  <div
+                    key={m.id}
+                    className="p-3 rounded-lg border border-zinc-200/70 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 space-y-2"
+                  >
+                    <div className="flex items-start justify-between gap-1">
+                      <div>
+                        <div className="font-semibold text-xs text-zinc-900 dark:text-zinc-100">
+                          {m.name}
+                        </div>
+                        <span className="font-mono text-[10px] font-bold text-zinc-500">
+                          {m.code}
+                        </span>
+                      </div>
+                      <span className="font-mono text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                        {budgetAmount > 0 ? formatCurrency(budgetAmount) : "No budget set"}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                        <span>Spent: {formatCurrency(spent)}</span>
+                        {budgetAmount > 0 && (
+                          <span className={remaining < 0 ? "text-red-600 font-semibold" : "text-emerald-700"}>
+                            Remaining: {formatCurrency(remaining)}
+                          </span>
+                        )}
+                      </div>
+                      {pct !== null ? (
+                        <div className="w-full bg-zinc-200 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className={`h-1.5 rounded-full ${
+                              pct > 90 ? "bg-red-500" : pct > 75 ? "bg-amber-500" : "bg-emerald-500"
+                            }`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Recent Claims Section */}
         <div className="rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-950 shadow-2xs overflow-hidden">

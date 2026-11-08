@@ -66,7 +66,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   // 01: Claimant Details & Saved Bank Profile State
   const [profiles, setProfiles] = useState<Profile[]>(() => iamClient.getProfiles());
   const [selectedPayeeProfileId, setSelectedPayeeProfileId] = useState<string>(
-    initialClaim?.claimant_id || (user && !user.is_multi_user ? user.id : "")
+    initialClaim?.claimant_id || user?.id || ""
   );
   const [profileSearchQuery, setProfileSearchQuery] = useState("");
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
@@ -86,7 +86,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   const [claimantName, setClaimantName] = useState(
     initialClaim?.claimant_name ||
       initialClaim?.claimant?.full_name ||
-      (user?.is_multi_user ? "" : user?.full_name) ||
+      user?.full_name ||
       ""
   );
   const [claimantEmail, setClaimantEmail] = useState(
@@ -98,13 +98,14 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   const initialResolvedBank = resolveCanonicalBank(
     initialClaim?.bank_code ||
       initialClaim?.bank_name ||
-      (user?.is_multi_user ? undefined : user?.bank_code || user?.bank_name) ||
+      user?.bank_code ||
+      user?.bank_name ||
       "MBBEMYKL"
   );
   const [bankName, setBankName] = useState(
     initialResolvedBank?.name ||
       initialClaim?.bank_name ||
-      (user?.is_multi_user ? undefined : user?.bank_name) ||
+      user?.bank_name ||
       "Maybank / Malayan Banking Berhad"
   );
   const [bankCode, setBankCode] = useState(
@@ -112,13 +113,13 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   );
   const [bankAccountHolderName, setBankAccountHolderName] = useState(
     initialClaim?.bank_account_holder_name ||
-      (user?.is_multi_user ? "" : user?.bank_account_holder_name) ||
+      user?.bank_account_holder_name ||
       initialClaim?.claimant_name ||
-      (user?.is_multi_user ? "" : user?.full_name) ||
+      user?.full_name ||
       ""
   );
   const [bankAccountNumber, setBankAccountNumber] = useState(
-    initialClaim?.bank_account_number || (user?.is_multi_user ? "" : user?.bank_account_number) || ""
+    initialClaim?.bank_account_number || user?.bank_account_number || ""
   );
 
   // 02: Claim Details State
@@ -367,9 +368,6 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
       if (!e.description.trim()) return `Receipt #${i + 1}: Item description is required.`;
       const amountCents = moneyToCents(e.amount);
       if (amountCents === null || amountCents <= 0) return `Receipt #${i + 1}: Enter a positive amount with at most two decimal places.`;
-      if (formConfig.require_vendor_name && !e.vendor?.trim()) {
-        return `Receipt #${i + 1}: Vendor / merchant name is required by church policy.`;
-      }
       if (formConfig.require_receipt_for_all_expenses && !e.attachment) {
         return `Receipt #${i + 1}: Please upload the supporting receipt file.`;
       }
@@ -640,11 +638,6 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                 {user?.full_name || "Claimant"}
               </span>
               <span className="break-all text-zinc-500">{user?.email}</span>
-              {user?.is_multi_user && (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
-                  Multi-User Account
-                </span>
-              )}
             </div>
           </div>
 
@@ -757,11 +750,15 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                                 <div className="min-w-0">
                                   <div className="font-semibold text-zinc-900 dark:text-zinc-100 truncate flex items-center gap-1.5">
                                     <span>{p.full_name}</span>
-                                    {p.is_payee_only && (
-                                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-zinc-100 text-zinc-600 font-normal">
-                                        Saved Payee
+                                    {p.id === user?.id ? (
+                                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 font-medium">
+                                        Myself
                                       </span>
-                                    )}
+                                    ) : p.is_payee_only ? (
+                                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-zinc-100 text-zinc-600 font-normal">
+                                        Claimant Profile
+                                      </span>
+                                    ) : null}
                                   </div>
                                   <div className="text-[10px] text-zinc-500 truncate">
                                     {bankEntry

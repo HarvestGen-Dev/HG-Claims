@@ -87,8 +87,27 @@ export class ClaimsClient {
       }
     }
 
+    let disbursementVoucher = c.disbursement_voucher;
+    let batchNumber = c.batch_number;
+    let disbursementLineOrder = c.disbursement_line_order;
+    if (!disbursementVoucher && c.active_instruction_id) {
+      const batches = workspaceStore.getState().reimbursementBatches || [];
+      for (const b of batches) {
+        const inst = b.instructions?.find((i) => i.id === c.active_instruction_id);
+        if (inst) {
+          disbursementVoucher = inst.payment_description;
+          batchNumber = b.batch_number;
+          disbursementLineOrder = inst.line_order;
+          break;
+        }
+      }
+    }
+
     return {
       ...c,
+      disbursement_voucher: disbursementVoucher || null,
+      batch_number: batchNumber || null,
+      disbursement_line_order: disbursementLineOrder || null,
       claimant: profile(c.claimant_id),
       submitted_by: profile(c.submitted_by_user_id || c.claimant_id),
       ministry,

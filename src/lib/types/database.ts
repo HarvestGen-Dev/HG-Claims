@@ -2,6 +2,7 @@ export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
 
 export type RoleCode =
   | 'CLAIMANT'
+  | 'TEAM_LEAD'
   | 'FINANCE_OFFICER'
   | 'SYSTEM_ADMIN';
 
@@ -116,6 +117,17 @@ export interface UserRole {
   created_at: string;
 }
 
+export interface MinistryBudget {
+  id: string;
+  ministry_id: string;
+  year: number;
+  amount: number;
+  notes?: string | null;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Ministry {
   id: string;
   code: string;
@@ -123,6 +135,8 @@ export interface Ministry {
   description?: string | null;
   leader_id?: string | null;
   leader?: Profile | null;
+  team_lead_ids?: string[];
+  budgets?: MinistryBudget[];
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -410,6 +424,9 @@ export interface Claim {
   reimbursement_status?: ReimbursementStatus | null;
   active_batch_id?: string | null;
   active_instruction_id?: string | null;
+  disbursement_voucher?: string | null;
+  batch_number?: string | null;
+  disbursement_line_order?: number | null;
   approved_snapshot?: ClaimApprovedSnapshot | null;
   approved_at?: string | null;
   approved_by?: string | null;

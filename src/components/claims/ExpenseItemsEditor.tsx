@@ -205,24 +205,8 @@ const ExpenseReceiptCard = React.memo(function ExpenseReceiptCard({
           </div>
         </div>
 
-        {/* Vendor */}
-        <div className="md:col-span-6 space-y-1">
-          <label htmlFor={`receipt-${index}-vendor`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-            Vendor / Merchant
-          </label>
-          <Input
-            type="text"
-            placeholder="e.g. Grab, MR DIY, Popular"
-            id={`receipt-${index}-vendor`}
-            value={item.vendor || ""}
-            disabled={disabled}
-            onChange={(e) => onUpdateField(index, "vendor", e.target.value)}
-            className="h-8 text-xs bg-zinc-50/50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
-          />
-        </div>
-
         {/* Notes */}
-        <div className="md:col-span-6 space-y-1">
+        <div className="md:col-span-12 space-y-1">
           <label htmlFor={`receipt-${index}-notes`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
             Notes
           </label>

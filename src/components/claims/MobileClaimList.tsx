@@ -66,6 +66,11 @@ export function MobileClaimList({
               </span>
 
               <div className="flex items-center gap-2">
+                {claim.disbursement_voucher && (
+                  <span className="text-[10px] font-mono font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded">
+                    Voucher {claim.disbursement_voucher}
+                  </span>
+                )}
                 {showStep && activeStep ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200/70 dark:bg-amber-950/30 dark:text-amber-300">
                     <Clock className="w-2.5 h-2.5" />
