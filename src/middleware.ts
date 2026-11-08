@@ -33,7 +33,16 @@ export async function middleware(request: NextRequest) {
       values.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
     },
   } });
-  const { data: { user }, error } = await client.auth.getUser();
+  let user = null;
+  let error: { name?: string; code?: string } | null = null;
+  try {
+    const result = await client.auth.getUser();
+    user = result.data.user;
+    error = result.error;
+  } catch (err) {
+    // Prevent unhandled exception in Edge middleware from crashing with 503
+    console.error("Middleware auth check error:", err);
+  }
   const { pathname, searchParams } = request.nextUrl;
   const publicPath = ["/", "/login", "/signup", "/onboarding", "/forgot-password", "/reset-password", "/auth/callback"].includes(pathname);
   const requiresSignIn = !publicPath && !pathname.startsWith("/api/");
