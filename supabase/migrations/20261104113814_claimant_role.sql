@@ -6,7 +6,8 @@ CREATE OR REPLACE FUNCTION private.provision_profile() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 BEGIN
   INSERT INTO public.profiles(id, email, full_name)
-  VALUES (NEW.id, NEW.email, COALESCE(NULLIF(NEW.raw_user_meta_data->>'full_name', ''), split_part(NEW.email, '@', 1)));
+  VALUES (NEW.id, NEW.email, COALESCE(NULLIF(NEW.raw_user_meta_data->>'full_name', ''), split_part(NEW.email, '@', 1)))
+  ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email;
   RETURN NEW;
 END $$;
 
@@ -18,12 +19,17 @@ WHERE (p.ministry_id IS NOT NULL OR p.default_ministry_id IS NOT NULL)
     WHERE ur.user_id = p.id AND r.code = 'MINISTRY_LEADER'
   );
 
-DELETE FROM public.roles WHERE code = 'CLAIMANT';
-UPDATE public.roles
-SET code = 'CLAIMANT', name = 'Claimant', description = 'Can submit claims and view their own claims'
-WHERE code = 'MINISTRY_LEADER';
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.roles WHERE code = 'MINISTRY_LEADER') THEN
+    DELETE FROM public.roles WHERE code = 'CLAIMANT';
+    UPDATE public.roles
+    SET code = 'CLAIMANT', name = 'Claimant', description = 'Can submit claims and view their own claims'
+    WHERE code = 'MINISTRY_LEADER';
+  END IF;
+END $$;
 
-ALTER TABLE public.signup_invitations DROP CONSTRAINT signup_invitations_role_code_check;
+ALTER TABLE public.signup_invitations DROP CONSTRAINT IF EXISTS signup_invitations_role_code_check;
 UPDATE public.signup_invitations
 SET role_code = 'CLAIMANT', ministry_id = NULL
 WHERE role_code = 'MINISTRY_LEADER';
@@ -41,17 +47,17 @@ DECLARE
 $old$;
   ministry_assignment text := $old$CASE WHEN payload->>'role_code'='CLAIMANT' THEN (payload->>'ministry_id')::uuid END$old$;
 BEGIN
-  IF strpos(definition, $old$private.has_role('MINISTRY_LEADER')$old$) = 0 THEN
-    RAISE EXCEPTION 'Unexpected claim command definition';
+  IF strpos(definition, $old$private.has_role('MINISTRY_LEADER')$old$) > 0 THEN
+    definition := replace(definition, '''MINISTRY_LEADER''', '''CLAIMANT''');
+    IF strpos(definition, ministry_check) > 0 THEN
+      definition := replace(definition, ministry_check, '');
+    END IF;
+    IF strpos(definition, ministry_assignment) > 0 THEN
+      definition := replace(definition, ministry_assignment, 'NULL');
+    END IF;
+    definition := replace(definition, 'Ministry Leader or System Admin access is required to submit claims', 'Claimant or System Admin access is required to submit claims');
+    EXECUTE definition;
   END IF;
-  definition := replace(definition, '''MINISTRY_LEADER''', '''CLAIMANT''');
-  IF strpos(definition, ministry_check) = 0 OR strpos(definition, ministry_assignment) = 0 THEN
-    RAISE EXCEPTION 'Unexpected invitation command definition';
-  END IF;
-  definition := replace(definition, ministry_check, '');
-  definition := replace(definition, ministry_assignment, 'NULL');
-  definition := replace(definition, 'Ministry Leader or System Admin access is required to submit claims', 'Claimant or System Admin access is required to submit claims');
-  EXECUTE definition;
 END $migration$;
 
 -- The API server and administrator bootstrap use service-role table access.

@@ -1,7 +1,7 @@
 BEGIN;
 
 -- A refresh changes the JWT, but preserves the original Auth session ID.
-CREATE FUNCTION private.session_expires_at() RETURNS timestamptz
+CREATE OR REPLACE FUNCTION private.session_expires_at() RETURNS timestamptz
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
   SELECT s.created_at + interval '1 hour'
   FROM auth.sessions s
@@ -11,7 +11,7 @@ $$;
 REVOKE ALL ON FUNCTION private.session_expires_at() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION private.session_expires_at() TO authenticated;
 
-CREATE FUNCTION public.hg_session_expires_at() RETURNS timestamptz
+CREATE OR REPLACE FUNCTION public.hg_session_expires_at() RETURNS timestamptz
 LANGUAGE sql STABLE SECURITY INVOKER SET search_path = '' AS $$
   SELECT private.session_expires_at();
 $$;
@@ -28,6 +28,7 @@ $$;
 REVOKE ALL ON public.profiles, public.claims, public.claim_attachments,
   public.signup_invitations, public.audit_logs FROM anon, authenticated;
 
+DROP POLICY IF EXISTS receipt_active_session ON storage.objects;
 CREATE POLICY receipt_active_session ON storage.objects AS RESTRICTIVE
 FOR ALL TO authenticated
 USING (bucket_id <> 'receipts' OR (SELECT private.active_user()))
@@ -35,6 +36,7 @@ WITH CHECK (bucket_id <> 'receipts' OR (SELECT private.active_user()));
 
 -- Receipt previews use authenticated downloads. Don't mint bearer links that
 -- would outlive the session or bypass claim ownership checks when opened.
+DROP POLICY IF EXISTS receipt_no_signed_urls ON storage.objects;
 CREATE POLICY receipt_no_signed_urls ON storage.objects AS RESTRICTIVE
 FOR ALL TO authenticated
 USING (bucket_id <> 'receipts' OR NOT storage.allow_any_operation(
