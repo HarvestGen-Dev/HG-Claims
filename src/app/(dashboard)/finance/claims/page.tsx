@@ -104,7 +104,11 @@ function FinanceClaimsContent() {
             c.submitted_by.full_name.toLowerCase().includes(q)) ||
           c.purpose.toLowerCase().includes(q) ||
           (c.payment?.payment_reference &&
-            c.payment.payment_reference.toLowerCase().includes(q))
+            c.payment.payment_reference.toLowerCase().includes(q)) ||
+          (c.disbursement_voucher &&
+            c.disbursement_voucher.toLowerCase().includes(q)) ||
+          (c.batch_number &&
+            c.batch_number.toLowerCase().includes(q))
         );
       }
       return true;
@@ -459,6 +463,7 @@ function FinanceClaimsContent() {
                       <th className="py-2.5 px-4">Claim #</th>
                       <th className="py-2.5 px-4">Claimant</th>
                       <th className="py-2.5 px-4">Ministry</th>
+                      <th className="py-2.5 px-4">Disbursement Voucher</th>
                       <th className="py-2.5 px-4">Purpose</th>
                       <th className="py-2.5 px-4 text-right">Amount (RM)</th>
                       <th className="py-2.5 px-4 text-center">
@@ -518,6 +523,27 @@ function FinanceClaimsContent() {
                           </td>
                           <td className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
                             {c.ministry?.name}
+                          </td>
+                          <td className="py-3 px-4">
+                            {c.disbursement_voucher ? (
+                              <div className="flex flex-col">
+                                <span className="font-mono text-xs font-semibold text-indigo-700 dark:text-indigo-400">
+                                  {c.disbursement_voucher}
+                                </span>
+                                {c.disbursement_line_order ? (
+                                  <span className="text-[10px] text-zinc-500">
+                                    Row #{c.disbursement_line_order} in XLS
+                                  </span>
+                                ) : null}
+                                {c.batch_number ? (
+                                  <span className="text-[10px] font-mono text-zinc-400 truncate max-w-[120px]">
+                                    {c.batch_number}
+                                  </span>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <span className="text-zinc-400 text-[11px]">-</span>
+                            )}
                           </td>
                           <td className="py-3 px-4 max-w-xs">
                             <span className="font-medium text-zinc-800 dark:text-zinc-200 block truncate">

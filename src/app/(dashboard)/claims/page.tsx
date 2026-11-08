@@ -90,7 +90,9 @@ function ClaimsContent() {
           (c.claimant?.full_name && c.claimant.full_name.toLowerCase().includes(q)) ||
           (c.submitted_by?.full_name && c.submitted_by.full_name.toLowerCase().includes(q)) ||
           c.purpose.toLowerCase().includes(q) ||
-          (c.ministry?.name && c.ministry.name.toLowerCase().includes(q))
+          (c.ministry?.name && c.ministry.name.toLowerCase().includes(q)) ||
+          (c.disbursement_voucher && c.disbursement_voucher.toLowerCase().includes(q)) ||
+          (c.batch_number && c.batch_number.toLowerCase().includes(q))
         );
       }
       return true;
@@ -223,6 +225,7 @@ function ClaimsContent() {
                     <th className="py-2.5 px-4">Date</th>
                     <th className="py-2.5 px-4">Ministry & Purpose</th>
                     <th className="py-2.5 px-4 text-center">Receipts</th>
+                    <th className="py-2.5 px-4">Disbursement Voucher</th>
                     <th className="py-2.5 px-4 text-right">Amount (RM)</th>
                     <th className="py-2.5 px-4 text-center">Status</th>
                     <th className="py-2.5 px-4 text-right">Action</th>
@@ -250,6 +253,27 @@ function ClaimsContent() {
                       </td>
                       <td className="py-3 px-4 text-center text-zinc-600 dark:text-zinc-400 font-mono text-[11px]">
                         {c.expenses?.length || 0} item{c.expenses?.length === 1 ? "" : "s"}
+                      </td>
+                      <td className="py-3 px-4">
+                        {c.disbursement_voucher ? (
+                          <div className="flex flex-col">
+                            <span className="font-mono text-xs font-semibold text-indigo-700 dark:text-indigo-400">
+                              {c.disbursement_voucher}
+                            </span>
+                            {c.disbursement_line_order ? (
+                              <span className="text-[10px] text-zinc-500">
+                                Row #{c.disbursement_line_order} in XLS
+                              </span>
+                            ) : null}
+                            {c.batch_number ? (
+                              <span className="text-[10px] font-mono text-zinc-400 truncate max-w-[120px]">
+                                {c.batch_number}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <span className="text-zinc-400 text-[11px]">-</span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-right font-mono font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">
                         {formatCurrency(c.total_amount)}

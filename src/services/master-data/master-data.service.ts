@@ -15,6 +15,8 @@ export const MASTER_DATA_ACTIONS = [
   "master_delete",
   "settings",
   "setting",
+  "set_ministry_budget",
+  "set_ministry_team_leads",
 ] as const;
 
 export type MasterDataAction = (typeof MASTER_DATA_ACTIONS)[number];
@@ -23,7 +25,14 @@ export function isMasterDataCommand(
   action: string,
   payload: Record<string, unknown>
 ): boolean {
-  if (action === "settings" || action === "setting") return true;
+  if (
+    action === "settings" ||
+    action === "setting" ||
+    action === "set_ministry_budget" ||
+    action === "set_ministry_team_leads"
+  ) {
+    return true;
+  }
   if (action === "master_save" || action === "master_delete") {
     const table = payload.table;
     return (

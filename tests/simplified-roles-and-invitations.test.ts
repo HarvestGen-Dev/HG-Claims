@@ -240,10 +240,12 @@ describe("Simplified Role Model & Signup Invitations", () => {
       updated_at: "",
     };
 
-    it("canUserCreateClaim allows CLAIMANT and SYSTEM_ADMIN", () => {
+    it("canUserCreateClaim allows CLAIMANT, TEAM_LEAD, FINANCE_OFFICER, and SYSTEM_ADMIN", () => {
       expect(canUserCreateClaim(leader)).toBe(true);
       expect(canUserCreateClaim(admin)).toBe(true);
-      expect(canUserCreateClaim(finance)).toBe(false);
+      expect(canUserCreateClaim(finance)).toBe(true);
+      expect(canUserCreateClaim({ ...finance, roles: [] })).toBe(false);
+      expect(canUserCreateClaim({ ...finance, status: "INACTIVE" })).toBe(false);
     });
 
     it("canUserRecordPayment allows only FINANCE_OFFICER and SYSTEM_ADMIN", () => {

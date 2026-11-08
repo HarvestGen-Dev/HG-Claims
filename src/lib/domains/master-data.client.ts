@@ -214,6 +214,35 @@ export class MasterDataClient {
       { table: "cost_centres", id }
     );
   }
+
+  async setMinistryBudget(
+    ministryId: string,
+    year: number,
+    amount: number,
+    notes?: string
+  ) {
+    return workspaceStore.dispatchDomainCommand(
+      MASTER_DATA_ENDPOINT,
+      "set_ministry_budget",
+      {
+        ministry_id: ministryId,
+        year,
+        amount,
+        notes: notes || undefined,
+      }
+    );
+  }
+
+  async setMinistryTeamLeads(ministryId: string, userIds: string[]) {
+    return workspaceStore.dispatchDomainCommand(
+      MASTER_DATA_ENDPOINT,
+      "set_ministry_team_leads",
+      {
+        ministry_id: ministryId,
+        user_ids: userIds,
+      }
+    );
+  }
 }
 
 export const masterDataClient = new MasterDataClient();

@@ -8,6 +8,7 @@ import {
   ApprovalAction,
   Profile,
   Ministry,
+  MinistryBudget,
   ExpenseCategory,
   CostCentre,
   ApprovalRule,
@@ -57,6 +58,8 @@ class DatabaseRepository {
   private auditLogs: AuditLog[] = [];
   private signupInvitations: SignupInvitation[] = [];
   private reimbursementBatches: ReimbursementBatch[] = [];
+  private ministryTeamLeads: { ministry_id: string; user_id: string }[] = [];
+  private ministryBudgets: MinistryBudget[] = [];
   private paymentDescriptionSeqByYear: Record<number, number> = {};
   private runningSequence: number = 125;
   private isInitialized = false;
@@ -143,8 +146,59 @@ class DatabaseRepository {
   public getMinistries(): Ministry[] {
     return this.ministries.map(m => ({
       ...m,
-      leader: this.getProfileById(m.leader_id || "")
+      leader: this.getProfileById(m.leader_id || ""),
+      team_lead_ids: this.ministryTeamLeads.filter(l => l.ministry_id === m.id).map(l => l.user_id),
+      budgets: this.ministryBudgets.filter(b => b.ministry_id === m.id),
     }));
+  }
+
+  public setMinistryBudget(
+    ministryId: string,
+    year: number,
+    amount: number,
+    notes?: string,
+    createdBy?: string
+  ): MinistryBudget {
+    const existingIdx = this.ministryBudgets.findIndex(
+      b => b.ministry_id === ministryId && b.year === year
+    );
+    const now = new Date().toISOString();
+    if (existingIdx !== -1) {
+      this.ministryBudgets[existingIdx] = {
+        ...this.ministryBudgets[existingIdx],
+        amount,
+        notes: notes !== undefined ? notes : this.ministryBudgets[existingIdx].notes,
+        updated_at: now,
+      };
+      this.persist();
+      return this.ministryBudgets[existingIdx];
+    }
+    const newBudget: MinistryBudget = {
+      id: `mb-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      ministry_id: ministryId,
+      year,
+      amount,
+      notes: notes || null,
+      created_by: createdBy || null,
+      created_at: now,
+      updated_at: now,
+    };
+    this.ministryBudgets.push(newBudget);
+    this.persist();
+    return newBudget;
+  }
+
+  public setMinistryTeamLeads(ministryId: string, userIds: string[]): string[] {
+    this.ministryTeamLeads = this.ministryTeamLeads.filter(l => l.ministry_id !== ministryId);
+    for (const uid of userIds) {
+      this.ministryTeamLeads.push({ ministry_id: ministryId, user_id: uid });
+      const user = this.profiles.find(p => p.id === uid);
+      if (user && !user.roles?.includes("TEAM_LEAD")) {
+        user.roles = [...(user.roles || []), "TEAM_LEAD"];
+      }
+    }
+    this.persist();
+    return userIds;
   }
 
   public createMinistry(data: Partial<Ministry>): Ministry {
@@ -1912,6 +1966,9 @@ class DatabaseRepository {
           : "RESERVED_IN_BATCH";
         claim.active_batch_id = batchId;
         claim.active_instruction_id = instId;
+        claim.disbursement_voucher = paymentDescription;
+        claim.batch_number = batchNumber;
+        claim.disbursement_line_order = idx + 1;
         claim.updated_at = now;
         return {
           id: `ic-${Date.now()}-${cid}`,
@@ -2157,6 +2214,10 @@ class DatabaseRepository {
         if (claim && claim.status !== "PAID") {
           claim.reimbursement_status = "RELEASED";
           claim.active_batch_id = undefined;
+          claim.active_instruction_id = undefined;
+          claim.disbursement_voucher = null;
+          claim.batch_number = null;
+          claim.disbursement_line_order = null;
           claim.updated_at = now;
         }
       });

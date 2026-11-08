@@ -42,15 +42,6 @@ function RoleOptions({ value, onChange }: { value: RoleCode[]; onChange: (roles:
   );
 }
 
-function SharedAccount({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
-  return (
-    <label className="flex min-h-9 cursor-pointer items-center gap-2.5 border-t border-border pt-3">
-      <Checkbox checked={checked} onCheckedChange={onChange} />
-      Shared account
-    </label>
-  );
-}
-
 function UserList({ profiles, onEdit, onStatus }: {
   profiles: Profile[];
   onEdit: (profile: Profile) => void;
@@ -73,7 +64,6 @@ function UserList({ profiles, onEdit, onStatus }: {
               </div>
               <div className="text-sm">
                 <p>{profile.roles?.length ? profile.roles.map(formatRole).join(", ") : profile.is_payee_only ? "Saved payee" : "No role"}</p>
-                {profile.is_multi_user && <p className="text-muted-foreground">Shared account</p>}
               </div>
               <div className={rowStatus}>
                 <Badge variant={active ? profile.onboarding_completed_at ? "success" : "warning" : "secondary"}>
@@ -107,7 +97,6 @@ export default function UserManagementPage() {
   const [maxUses, setMaxUses] = useState("1");
   const [expiresDays, setExpiresDays] = useState(7);
   const [description, setDescription] = useState("");
-  const [shared, setShared] = useState(false);
   const [links, setLinks] = useState<Record<string, string>>({});
   const [generatedLink, setGeneratedLink] = useState("");
   const [copied, setCopied] = useState(false);
@@ -148,7 +137,6 @@ export default function UserManagementPage() {
   function openEmail() {
     setEmail("");
     setSelectedRoles(["CLAIMANT"]);
-    setShared(false);
     openDialog("email");
   }
 
@@ -157,14 +145,12 @@ export default function UserManagementPage() {
     setMaxUses("1");
     setExpiresDays(7);
     setDescription("");
-    setShared(false);
     openDialog("link");
   }
 
   function openEdit(profile: Profile) {
     setEditingUser(profile);
     setSelectedRoles(roles.filter((role) => profile.roles?.includes(role)));
-    setShared(Boolean(profile.is_multi_user));
     openDialog("edit");
   }
 
@@ -187,7 +173,7 @@ export default function UserManagementPage() {
       return;
     }
     void run(async () => {
-      await iamClient.inviteUserByEmail({ email: email.trim(), roles: selectedRoles, is_multi_user: shared });
+      await iamClient.inviteUserByEmail({ email: email.trim(), roles: selectedRoles });
       setActiveTab("users");
       setDialog(null);
       showToast.success(`Invitation sent to ${email.trim()}.`);
@@ -202,7 +188,6 @@ export default function UserManagementPage() {
         max_uses: Number(maxUses),
         expires_in_days: expiresDays,
         description: description.trim() || undefined,
-        is_multi_user: shared,
       });
       const url = new URL(result.signup_url || `/signup?invite=${result.raw_token}`, window.location.origin).href;
       setLinks((previous) => ({ ...previous, [result.id]: url }));
@@ -222,7 +207,7 @@ export default function UserManagementPage() {
       await iamClient.updateProfile(editingUser.id, {
         full_name: editingUser.full_name,
         phone: editingUser.phone,
-        ...(editingUser.is_payee_only ? {} : { roles: selectedRoles, is_multi_user: shared }),
+        ...(editingUser.is_payee_only ? {} : { roles: selectedRoles }),
       });
       setDialog(null);
       showToast.success("User updated.");
@@ -352,7 +337,6 @@ export default function UserManagementPage() {
                   <Input id="invite-email" type="email" autoComplete="email" maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} required />
                 </div>
                 <RoleOptions value={selectedRoles} onChange={setSelectedRoles} />
-                <SharedAccount checked={shared} onChange={setShared} />
               </fieldset>
               {formError}
               <DialogFooter>{cancel}<Button type="submit" loading={busy}>Send invitation</Button></DialogFooter>
@@ -399,7 +383,6 @@ export default function UserManagementPage() {
                     <Label htmlFor="link-note">Note</Label>
                     <Input id="link-note" value={description} onChange={(e) => setDescription(e.target.value)} />
                   </div>
-                  <SharedAccount checked={shared} onChange={setShared} />
                 </fieldset>
                 {formError}
                 <DialogFooter>{cancel}<Button type="submit" loading={busy}>Create link</Button></DialogFooter>
@@ -424,10 +407,9 @@ export default function UserManagementPage() {
                     <Input id="edit-phone" type="tel" maxLength={50} value={editingUser.phone || ""} onChange={(e) => setEditingUser({ ...editingUser, phone: e.target.value })} />
                   </div>
                 </div>
-                {!editingUser.is_payee_only && <>
+                {!editingUser.is_payee_only && (
                   <RoleOptions value={selectedRoles} onChange={setSelectedRoles} />
-                  <SharedAccount checked={shared} onChange={setShared} />
-                </>}
+                )}
               </fieldset>
               {formError}
               <DialogFooter>{cancel}<Button type="submit" loading={busy}>Save changes</Button></DialogFooter>
