@@ -13,6 +13,7 @@ import {
   ShieldAlert,
   FileSpreadsheet,
   Hash,
+  Search,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,7 @@ export default function FinanceBatchDetailPage() {
   const [failureReason, setFailureReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [instructionSearch, setInstructionSearch] = useState("");
 
   useEffect(() => {
     if (!user || !batchId) return;
@@ -205,6 +207,18 @@ export default function FinanceBatchDetailPage() {
   const hasPaidRows = (batch.instructions || []).some(
     (inst) => inst.status === "PAID"
   );
+
+  const filteredInstructions = (batch.instructions || []).filter((inst) => {
+    if (!instructionSearch.trim()) return true;
+    const q = instructionSearch.toLowerCase();
+    return (
+      inst.payment_description.toLowerCase().includes(q) ||
+      inst.beneficiary_name.toLowerCase().includes(q) ||
+      inst.beneficiary_bank_name.toLowerCase().includes(q) ||
+      inst.beneficiary_account_number.toLowerCase().includes(q) ||
+      inst.claims?.some((ic) => ic.claim?.claim_number?.toLowerCase().includes(q))
+    );
+  });
 
   return (
     <AppLayout>
@@ -361,21 +375,34 @@ export default function FinanceBatchDetailPage() {
 
         {/* Payment Instructions & Reconciliation Table */}
         <Card className="border-zinc-200/80 shadow-2xs overflow-hidden">
-          <CardHeader className="py-3 px-4 bg-zinc-50 border-b border-zinc-100 flex flex-row items-center justify-between">
+          <CardHeader className="py-3 px-4 bg-zinc-50 border-b border-zinc-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
             <div className="flex items-center gap-2">
               <FileSpreadsheet className="w-4 h-4 text-zinc-700" />
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900">
                 Frozen Payment Instructions (Sheet1 Rows)
               </CardTitle>
             </div>
-            <span className="text-[11px] text-zinc-500">
-              Reconcile individual transfer outcomes below
-            </span>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none w-3.5 h-3.5 text-zinc-400" />
+              <input
+                type="text"
+                placeholder="Search voucher (e.g. P260001), beneficiary, claim #..."
+                value={instructionSearch}
+                onChange={(e) => setInstructionSearch(e.target.value)}
+                className="h-7 w-full pl-8 pr-2.5 text-xs rounded-md border border-zinc-200 bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              />
+            </div>
           </CardHeader>
           <CardContent className="p-0">
-            {/* Mobile Card View for Frozen Instructions */}
-            <div className="sm:hidden divide-y divide-zinc-200/80">
-              {(batch.instructions || []).map((inst) => (
+            {filteredInstructions.length === 0 ? (
+              <div className="py-12 text-center text-xs text-zinc-400">
+                No payment instructions match your search.
+              </div>
+            ) : (
+              <>
+                {/* Mobile Card View for Frozen Instructions */}
+                <div className="sm:hidden divide-y divide-zinc-200/80">
+              {filteredInstructions.map((inst) => (
                 <div key={inst.id} className="p-3.5 space-y-2.5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="space-y-1">
@@ -479,7 +506,7 @@ export default function FinanceBatchDetailPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
-                  {(batch.instructions || []).map((inst) => (
+                  {filteredInstructions.map((inst) => (
                     <tr key={inst.id} className="hover:bg-zinc-50/60">
                       <td className="py-3 px-3 font-mono text-zinc-400">
                         {inst.line_order}
@@ -592,6 +619,8 @@ export default function FinanceBatchDetailPage() {
                 </tbody>
               </table>
             </div>
+            </>
+            )}
           </CardContent>
         </Card>
 
