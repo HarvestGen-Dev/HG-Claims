@@ -24,12 +24,16 @@ describe("Finance verification eligibility", () => {
     expect(canUserVerifyClaim(user, claim)).toBe(true);
   });
 
-  it("blocks the submitter even with all three roles", () => {
-    expect(canUserVerifyClaim(user, { ...claim, submitted_by_user_id: user.id })).toBe(false);
+  it("allows the submitter if they have finance or admin role", () => {
+    expect(canUserVerifyClaim(user, { ...claim, submitted_by_user_id: user.id })).toBe(true);
   });
 
-  it("blocks the claimant even when someone else submitted the claim", () => {
-    expect(canUserVerifyClaim(user, { ...claim, claimant_id: user.id })).toBe(false);
+  it("allows the claimant if they have finance or admin role", () => {
+    expect(canUserVerifyClaim(user, { ...claim, claimant_id: user.id })).toBe(true);
+  });
+
+  it("blocks the submitter if they lack finance and admin roles", () => {
+    expect(canUserVerifyClaim({ ...user, roles: ["CLAIMANT"] }, { ...claim, submitted_by_user_id: user.id })).toBe(false);
   });
 
   it.each<ClaimStatus>([

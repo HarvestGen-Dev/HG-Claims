@@ -32,7 +32,9 @@ export default function ApprovalsInboxPage() {
   }, [user]);
 
   const pendingApprovals = claims.filter(c => {
-    if (c.submitted_by_user_id === user?.id || c.claimant_id === user?.id) return false;
+    const isSubmitterOrClaimant = c.submitted_by_user_id === user?.id || c.claimant_id === user?.id;
+    const isFinanceOrAdmin = user?.roles?.includes("SYSTEM_ADMIN") || user?.roles?.includes("FINANCE_OFFICER");
+    if (isSubmitterOrClaimant && !isFinanceOrAdmin) return false;
     const currentStep = c.workflow_steps?.find(s => s.status === "IN_PROGRESS");
     if (!currentStep) return false;
 

@@ -881,9 +881,16 @@ class DatabaseRepository {
     const claim = this.claims.find(c => c.id === claimId);
     if (!claim) throw new Error("Claim not found");
 
-    // Prevent Submitter or Claimant from Approving their own submitted claim! (Cross-role self-review protection)
+    // Role check: Only Finance Officer or System Admin can approve
+    if (!actor.roles?.includes("FINANCE_OFFICER") && !actor.roles?.includes("SYSTEM_ADMIN")) {
+      throw new Error("Security Violation: You cannot approve this claim without Finance Officer or System Admin role.");
+    }
+
+    // Prevent non-finance Submitter or Claimant from Approving their own submitted claim!
     if (claim.submitted_by_user_id === actor.id || claim.claimant_id === actor.id) {
-      throw new Error("Security Violation: You cannot approve a claim that you submitted.");
+      if (!actor.roles?.includes("FINANCE_OFFICER") && !actor.roles?.includes("SYSTEM_ADMIN")) {
+        throw new Error("Security Violation: You cannot approve a claim that you submitted.");
+      }
     }
 
     const steps = claim.workflow_steps || [];

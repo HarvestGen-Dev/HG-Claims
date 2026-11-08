@@ -18,11 +18,13 @@ export function isClaimSubmitter(user: Profile | null | undefined, claim: Claim 
 
 export function canUserReviewClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
   if (!user || !claim || user.status !== "ACTIVE" || !user.roles) return false;
-  // Rule 1: Submitter can NEVER review/approve/return/reject their own claim
-  if (isClaimSubmitter(user, claim) || claim.claimant_id === user.id) return false;
 
-  // Rule 2: Must be Finance Officer or System Admin
-  return user.roles.includes("FINANCE_OFFICER") || user.roles.includes("SYSTEM_ADMIN");
+  // Must be Finance Officer or System Admin
+  const isFinanceOrAdmin = user.roles.includes("FINANCE_OFFICER") || user.roles.includes("SYSTEM_ADMIN");
+  if (!isFinanceOrAdmin) return false;
+
+  // Finance officers and system administrators can review their own claims
+  return true;
 }
 
 export function canUserApproveClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
@@ -51,14 +53,12 @@ export function canUserEditClaim(user: Profile | null | undefined, claim: Claim 
 export function canUserRecordPayment(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
   if (!user || !claim || user.status !== "ACTIVE" || !user.roles) return false;
   if (claim.status !== "APPROVED_FOR_PAYMENT") return false;
-  if (isClaimSubmitter(user, claim) || claim.claimant_id === user.id) return false;
   return user.roles.includes("FINANCE_OFFICER") || user.roles.includes("SYSTEM_ADMIN");
 }
 
 export function canUserVerifyClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
   if (!user || !claim || !canUserReviewClaim(user, claim)) return false;
-  // Finance verification excludes both the submitter and the claimant, even for admins.
-  return claim.claimant_id !== user.id && claim.status === "PENDING_FINANCE_REVIEW";
+  return claim.status === "PENDING_FINANCE_REVIEW";
 }
 
 export function canUserManageSystem(user: Profile | null | undefined): boolean {

@@ -9,14 +9,21 @@ BEGIN
       WHERE w.claim_id=c.id AND w.is_current) <> 1 THEN
     RAISE EXCEPTION 'Expected one current review step';
   END IF;
-  PERFORM pg_temp.sign_in_as(COALESCE(c.submitted_by_user_id,c.claimant_id));
-  FOREACH action_name IN ARRAY ARRAY['verify','approve'] LOOP
-    BEGIN
-      PERFORM public.nlcc_command(action_name,jsonb_build_object('claim_id',c.id,'version',c.version));
-      RAISE EXCEPTION 'Self-review was accepted';
-    EXCEPTION WHEN insufficient_privilege THEN NULL;
-    END;
-  END LOOP;
+  -- Non-finance submitters cannot self-review, but Finance Officers/Admins are permitted to self-approve.
+  IF NOT EXISTS (
+    SELECT 1 FROM public.user_roles ur JOIN public.roles r ON r.id=ur.role_id
+    WHERE ur.user_id = COALESCE(c.submitted_by_user_id, c.claimant_id)
+      AND r.code IN ('FINANCE_OFFICER', 'SYSTEM_ADMIN')
+  ) THEN
+    PERFORM pg_temp.sign_in_as(COALESCE(c.submitted_by_user_id,c.claimant_id));
+    FOREACH action_name IN ARRAY ARRAY['verify','approve'] LOOP
+      BEGIN
+        PERFORM public.nlcc_command(action_name,jsonb_build_object('claim_id',c.id,'version',c.version));
+        RAISE EXCEPTION 'Non-finance self-review was accepted';
+      EXCEPTION WHEN insufficient_privilege THEN NULL;
+      END;
+    END LOOP;
+  END IF;
   FOREACH reviewer_role IN ARRAY ARRAY['FINANCE_OFFICER','SYSTEM_ADMIN'] LOOP
     SELECT p.id INTO reviewer FROM public.profiles p
       JOIN public.user_roles ur ON ur.user_id=p.id JOIN public.roles r ON r.id=ur.role_id

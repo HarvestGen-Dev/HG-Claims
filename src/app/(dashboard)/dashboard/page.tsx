@@ -73,11 +73,7 @@ export default function DashboardPage() {
 
     if (isFinanceOrAdmin) {
       for (const c of claims) {
-        if (
-          c.status === "PENDING_FINANCE_REVIEW" &&
-          c.submitted_by_user_id !== user?.id &&
-          c.claimant_id !== user?.id
-        ) {
+        if (c.status === "PENDING_FINANCE_REVIEW") {
           approverNeedsAction++;
         } else if (c.status === "APPROVED_FOR_PAYMENT") {
           awaitingPayout++;
