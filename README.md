@@ -74,7 +74,23 @@ project, authenticate with `supabase login`, link the intended project, review
 
 Use `node tools/bootstrap-admin.mjs PROJECT_REFERENCE ADMIN_EMAIL` for the first
 administrator. It creates an unverified account without a password or outgoing email.
-Assign Claimants, Finance Officers, and System Admins. Claimants choose a ministry for each claim. Submitted claims go directly to Finance Review; an independent Finance Officer or System Admin verifies and approves them.
+Every active authenticated member can submit claims and track their own claims, including users with no assigned roles. Only TEAM_LEAD and FINANCE are assignable; a user may hold both. Teams optionally require Team Lead review, with a mandatory self-lead bypass. Finance may approve its own claims. Display statuses are Draft, Submitted, Returned, Rejected, Approved and Processed.
 See `PRODUCTION_SETUP.md` for verified setup status and outstanding launch work.
 
 See [SITE_AUDIT.md](SITE_AUDIT.md) for the latest functional audit, fixes, verification, and remaining configuration items.
+
+## Claims workflow v2
+
+Apply `20261110070626_claims_workflow_v2.sql` before deploying the v2 application.
+Review [the implementation report](docs/hg-claims-v2-implementation-report.md) and
+[workflow architecture](docs/hg-claims-v2-workflow.md) for deployment, migration,
+financial invariants and the persistent recurring billing job.
+
+The existing Alliance Bank BIFF8 XLS adapter is retained. JomPAY has separate frozen
+bill instructions and reconciliation; its bank upload export is disabled until the
+actual supplied Alliance Bank JomPAY template is available and validated.
+
+`npm run test:backend` now exercises v2 against an isolated local Supabase stack on
+port 58321. It never reads production env files and refuses a non-local target.
+`npm run test:e2e` uses the local fixtures written by that suite and an app on port
+3100 configured to the same isolated backend. See the report for reproducible setup.

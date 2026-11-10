@@ -23,7 +23,7 @@
    delivery is restricted and is not suitable for production onboarding.
 5. Send a verified account activation/password-setup email to the initial administrator
    after confirming the redirect and email templates work with the application's callback.
-6. Assign ministry leaders, finance officers, and final approvers before accepting claims.
+6. Apply the v2 migration and retain at least one active FINANCE user. All active users have baseline claim access; assign TEAM_LEAD only where appropriate. See docs/hg-claims-v2-implementation-report.md for the current deployment checklist.
    No approval roles are fabricated or assigned to the administrator automatically.
 7. Complete application build and deployed browser workflow checks, and configure backups,
    monitoring, and notification email delivery. Claim email notifications remain disabled.
