@@ -52,7 +52,7 @@ const ReceiptViewerModal = dynamic(
 );
 
 import { useAuth } from "@/lib/auth/context";
-import { claimsClient, financeClient, workspaceStore } from "@/lib/domains";
+import { iamClient, claimsClient, financeClient, workspaceStore } from "@/lib/domains";
 import { Claim, ClaimAttachment } from "@/lib/types/database";
 import { showToast } from "@/lib/utils/toast";
 
@@ -106,7 +106,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
       setLoadingAction(true);
       const updated = await financeClient.approveStep(claim.id, user, "Approved in accordance with ministry guidelines.");
       setClaim(updated);
-      showToast.success("Claim has been approved and is ready for XLS disbursement.", "Claim Approved");
+      showToast.success("Review approval recorded.", "Claim Approved");
     } catch (err: any) {
       showToast.error(err.message || "Failed to approve claim", "Approval Error");
     } finally {
@@ -210,6 +210,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
   const submitterId = claim.submitted_by_user_id || claim.claimant_id;
   const isSubmitter = submitterId === user?.id;
   const isFinanceUser = hasRole("FINANCE_OFFICER") || hasRole("SYSTEM_ADMIN");
+  const isSystemAdmin = hasRole("SYSTEM_ADMIN");
   const isApproverUser = canApprove(claim);
   const isEditable = canEdit(claim);
 
@@ -218,6 +219,16 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
 
   return (
     <div className="space-y-5 max-w-5xl mx-auto pb-12">
+      {isFinanceUser && claim.payee_verification_required && <Alert variant="warning"><AlertTitle>Review bank details before approving.</AlertTitle><AlertDescription>
+        New or changed payment details are Unverified. This does not block approval.
+        <Button className="ml-2 mt-2" variant="outline" disabled={loadingAction} onClick={async () => {
+          setLoadingAction(true);
+          try { await workspaceStore.dispatchDomainCommand("/api/v1/finance", "verify_claim_payment", { claim_id: claim.id, version: claim.version }); await claimsClient.fetchClaimDetail(claim.id, { force: true }); }
+          catch(error) { showToast.error(error instanceof Error ? error.message : "Unable to verify."); }
+          finally { setLoadingAction(false); }
+        }}>Confirm details verified</Button>
+      </AlertDescription></Alert>}
+      {claim.context_name && <p className="text-sm">{claim.context_kind?.toLowerCase()}: <strong>{claim.context_name}</strong></p>}
       {/* Top Banner & Actions */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-950 shadow-2xs">
         <div className="space-y-1">
@@ -242,7 +253,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
             <span>&bull;</span>
             <span>Submitted By: <strong className="text-zinc-700 dark:text-zinc-300 font-medium">{submitterName}</strong></span>
             <span>&bull;</span>
-            <span>Ministry: <strong className="text-zinc-700 dark:text-zinc-300 font-medium">{claim.ministry?.name}</strong></span>
+            <span>Team: <strong className="text-zinc-700 dark:text-zinc-300 font-medium">{claim.ministry?.name}</strong></span>
             <span>&bull;</span>
             <span>Date: <strong className="text-zinc-700 dark:text-zinc-300 font-medium font-mono">{formatDate(claim.submitted_at || claim.created_at)}</strong></span>
           </p>
@@ -250,6 +261,12 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
 
         {/* Action Button Bar */}
         <div className="flex items-center gap-2 flex-wrap">
+          {(isSubmitter || isFinanceUser) && <Button variant="outline" disabled={loadingAction} onClick={async () => {
+            setLoadingAction(true);
+            try { const duplicate = await claimsClient.duplicateClaim(claim.id, crypto.randomUUID()); router.push(`/claims/${duplicate.id}/edit`); }
+            catch (error) { showToast.error(error instanceof Error ? error.message : "Unable to duplicate claim."); }
+            finally { setLoadingAction(false); }
+          }}>Duplicate Claim</Button>}
           {/* Printable Voucher */}
           <Link href={`/claims/${claim.id}/print`} target="_blank">
             <Button variant="outline" size="sm" className="h-7 text-xs border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 gap-1.5">
@@ -269,7 +286,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
           )}
 
           {/* Delete Draft/Cancelled Claim */}
-          {(claim.status === "DRAFT" || claim.status === "CANCELLED") && (isSubmitter || hasRole("SYSTEM_ADMIN")) && (
+          {!claim.recurring_schedule_id && (claim.status === "DRAFT" || claim.status === "CANCELLED") && (isSubmitter || hasRole("SYSTEM_ADMIN")) && (
             <Button
               variant="outline"
               size="sm"
@@ -282,6 +299,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
             </Button>
           )}
 
+          {isFinanceUser && claim.status === "APPROVED_FOR_PAYMENT" && !claim.active_batch_id && !claim.payment && <Button variant="outline" disabled={loadingAction} onClick={() => setShowReturnModal(true)}>Return for correction</Button>}
           {/* Approver Controls */}
           {isApproverUser && (
             <>
@@ -290,7 +308,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                 onClick={handleApprove}
                 loading={loadingAction}
                 disabled={loadingAction}
-                title="Approve claim for XLS disbursement"
+                title="Approve this review stage"
                 className="h-7 text-xs bg-zinc-900 hover:bg-zinc-800 text-white gap-1.5 shadow-2xs font-medium"
               >
                 {!loadingAction && <CheckCircle2 className="w-3.5 h-3.5" />}
@@ -358,7 +376,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                   disabled={loadingAction}
                   className="h-7 text-zinc-500 hover:text-zinc-900 text-xs px-2"
                 >
-                  Admin Edit
+                  Edit classifications
                 </Button>
               )}
             </>
@@ -426,7 +444,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
         >
           Comments ({claim.comments?.length || 0})
         </button>
-        {isFinanceUser && (
+        {isSystemAdmin && (
           <button
             onClick={() => setActiveTab("audit")}
             className={`pb-2.5 border-b-2 transition-colors shrink-0 ${
@@ -456,6 +474,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                   <p className="font-semibold text-zinc-900 dark:text-zinc-100">{claimantName}</p>
                   <p className="text-[11px] text-zinc-500 font-mono">{claim.claimant_email || "-"}</p>
                   <p className="text-[11px] text-zinc-500 font-mono">{claim.claimant_phone || "-"}</p>
+                  {claim.jompay_details && <div className="space-y-1 border-t pt-2"><p className="font-medium">JomPAY · {claim.jompay_details.biller_name}</p><p>Biller Code: {claim.jompay_details.biller_code}</p><p>Reference 1: {claim.jompay_details.reference_1}</p>{claim.jompay_details.reference_2 && <p>Reference 2: {claim.jompay_details.reference_2}</p>}</div>}
                   {(claim.bank_name || claim.bank_account_number) && (
                     <div className="mt-1.5 pt-1.5 border-t border-zinc-100 dark:border-zinc-800">
                       <span className="text-[10px] text-zinc-400 block">Bank Account:</span>
@@ -475,16 +494,41 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
             <Card className="border-zinc-200/80 shadow-2xs">
               <CardContent className="p-3.5 space-y-2 text-xs">
                 <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">
-                  Ministry & Reference
+                  Team & Reference
                 </span>
                 <div>
-                  <p className="text-[10px] text-zinc-400">Ministry / Department</p>
+                  <p className="text-[10px] text-zinc-400">Team</p>
                   <p className="font-medium text-zinc-900 dark:text-zinc-100">{claim.ministry?.name}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-zinc-400">Submission Date</p>
                   <p className="font-mono text-zinc-800 dark:text-zinc-200">{formatDate(claim.claim_date)}</p>
                 </div>
+                {claim.disbursement_voucher && (
+                  <div>
+                    <p className="text-[10px] text-zinc-400">Disbursement Voucher</p>
+                    <p className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                      {claim.disbursement_voucher}
+                    </p>
+                  </div>
+                )}
+                {claim.batch_number && (
+                  <div>
+                    <p className="text-[10px] text-zinc-400">Bank Disbursement File (.xls)</p>
+                    <p className="font-mono text-zinc-800 dark:text-zinc-200">
+                      {claim.active_batch_id ? (
+                        <Link
+                          href={`/finance/batches/${claim.active_batch_id}`}
+                          className="text-primary hover:underline font-semibold"
+                        >
+                          {claim.batch_number}.xls
+                        </Link>
+                      ) : (
+                        `${claim.batch_number}.xls`
+                      )}
+                    </p>
+                  </div>
+                )}
                 {claim.internal_reference && (
                   <div>
                     <p className="text-[10px] text-zinc-400">Reference Code</p>
@@ -611,6 +655,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                           <td className="py-2.5 px-4 text-zinc-500 font-mono text-[11px]">{formatDate(exp.expense_date)}</td>
                           <td className="py-2.5 px-4 text-zinc-900 dark:text-zinc-100">
                             <span>{exp.description}</span>
+                            {exp.expense_category?.name && <span className="block text-xs">{exp.expense_category.name}{exp.beneficiary_type ? ` · ${exp.beneficiary_type === "INTERNAL" ? "Internal" : "External"}` : ""}</span>}
                             {exp.notes && (
                               <span className="text-[10px] text-zinc-400 block">{exp.notes}</span>
                             )}
@@ -727,8 +772,9 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
         </Card>
       )}
 
-      {/* TAB 4: AUDIT HISTORY */}
-      {activeTab === "audit" && isFinanceUser && (
+      {/* TAB 4: AUDIT HISTORY (System Admin Only) */}
+      {activeTab === "audit" && isSystemAdmin && <section className="space-y-3"><h2 className="font-semibold">Classification changes</h2>{(claim.classification_changes || []).map(change => <div className="border rounded-lg p-3 text-sm break-words" key={change.id}><p>{formatDateTime(change.created_at)} · {iamClient.getProfileById(change.editor_id)?.full_name || change.editor_id}</p><p className="font-medium">{change.field}</p><p>{JSON.stringify(change.old_value)} → {JSON.stringify(change.new_value)}</p></div>)}</section>}
+      {activeTab === "audit" && isSystemAdmin && (
         <Card className="border-zinc-200/80 shadow-2xs overflow-hidden">
           <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800">
             <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">

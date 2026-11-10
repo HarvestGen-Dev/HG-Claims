@@ -15,6 +15,7 @@ import {
   Hash,
   Search,
 } from "lucide-react";
+import { JompayBatchDetail } from "@/components/finance/JompayBatchDetail";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -34,8 +35,10 @@ import { showToast } from "@/lib/utils/toast";
 export default function FinanceBatchDetailPage() {
   const params = useParams<{ id: string }>();
   const batchId = params?.id || "";
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, isLoading } = useAuth();
   const isFinanceOrAdmin = hasRole("FINANCE_OFFICER") || hasRole("SYSTEM_ADMIN");
+  const isAuditor = hasRole("AUDITOR");
+  const canView = isFinanceOrAdmin || isAuditor;
 
   const [batch, setBatch] = useState<ReimbursementBatch | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
@@ -52,6 +55,7 @@ export default function FinanceBatchDetailPage() {
     new Date().toISOString().split("T")[0]
   );
   const [failureReason, setFailureReason] = useState("");
+  const [confirmCompletionOpen, setConfirmCompletionOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
   const [instructionSearch, setInstructionSearch] = useState("");
@@ -119,7 +123,7 @@ export default function FinanceBatchDetailPage() {
       setFailureReason("");
       showToast.success(
         reconcileTarget.outcome === "PAID"
-          ? `Transfer ${reconcileTarget.instruction.payment_description} confirmed PAID and linked claims settled.`
+          ? `Transfer ${reconcileTarget.instruction.payment_description} confirmed Processed and linked claims settled.`
           : `Transfer ${reconcileTarget.instruction.payment_description} marked FAILED and linked claims released for correction.`,
         "Transfer Reconciled"
       );
@@ -156,21 +160,22 @@ export default function FinanceBatchDetailPage() {
     }
   };
 
-  const handleMarkWholeBatchDisbursed = async () => {
+  const handleMarkWholeBatchProcessed = async () => {
     if (!batch || busy) return;
     setBusy(true);
     setActionError("");
     try {
       await financeClient.disburseReimbursementBatch({
         batch_id: batch.id,
-        bank_reference: batch.batch_number,
+        bank_reference: bankReference.trim(),
+        payment_date: paymentDate,
       });
       await Promise.all([
         workspaceStore.refreshDomain("/api/v1/finance"),
         workspaceStore.refreshDomain("/api/v1/claims"),
       ]);
       showToast.success(
-        `${batch.batch_number}.xls marked as Disbursed. All ${batch.claim_count} linked claim(s) have been marked as Disbursed!`,
+        `Payment completion recorded for the remaining successful transfers in ${batch.batch_number}.`,
         "Disbursement Complete"
       );
     } catch (err) {
@@ -184,25 +189,8 @@ export default function FinanceBatchDetailPage() {
     }
   };
 
-  if (!isFinanceOrAdmin) {
-    return (
-      <AppLayout>
-        <div className="p-8 text-center text-xs text-red-600">
-          Finance Officer or System Administrator access is required.
-        </div>
-      </AppLayout>
-    );
-  }
-
-  if (!batch) {
-    return (
-      <AppLayout>
-        <div className="p-8 text-center text-xs text-zinc-500">
-          Loading reimbursement batch details...
-        </div>
-      </AppLayout>
-    );
-  }
+  if (!isLoading && !canView) return <AppLayout><p role="alert">Finance access required.</p></AppLayout>;
+  if (!batch) return <AppLayout><p role="status">Loading batch details...</p></AppLayout>;
 
   const hasPaidRows = (batch.instructions || []).some(
     (inst) => inst.status === "PAID"
@@ -219,6 +207,8 @@ export default function FinanceBatchDetailPage() {
       inst.claims?.some((ic) => ic.claim?.claim_number?.toLowerCase().includes(q))
     );
   });
+
+  if (batch.payment_method === "JOMPAY") return <JompayBatchDetail batch={batch} />;
 
   return (
     <AppLayout>
@@ -246,7 +236,7 @@ export default function FinanceBatchDetailPage() {
                   }`}
                 >
                   {batch.status === "SETTLED"
-                    ? "Disbursed"
+                    ? "Processed"
                     : batch.status === "VOIDED" || batch.status === "REJECTED"
                     ? batch.status
                     : "XLS File Created"}
@@ -273,20 +263,20 @@ export default function FinanceBatchDetailPage() {
               </Button>
             )}
 
-            {!["SETTLED", "VOIDED", "REJECTED"].includes(batch.status) && (
+            {isFinanceOrAdmin && !["SETTLED", "VOIDED", "REJECTED"].includes(batch.status) && (
               <Button
                 size="sm"
                 loading={busy}
                 disabled={busy}
-                onClick={handleMarkWholeBatchDisbursed}
+                onClick={() => setConfirmCompletionOpen(true)}
                 className="h-8 bg-emerald-700 hover:bg-emerald-800 text-white text-xs gap-1.5 font-semibold"
               >
                 {!busy && <CheckCircle2 className="w-3.5 h-3.5" />}
-                <span>Mark .xls File as Disbursed</span>
+                <span>Confirm payment completion</span>
               </Button>
             )}
 
-            {["FINALIZED", "EXPORTED"].includes(batch.status) && (
+            {isFinanceOrAdmin && ["FINALIZED", "EXPORTED"].includes(batch.status) && (
               <Button
                 variant="outline"
                 size="sm"
@@ -301,7 +291,7 @@ export default function FinanceBatchDetailPage() {
               </Button>
             )}
 
-            {!["SETTLED", "VOIDED"].includes(batch.status) && !hasPaidRows && (
+            {isFinanceOrAdmin && !["SETTLED", "VOIDED"].includes(batch.status) && !hasPaidRows && (
               <Button
                 variant="outline"
                 size="sm"
@@ -323,7 +313,7 @@ export default function FinanceBatchDetailPage() {
           <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
           <div>
             <strong>Export Is Not Proof of Payment:</strong> Re-downloading the{" "}
-            <code>.xls</code> file always returns the identical frozen binary snapshot and never regenerates <code>P26xxxx</code> references. Confirm each transfer row below as <strong>Paid</strong> (with the bank reference) or <strong>Failed</strong> (to release its claims for re-queueing).
+            <code>.xls</code> file always returns the identical frozen binary snapshot and never regenerates <code>P26xxxx</code> references. Confirm each transfer row below as <strong>Processed</strong> (with the bank reference) or <strong>Failed</strong> (to release its claims for re-queueing).
           </div>
         </div>
 
@@ -450,7 +440,7 @@ export default function FinanceBatchDetailPage() {
                     </div>
                   )}
 
-                  {!["PAID", "FAILED", "VOIDED"].includes(inst.status) && batch.status !== "VOIDED" && (
+                  {isFinanceOrAdmin && !["PAID", "FAILED", "VOIDED"].includes(inst.status) && batch.status !== "VOIDED" && (
                     <div className="flex items-center gap-2 pt-2 border-t border-zinc-100">
                       <Button
                         size="sm"
@@ -465,7 +455,7 @@ export default function FinanceBatchDetailPage() {
                         className="flex-1 h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Mark Paid</span>
+                        <span>Confirm Payment Completion</span>
                       </Button>
                       <Button
                         size="sm"
@@ -532,15 +522,19 @@ export default function FinanceBatchDetailPage() {
                         </div>
                       </td>
                       <td className="py-3 px-3">
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-col gap-1">
                           {(inst.claims || []).map((ic) => (
                             <Link
                               key={ic.id}
                               href={`/finance/claims/${ic.claim_id}`}
-                              className="inline-flex items-center px-1.5 py-0.5 rounded bg-zinc-100 hover:bg-zinc-200 font-mono text-[10px] text-zinc-800"
+                              className="inline-flex items-center justify-between gap-1.5 px-1.5 py-0.5 rounded bg-zinc-100 hover:bg-zinc-200 font-mono text-[10px] text-zinc-800"
                             >
-                              {ic.claim?.claim_number ||
-                                ic.claim_id.slice(0, 8)}
+                              <span>{ic.claim?.claim_number || ic.claim_id.slice(0, 8)}</span>
+                              {ic.claim?.total_amount != null && (
+                                <span className="font-semibold text-zinc-600 tabular-nums">
+                                  {formatCurrency(ic.claim.total_amount)}
+                                </span>
+                              )}
                             </Link>
                           ))}
                         </div>
@@ -576,7 +570,8 @@ export default function FinanceBatchDetailPage() {
                       </td>
                       <td className="py-3 px-3 text-right w-px">
                         <div className="table-actions">
-                          {!["PAID", "FAILED", "VOIDED"].includes(inst.status) &&
+                          {isFinanceOrAdmin &&
+                            !["PAID", "FAILED", "VOIDED"].includes(inst.status) &&
                             batch.status !== "VOIDED" && (
                               <>
                                 <Button
@@ -592,7 +587,7 @@ export default function FinanceBatchDetailPage() {
                                   className="h-7 text-[11px] bg-emerald-700 hover:bg-emerald-800 text-white gap-1 px-2"
                                 >
                                   <CheckCircle2 className="w-3 h-3" />
-                                  <span>Mark Paid</span>
+                                  <span>Confirm Payment Completion</span>
                                 </Button>
                                 <Button
                                   size="sm"
@@ -612,6 +607,11 @@ export default function FinanceBatchDetailPage() {
                                 </Button>
                               </>
                             )}
+                          {!isFinanceOrAdmin && (
+                            <span className="text-zinc-400 text-[11px] italic pr-2">
+                              Audit view
+                            </span>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -781,7 +781,7 @@ export default function FinanceBatchDetailPage() {
                   }
                 >
                   {reconcileTarget.outcome === "PAID"
-                    ? "Confirm Paid & Settle Claims"
+                    ? "Confirm Processed & Settle Claims"
                     : "Mark Failed & Release Claims"}
                 </Button>
               </DialogFooter>
@@ -839,6 +839,13 @@ export default function FinanceBatchDetailPage() {
           </div>
         </Dialog>
       </div>
+      <Dialog open={confirmCompletionOpen} onOpenChange={setConfirmCompletionOpen}>
+        <DialogHeader><DialogTitle>Confirm completed payment</DialogTitle></DialogHeader>
+        <p className="text-sm my-3">Confirm that every remaining transfer has completed at the bank. Failed transfers remain available for separate handling.</p>
+        <label className="block text-sm">Bank confirmation reference<Input value={bankReference} onChange={e => setBankReference(e.target.value)} /></label>
+        <label className="block text-sm mt-3">Payment date<Input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} /></label>
+        <DialogFooter><Button variant="outline" onClick={() => setConfirmCompletionOpen(false)}>Cancel</Button><Button disabled={busy || !bankReference.trim() || !paymentDate} loading={busy} onClick={async () => { await handleMarkWholeBatchProcessed(); setConfirmCompletionOpen(false); }}>Confirm Processed</Button></DialogFooter>
+      </Dialog>
     </AppLayout>
   );
 }

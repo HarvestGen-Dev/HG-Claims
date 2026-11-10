@@ -244,7 +244,7 @@ describe("Simplified Role Model & Signup Invitations", () => {
       expect(canUserCreateClaim(leader)).toBe(true);
       expect(canUserCreateClaim(admin)).toBe(true);
       expect(canUserCreateClaim(finance)).toBe(true);
-      expect(canUserCreateClaim({ ...finance, roles: [] })).toBe(false);
+      expect(canUserCreateClaim({ ...finance, roles: [] })).toBe(true);
       expect(canUserCreateClaim({ ...finance, status: "INACTIVE" })).toBe(false);
     });
 
@@ -260,9 +260,9 @@ describe("Simplified Role Model & Signup Invitations", () => {
       expect(canUserRecordPayment(leader, claim)).toBe(false);
     });
 
-    it("canUserManageSystem allows only SYSTEM_ADMIN", () => {
+    it("Finance retains system management access", () => {
       expect(canUserManageSystem(admin)).toBe(true);
-      expect(canUserManageSystem(finance)).toBe(false);
+      expect(canUserManageSystem(finance)).toBe(true);
       expect(canUserManageSystem(leader)).toBe(false);
     });
 

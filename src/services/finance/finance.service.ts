@@ -5,6 +5,13 @@ import {
 } from "@/services/shared/http";
 
 export const FINANCE_WORKFLOW_ACTIONS = [
+  "verify_claim_payment",
+  "verify_payee",
+  "payment_detail_history",
+  "finalize_jompay_batch",
+  "save_recurring_payment",
+  "deactivate_recurring_payment",
+  "run_recurring_payments",
   "approve",
   "return",
   "reject",
@@ -42,6 +49,7 @@ export class FinanceService {
     return {
       status: 200,
       data: {
+        recurringPayments: snapshot.data.recurringPayments ?? [],
         approvalRules: snapshot.data.approvalRules ?? [],
         claims: snapshot.data.claims ?? [],
         reimbursementBatches: snapshot.data.reimbursementBatches ?? [],

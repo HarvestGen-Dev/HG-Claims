@@ -63,7 +63,7 @@ export default function FinanceBatchesPage() {
     const sync = () => {
       const nextEligible = financeClient.getEligibleClaimsForReimbursement();
       setEligibleClaims(nextEligible);
-      setBatches(financeClient.getReimbursementBatches());
+      setBatches(financeClient.getReimbursementBatches().filter(b => b.payment_method !== "JOMPAY"));
 
       if (!initializedSelection && nextEligible.length > 0) {
         const defaultIds = nextEligible
@@ -174,7 +174,7 @@ export default function FinanceBatchesPage() {
       const created = await financeClient.finalizeReimbursementBatch({
         claim_ids: preview.selectedEligibleClaims.map((c) => c.claimId),
         preview_digest: preview.previewDigest,
-        mark_exported: true,
+        mark_exported: false,
         notes: batchNotes.trim() || undefined,
       });
       await Promise.all([
@@ -185,7 +185,7 @@ export default function FinanceBatchesPage() {
       setBatchNotes("");
       setActiveTab("batches");
       showToast.success(
-        `XLS file (${created.batch_number}.xls) created with ${preview.totalTransfers} bank transfer(s). Once disbursed, click "Mark .xls as Disbursed".`,
+        `XLS file (${created.batch_number}.xls) created with ${preview.totalTransfers} bank transfer(s). Once disbursed, click "Mark .xls as Processed".`,
         "XLS File Created"
       );
       window.location.assign(`/api/v1/finance/batches/${created.id}/export`);
@@ -200,37 +200,13 @@ export default function FinanceBatchesPage() {
     }
   };
 
-  const handleMarkBatchDisbursed = async (batch: ReimbursementBatch) => {
-    if (disbursingBatchId) return;
-    setDisbursingBatchId(batch.id);
-    try {
-      await financeClient.disburseReimbursementBatch({
-        batch_id: batch.id,
-        bank_reference: batch.batch_number,
-      });
-      await Promise.all([
-        workspaceStore.refreshDomain("/api/v1/finance"),
-        workspaceStore.refreshDomain("/api/v1/claims"),
-      ]);
-      showToast.success(
-        `${batch.batch_number}.xls marked as Disbursed. All ${batch.claim_count} linked claim(s) are now marked as Disbursed!`,
-        "Disbursement Complete"
-      );
-    } catch (err) {
-      showToast.error(
-        err instanceof Error ? err.message : "Failed to mark .xls file as disbursed.",
-        "Disbursement Error"
-      );
-    } finally {
-      setDisbursingBatchId(null);
-    }
-  };
+  const handleMarkBatchProcessed = async (batch: ReimbursementBatch) => { router.push(`/finance/batches/${batch.id}`); };
 
   if (!isFinanceOrAdmin) {
     return (
       <AppLayout>
         <div className="p-8 text-center text-xs text-red-600">
-          Finance Officer or System Administrator access is required to manage bulk reimbursement batches.
+          Finance access is required to manage bulk reimbursement batches.
         </div>
       </AppLayout>
     );
@@ -239,7 +215,8 @@ export default function FinanceBatchesPage() {
   return (
     <AppLayout>
       <div className="space-y-5">
-        {/* Header */}
+        <Link href="/finance/jompay" className="inline-flex underline text-sm mb-4">Manage JomPAY bills separately</Link>
+      {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-zinc-200/80 dark:border-zinc-800">
           <div>
             <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
@@ -265,7 +242,7 @@ export default function FinanceBatchesPage() {
           <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
           <div>
             <strong className="font-semibold">Audit & Settlement Control:</strong>{" "}
-            Creating a batch or downloading an Alliance Bank <code>.xls</code> file reserves claims and freezes their payout snapshot, but <strong>does not mark claims as Paid</strong>. Claims transition to <code>PAID</code> only after bank confirmation is recorded during batch reconciliation.
+            Creating a batch or downloading an Alliance Bank <code>.xls</code> file reserves claims and freezes their payout snapshot, but <strong>does not mark claims Processed</strong>. Claims transition to <strong>Processed</strong> only after bank confirmation is recorded during batch reconciliation.
           </div>
         </div>
 
@@ -367,14 +344,14 @@ export default function FinanceBatchesPage() {
               <div className="filter-bar grid grid-cols-1 sm:grid-cols-2 gap-2.5 flex-1 max-w-xl">
                 <div className="space-y-1">
                   <label htmlFor="batches-select-1" className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">
-                    Filter Ministry
+                    Filter Team
                   </label>
                   <Select id="batches-select-1"
                     value={selectedMinistry}
                     onChange={(e) => setSelectedMinistry(e.target.value)}
                     className="w-full"
                   >
-                    <option value="ALL">All Ministries</option>
+                    <option value="ALL">All Teams</option>
                     {ministries.map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.name}
@@ -538,7 +515,7 @@ export default function FinanceBatchesPage() {
                           <th className="py-2.5 px-3">Beneficiary / Claimant</th>
                           <th className="py-2.5 px-3">Bank & SWIFT Code</th>
                           <th className="py-2.5 px-3">Masked Account</th>
-                          <th className="py-2.5 px-3">Ministry & Purpose</th>
+                          <th className="py-2.5 px-3">Team & Purpose</th>
                           <th className="py-2.5 px-3 text-right">Approved (RM)</th>
                           <th className="py-2.5 px-3 text-center">Eligibility</th>
                         </tr>
@@ -813,7 +790,7 @@ export default function FinanceBatchesPage() {
                               }`}
                             >
                               {b.status === "SETTLED"
-                                ? "Disbursed"
+                                ? "Processed"
                                 : b.status === "VOIDED" || b.status === "REJECTED"
                                 ? b.status
                                 : "XLS File Created"}
@@ -836,13 +813,13 @@ export default function FinanceBatchesPage() {
                               size="sm"
                               loading={disbursingBatchId === b.id}
                               disabled={disbursingBatchId === b.id}
-                              onClick={() => handleMarkBatchDisbursed(b)}
+                              onClick={() => handleMarkBatchProcessed(b)}
                               className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1 font-semibold px-2"
                             >
                               {disbursingBatchId !== b.id && (
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                               )}
-                              <span>Disburse</span>
+                              <span>Confirm payment</span>
                             </Button>
                           )}
                           <Link href={`/finance/batches/${b.id}`} className="ml-auto">
@@ -906,7 +883,7 @@ export default function FinanceBatchesPage() {
                               }`}
                             >
                               {b.status === "SETTLED"
-                                ? "Disbursed"
+                                ? "Processed"
                                 : b.status === "VOIDED" || b.status === "REJECTED"
                                 ? b.status
                                 : "XLS File Created"}
@@ -928,13 +905,13 @@ export default function FinanceBatchesPage() {
                                   size="sm"
                                   loading={disbursingBatchId === b.id}
                                   disabled={disbursingBatchId === b.id}
-                                  onClick={() => handleMarkBatchDisbursed(b)}
+                                  onClick={() => handleMarkBatchProcessed(b)}
                                   className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1 font-semibold"
                                 >
                                   {disbursingBatchId !== b.id && (
                                     <CheckCircle2 className="w-3.5 h-3.5" />
                                   )}
-                                  <span>Mark .xls as Disbursed</span>
+                                  <span>Mark .xls as Processed</span>
                                 </Button>
                               )}
                               <Link href={`/finance/batches/${b.id}`}>

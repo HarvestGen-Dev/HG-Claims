@@ -5,7 +5,6 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { masterDataClient } from "@/lib/domains";
 import {
   Settings,
@@ -38,7 +37,7 @@ export default function SystemSettingsPage() {
     declaration_text: "I confirm that these expenses were incurred for legitimate ministry purposes in accordance with Harvest Generation financial policies, have not previously been claimed or reimbursed from any other source, and are supported by the authentic receipts and documents provided.",
     allow_claimant_change_ministry: true,
     require_vendor_name: false,
-    require_receipt_for_all_expenses: true,
+    require_receipt_for_all_expenses: false,
     enable_internal_reference: true,
     form_guidance_banner: "Please ensure all receipts are itemized and clear before submitting for approval.",
     max_file_size_mb: 10,
@@ -63,7 +62,8 @@ export default function SystemSettingsPage() {
   const [email, setEmail] = useState(orgSetting.email || "");
   const [currency, setCurrency] = useState(orgSetting.currency || "RM");
 
-  const [declarationText, setDeclarationText] = useState(formConfigSetting.declaration_text);
+  const jompayConfig = masterDataClient.getSetting("jompay_export_config") || {};
+  const [failureEmail, setFailureEmail] = useState(jompayConfig.fail_email_1 || "jonchiam@harvestgen.org");
   const [guidanceBanner, setGuidanceBanner] = useState(formConfigSetting.form_guidance_banner || "");
   const [requireVendor, setRequireVendor] = useState(formConfigSetting.require_vendor_name || false);
   const [requireReceipt, setRequireReceipt] = useState(formConfigSetting.require_receipt_for_all_expenses);
@@ -81,6 +81,7 @@ export default function SystemSettingsPage() {
     try {
       setIsSaving(true);
       await masterDataClient.updateSettings([
+        { key: "jompay_export_config", value: { fail_email_1: failureEmail, fail_email_2: "" } },
         { key: "claim_numbering", value: {
         prefix,
         year_format: "YYYY",
@@ -95,7 +96,7 @@ export default function SystemSettingsPage() {
         currency,
         } },
         { key: "claim_form_config", value: {
-        declaration_text: declarationText,
+
         allow_claimant_change_ministry: true,
         require_vendor_name: requireVendor,
         require_receipt_for_all_expenses: requireReceipt,
@@ -134,7 +135,7 @@ export default function SystemSettingsPage() {
               Claim Form Settings
             </h1>
             <p className="text-xs text-zinc-500 mt-0.5">
-              Customize the claimant submission form format, declaration text, field requirements, and organization details.
+              Customize the claimant submission form format, field requirements, and organization details.
             </p>
           </div>
 
@@ -186,22 +187,9 @@ export default function SystemSettingsPage() {
               </span>
             </div>
 
-            {/* Declaration Textarea */}
-            <div className="space-y-1.5">
-              <label className="font-bold text-slate-800">
-                Official Declaration Agreement Wording *
-              </label>
-              <Textarea
-                rows={3}
-                value={declarationText}
-                onChange={(e) => setDeclarationText(e.target.value)}
-                className="text-xs leading-relaxed"
-                required
-              />
-              <span className="text-[11px] text-slate-400">
-                Claimants must review and accept this exact declaration before their claim can be submitted.
-              </span>
-            </div>
+            <label className="block space-y-1.5 text-sm">JomPAY Fail Email Address 1
+              <Input type="email" value={failureEmail} onChange={e=>setFailureEmail(e.target.value)} required />
+            </label>
 
             {/* Field Toggles Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">

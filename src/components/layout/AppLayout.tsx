@@ -108,7 +108,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           <main id="main-content" className="workspace-content flex-1 min-w-0 p-4 sm:p-7 lg:px-11 lg:py-9 max-w-[1490px] w-full mx-auto pb-24 lg:pb-8">
             {(pathname.startsWith("/admin") && !hasRole("SYSTEM_ADMIN")) ||
              (pathname.startsWith("/finance") && !hasRole("FINANCE_OFFICER")) ||
-             (pathname.startsWith("/approvals") && !hasRole("FINANCE_OFFICER") && !hasRole("SYSTEM_ADMIN"))
+             (pathname.startsWith("/approvals") && !hasRole("FINANCE") && !hasRole("TEAM_LEAD"))
               ? <div className="py-8"><h1>Access restricted</h1><p className="mt-3 text-sm">Your account does not have access to this workspace.</p></div>
               : children}
           </main>

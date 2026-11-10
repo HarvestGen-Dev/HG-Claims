@@ -9,7 +9,7 @@ export default function NewClaimPage() {
   const { canCreateClaim } = useAuth();
   return (
     <AppLayout>
-      {canCreateClaim() ? <ClaimForm /> : <p role="alert">Only Claimants and System Admins can create claims.</p>}
+      {canCreateClaim() ? <ClaimForm /> : <p role="alert">An active account is required to create claims.</p>}
     </AppLayout>
   );
 }

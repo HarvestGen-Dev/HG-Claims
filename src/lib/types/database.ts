@@ -1,9 +1,14 @@
 export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
 
+export type PrivilegedRoleCode = 'TEAM_LEAD' | 'FINANCE';
+
+// Legacy codes remain readable for historical records, never offered for assignment.
 export type RoleCode =
+  | 'FINANCE'
   | 'CLAIMANT'
   | 'TEAM_LEAD'
   | 'FINANCE_OFFICER'
+  | 'AUDITOR'
   | 'SYSTEM_ADMIN';
 
 export type LegacyRoleCode =
@@ -95,6 +100,15 @@ export interface Profile {
   beneficiary_business_reg?: string | null;
   beneficiary_others?: string | null;
   beneficiary_address?: string | null;
+  payment_method?: PayeePaymentMethod;
+  jompay_biller_name?: string | null;
+  jompay_biller_code?: string | null;
+  jompay_reference_1?: string | null;
+  jompay_reference_2?: string | null;
+  payment_revision?: number;
+  verified_payment_revision?: number | null;
+  payment_verified_at?: string | null;
+  payment_verified_by?: string | null;
   bank_updated_at?: string | null;
   avatar_url?: string | null;
   created_at: string;
@@ -136,6 +150,8 @@ export interface Ministry {
   leader_id?: string | null;
   leader?: Profile | null;
   team_lead_ids?: string[];
+  require_team_lead_approval?: boolean;
+  context_kind?: DirectoryKind | null;
   budgets?: MinistryBudget[];
   is_active: boolean;
   created_at: string;
@@ -173,6 +189,8 @@ export interface ClaimExpense {
   expense_date: string;
   expense_category_id?: string | null;
   expense_category?: ExpenseCategory | null;
+  beneficiary_type?: 'INTERNAL' | 'EXTERNAL' | null;
+  invoice_number?: string | null;
   vendor?: string | null;
   description: string;
   cost_centre_id: string;
@@ -280,7 +298,7 @@ export interface Payment {
   amount: number;
   payment_date: string;
   payment_reference: string;
-  payment_method: 'BANK_TRANSFER' | 'CHEQUE' | 'CASH' | 'ONLINE_BANKING' | 'DUITNOW' | 'OTHER';
+  payment_method: 'JOMPAY' | 'BANK_TRANSFER' | 'CHEQUE' | 'CASH' | 'ONLINE_BANKING' | 'DUITNOW' | 'OTHER';
   notes?: string | null;
   processed_by: string;
   processor?: Profile | null;
@@ -314,6 +332,9 @@ export type ReimbursementInstructionStatus =
   | 'VOIDED';
 
 export interface ClaimApprovedSnapshot {
+  payment_method?: PayeePaymentMethod;
+  jompay?: JompayDetails | null;
+  payment_revision?: number;
   approved_amount_cents: number;
   approved_amount: number;
   currency: string;
@@ -349,7 +370,8 @@ export interface ReimbursementBatchInstruction {
   line_order: number;
   payment_description: string;
   payment_reference?: string | null;
-  payment_mode: 'LIP' | 'LGP';
+  payment_mode: 'LIP' | 'LGP' | 'JOMPAY';
+  jompay_snapshot?: JompayDetails | null;
   beneficiary_user_id: string;
   beneficiary_name: string;
   beneficiary_account_number: string;
@@ -378,6 +400,7 @@ export interface ReimbursementBatch {
   id: string;
   batch_number: string;
   status: ReimbursementBatchStatus;
+  payment_method?: PayeePaymentMethod;
   template_version: string;
   claim_count: number;
   transfer_count: number;
@@ -463,6 +486,17 @@ export interface Claim {
   created_at: string;
   updated_at: string;
 
+  payee_payment_method?: PayeePaymentMethod;
+  payee_payment_revision?: number;
+  payee_verification_required?: boolean;
+  jompay_details?: JompayDetails | null;
+  context_kind?: DirectoryKind | null;
+  context_value_id?: string | null;
+  context_name?: string | null;
+  recurring_schedule_id?: string | null;
+  recurring_due_date?: string | null;
+  recurring_previous_amount?: number | null;
+  classification_changes?: { id: string; editor_id: string; created_at: string; field: string; old_value: unknown; new_value: unknown }[];
   // Relations
   expenses?: ClaimExpense[];
   attachments?: ClaimAttachment[];
@@ -528,4 +562,35 @@ export interface AuditLog {
   ip_address?: string | null;
   user_agent?: string | null;
   created_at: string;
+}
+
+export type PayeePaymentMethod = 'BANK_TRANSFER' | 'JOMPAY';
+export type DirectoryKind = 'EVENT' | 'MISSION' | 'MEETING' | 'SPEAKER';
+export interface ManagedClaimValue {
+  id: string;
+  kind: DirectoryKind;
+  name: string;
+  is_active: boolean;
+}
+export interface JompayDetails {
+  biller_name: string;
+  biller_code: string;
+  reference_1: string;
+  reference_2?: string;
+  fail_email_1?: string;
+  fail_email_2?: string;
+}
+export interface RecurringPayment {
+  id: string;
+  utility: 'Unifi' | 'Indah Water' | 'TNB' | 'Air Selangor';
+  payee_id: string;
+  ministry_id: string;
+  expense_category_id: string;
+  amount_mode: 'FIXED' | 'VARIABLE';
+  fixed_amount?: number | null;
+  due_day: number;
+  start_date: string;
+  end_date?: string | null;
+  is_active: boolean;
+  owner_id: string;
 }

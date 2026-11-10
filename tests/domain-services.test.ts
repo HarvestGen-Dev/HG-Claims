@@ -218,6 +218,7 @@ describe("Bounded-Context Domain Services & APIs (/api/v1/*)", () => {
       expect(Object.keys(body).sort()).toEqual([
         "categories",
         "costCentres",
+        "managedClaimValues",
         "ministries",
         "systemSettings",
       ]);
@@ -247,6 +248,7 @@ describe("Bounded-Context Domain Services & APIs (/api/v1/*)", () => {
       expect(Object.keys(body).sort()).toEqual([
         "approvalRules",
         "claims",
+        "recurringPayments",
         "reimbursementBatches",
       ]);
     });

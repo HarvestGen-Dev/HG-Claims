@@ -7,6 +7,7 @@ export const recordPaymentSchema = z.object({
   payment_reference: z.string().min(3, "Payment transaction reference is required (e.g. MBB-TRX-839291)"),
   payment_method: z.enum([
     "BANK_TRANSFER",
+    "JOMPAY",
     "CHEQUE",
     "CASH",
     "ONLINE_BANKING",

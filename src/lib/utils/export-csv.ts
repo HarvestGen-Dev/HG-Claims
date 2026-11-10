@@ -1,5 +1,5 @@
 import { Claim } from "@/lib/types/database";
-import { formatDate } from "./formatters";
+import { formatDate, STATUS_MAP } from "./formatters";
 
 export function generateClaimsCsv(claims: Claim[]): string {
   const headers = [
@@ -12,7 +12,7 @@ export function generateClaimsCsv(claims: Claim[]): string {
     "Claimant Phone",
     "Claimant Bank",
     "Bank Account Number",
-    "Ministry",
+    "Team",
     "Receipt Date",
     "Vendor",
     "Description",
@@ -43,7 +43,7 @@ export function generateClaimsCsv(claims: Claim[]): string {
       const row = [
         claim.claim_number || "DRAFT",
         claim.claim_date ? formatDate(claim.claim_date, "yyyy-MM-dd") : (claim.submitted_at ? formatDate(claim.submitted_at, "yyyy-MM-dd") : ""),
-        claim.status,
+        STATUS_MAP[claim.status]?.label || claim.status,
         claim.submitted_by?.full_name || claim.submitted_by?.email || "",
         claim.claimant_name || claim.claimant?.full_name || "",
         claim.claimant_email || claim.claimant?.email || "",

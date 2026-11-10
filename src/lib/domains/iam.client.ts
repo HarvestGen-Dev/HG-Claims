@@ -68,7 +68,7 @@ export class IamClient {
   }
 
   async createSignupInvitation(data: {
-    role_code: RoleCode;
+    role_code: RoleCode | null;
     max_uses?: number;
     expires_in_days?: number;
     description?: string;

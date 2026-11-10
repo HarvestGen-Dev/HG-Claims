@@ -62,7 +62,7 @@ export const STATUS_MAP: Record<ClaimStatus, StatusConfig> = {
     dotClass: "bg-blue-500",
   },
   PENDING_MINISTRY_APPROVAL: {
-    label: "Pending Leader",
+    label: "Submitted",
     variant: "warning",
     bgClass: "bg-amber-50/80 dark:bg-amber-950/30",
     textClass: "text-amber-800 dark:text-amber-300",
@@ -70,7 +70,7 @@ export const STATUS_MAP: Record<ClaimStatus, StatusConfig> = {
     dotClass: "bg-amber-500",
   },
   PENDING_FINANCE_REVIEW: {
-    label: "Finance Review",
+    label: "Submitted",
     variant: "purple",
     bgClass: "bg-violet-50/70 dark:bg-violet-950/30",
     textClass: "text-violet-700 dark:text-violet-300",
@@ -78,7 +78,7 @@ export const STATUS_MAP: Record<ClaimStatus, StatusConfig> = {
     dotClass: "bg-violet-500",
   },
   PENDING_FINAL_APPROVAL: {
-    label: "Final Approver",
+    label: "Submitted",
     variant: "warning",
     bgClass: "bg-indigo-50/70 dark:bg-indigo-950/30",
     textClass: "text-indigo-700 dark:text-indigo-300",
@@ -110,7 +110,7 @@ export const STATUS_MAP: Record<ClaimStatus, StatusConfig> = {
     dotClass: "bg-emerald-500",
   },
   APPROVED_FOR_PAYMENT: {
-    label: "Ready for Payment",
+    label: "Approved",
     variant: "success",
     bgClass: "bg-emerald-50/90 dark:bg-emerald-950/40",
     textClass: "text-emerald-800 dark:text-emerald-300",
@@ -118,7 +118,7 @@ export const STATUS_MAP: Record<ClaimStatus, StatusConfig> = {
     dotClass: "bg-emerald-600",
   },
   PAID: {
-    label: "Paid",
+    label: "Processed",
     variant: "success",
     bgClass: "bg-emerald-100/60 dark:bg-emerald-900/40",
     textClass: "text-emerald-900 dark:text-emerald-200",

@@ -194,6 +194,7 @@ export class FinanceClient {
       .filter(
         (c) =>
           c.status === "APPROVED_FOR_PAYMENT" &&
+          c.payee_payment_method !== "JOMPAY" &&
           !c.payment &&
           !c.active_batch_id &&
           (!c.reimbursement_status ||

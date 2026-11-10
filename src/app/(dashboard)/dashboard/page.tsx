@@ -46,8 +46,8 @@ export default function DashboardPage() {
     if (isFinanceOrAdmin) {
       return ministries.filter((m) => m.is_active && (m.budgets?.length || m.team_lead_ids?.length));
     }
-    return ministries.filter((m) => m.is_active && m.team_lead_ids?.includes(user?.id || ""));
-  }, [ministries, isFinanceOrAdmin, user]);
+    return hasRole("TEAM_LEAD") ? ministries.filter((m) => m.is_active && m.team_lead_ids?.includes(user?.id || "")) : [];
+  }, [ministries, isFinanceOrAdmin, user, hasRole]);
 
   // Memoize user's claims and single-pass status aggregations
   const {
@@ -61,7 +61,7 @@ export default function DashboardPage() {
     approverActionCount,
     awaitingPayoutCount,
   } = useMemo(() => {
-    const mine = claims.filter(c => c.submitted_by_user_id === user?.id || c.claimant_id === user?.id);
+    const mine = claims.filter(c => (c.submitted_by_user_id || c.claimant_id) === user?.id);
     let drafts = 0;
     let pending = 0;
     let returned = 0;
@@ -252,7 +252,7 @@ export default function DashboardPage() {
           <Link href="/claims?status=PAID" className="group col-span-2 sm:col-span-1">
             <div className="p-3.5 rounded-xl border border-zinc-200/80 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/80 transition-all shadow-2xs">
               <div className="flex items-center justify-between text-zinc-400 mb-1.5">
-                <span className="text-[11px] font-medium tracking-wide text-zinc-500">Paid Out</span>
+                <span className="text-[11px] font-medium tracking-wide text-zinc-500">Processed</span>
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
               </div>
               <p className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 tabular-nums">{paidCount}</p>
@@ -268,7 +268,7 @@ export default function DashboardPage() {
               <div>
                 <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
                   <Banknote className="w-4 h-4 text-emerald-600" />
-                  <span>Ministry Annual Budgets ({currentCalendarYear})</span>
+                  <span>Team annual budgets ({currentCalendarYear})</span>
                 </h2>
                 <p className="text-[11px] text-zinc-500">
                   Track annual spending against claims dated within calendar year {currentCalendarYear}.
@@ -402,7 +402,7 @@ export default function DashboardPage() {
                       <th className="py-2.5 px-4">Claim #</th>
                       <th className="py-2.5 px-4">Claimant</th>
                       <th className="py-2.5 px-4">Date</th>
-                      <th className="py-2.5 px-4">Ministry & Purpose</th>
+                      <th className="py-2.5 px-4">Team & Purpose</th>
                       <th className="py-2.5 px-4 text-right">Amount (RM)</th>
                       <th className="py-2.5 px-4 text-center">Status</th>
                       <th className="py-2.5 px-4 text-right">Action</th>

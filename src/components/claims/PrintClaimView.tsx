@@ -17,7 +17,7 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
 
   const claimantName = claim.claimant_name || claim.claimant?.full_name || "Unknown Claimant";
   const submitterName = claim.submitted_by?.full_name || claim.claimant?.full_name || claimantName;
-  const review = claim.workflow_steps?.find((step) => step.approver_role === "FINANCE_OFFICER");
+  const review = claim.workflow_steps?.find((step) => ["FINANCE","FINANCE_OFFICER"].includes(step.approver_role));
 
   return (
     <div className="bg-white min-h-screen text-slate-900 p-4 sm:p-8 font-sans">
@@ -61,7 +61,7 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
             <p><span className="text-slate-500 inline-block w-28">Submitted By:</span> <strong>{submitterName}</strong></p>
           </div>
           <div>
-            <p className="mb-1"><span className="text-slate-500 inline-block w-28">Ministry / Dept:</span> <strong>{claim.ministry?.name || "-"}</strong></p>
+            <p className="mb-1"><span className="text-slate-500 inline-block w-28">Team:</span> <strong>{claim.ministry?.name || "-"}</strong></p>
             <p className="mb-1"><span className="text-slate-500 inline-block w-28">Claim Date:</span> {formatDate(claim.claim_date)}</p>
             {claim.internal_reference && (
               <p className="mb-1"><span className="text-slate-500 inline-block w-28">Reference Code:</span> <span className="font-mono">{claim.internal_reference}</span></p>
@@ -72,7 +72,7 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
 
         {/* Ministry Purpose */}
         <div className="mb-6">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Ministry Purpose & Justification</h3>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Claim summary</h3>
           <p className="text-xs text-slate-800 border-l-2 border-zinc-900 pl-3 py-1 bg-slate-50 rounded-r">
             {claim.purpose}
           </p>
@@ -126,8 +126,8 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
           </ul>
         </div>
 
-        {/* Declaration & Approval Signatures */}
-        <div className="border border-slate-300 rounded p-4 mb-6 bg-slate-50 text-xs">
+        {/* Preserve historical declarations only when accepted. */}
+        {claim.declaration_accepted && <div className="border border-slate-300 rounded p-4 mb-6 bg-slate-50 text-xs">
           <p className="font-bold text-slate-900 mb-1">Claimant declaration</p>
           <p className="text-slate-700 italic mb-2">
             &quot;I confirm that these expenses were incurred for legitimate church ministry purposes, have not previously been claimed, and are supported by the documents provided.&quot;
@@ -137,20 +137,21 @@ export function PrintClaimView({ claim }: PrintClaimViewProps) {
           </p>
         </div>
 
+        }
         {/* Workflow Approval Audit Trail */}
         <div className="border-t border-slate-300 pt-4">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Approval Sign-off & Payment Record</h3>
           <div className="grid gap-4 text-xs sm:grid-cols-2 print:grid-cols-2">
             <div className="border border-slate-200 p-2.5 rounded bg-white">
               <span className="text-slate-400 block text-[10px] uppercase">Finance review</span>
-              <strong className="text-slate-900 block mt-1">{review?.completed_by_user?.full_name || "Finance Officer"}</strong>
+              <strong className="text-slate-900 block mt-1">{review?.completed_by_user?.full_name || "Finance"}</strong>
               <span className="text-[10px] text-slate-500 block mt-0.5">{review?.completed_at ? formatDateTime(review.completed_at) : "Status: Pending"}</span>
             </div>
 
             <div className="border border-slate-200 p-2.5 rounded bg-white">
               <span className="text-slate-400 block text-[10px] uppercase">Payment</span>
-              <strong className="text-emerald-800 block mt-1">{claim.payment?.payment_reference ? `Ref: ${claim.payment.payment_reference}` : "Not Paid"}</strong>
-              <span className="text-[10px] text-slate-500 block mt-0.5">{claim.payment?.payment_date ? `Paid on ${formatDate(claim.payment.payment_date)}` : "-"}</span>
+              <strong className="text-emerald-800 block mt-1">{claim.payment?.payment_reference ? `Ref: ${claim.payment.payment_reference}` : "Not processed"}</strong>
+              <span className="text-[10px] text-slate-500 block mt-0.5">{claim.payment?.payment_date ? `Processed on ${formatDate(claim.payment.payment_date)}` : "-"}</span>
             </div>
           </div>
         </div>

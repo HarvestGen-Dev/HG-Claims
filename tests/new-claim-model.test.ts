@@ -51,8 +51,8 @@ describe("Claimant Submitter Model & Receipt-Level Cost Centres", () => {
       expect(canUserCreateClaim(systemAdmin)).toBe(true);
     });
 
-    it("denies claim creation without a role", () => {
-      expect(canUserCreateClaim(unassignedUser)).toBe(false);
+    it("allows active users without a role", () => {
+      expect(canUserCreateClaim(unassignedUser)).toBe(true);
       expect(canUserCreateClaim(null)).toBe(false);
     });
   });

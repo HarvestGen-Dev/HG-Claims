@@ -10,6 +10,8 @@ import type {
   AuditLog,
   SignupInvitation,
   ReimbursementBatch,
+  ManagedClaimValue,
+  RecurringPayment,
 } from "@/lib/types/database";
 
 export type WorkspaceDomainScope =
@@ -32,6 +34,8 @@ export interface WorkspaceState {
   auditLogs: AuditLog[];
   signupInvitations: SignupInvitation[];
   reimbursementBatches: ReimbursementBatch[];
+  managedClaimValues: ManagedClaimValue[];
+  recurringPayments: RecurringPayment[];
 }
 
 export const createEmptyWorkspaceState = (): WorkspaceState => ({
@@ -47,6 +51,8 @@ export const createEmptyWorkspaceState = (): WorkspaceState => ({
   auditLogs: [],
   signupInvitations: [],
   reimbursementBatches: [],
+  managedClaimValues: [],
+  recurringPayments: [],
 });
 
 const createInitialDomainVersions = (): Record<WorkspaceDomainScope, number> => ({
@@ -67,6 +73,8 @@ function detectChangedDomains(
   partial: Partial<WorkspaceState> & Record<string, unknown>
 ): Set<WorkspaceDomainScope> {
   const changed = new Set<WorkspaceDomainScope>();
+  if (partial.managedClaimValues) changed.add("master-data");
+  if (partial.recurringPayments) changed.add("finance");
   if (
     (typeof partial.user_id === "string" && partial.user_id !== prev.user_id) ||
     (Array.isArray(partial.profiles) && partial.profiles !== prev.profiles) ||
@@ -244,6 +252,8 @@ export class WorkspaceStore {
       ...(typeof partial.user_id === "string"
         ? { user_id: partial.user_id }
         : {}),
+      ...(Array.isArray(partial.managedClaimValues) ? { managedClaimValues: partial.managedClaimValues } : {}),
+      ...(Array.isArray(partial.recurringPayments) ? { recurringPayments: partial.recurringPayments } : {}),
       ...(Array.isArray(partial.profiles)
         ? { profiles: partial.profiles }
         : {}),

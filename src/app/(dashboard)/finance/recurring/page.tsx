@@ -1,0 +1,384 @@
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
+import { ClaimStatusBadge } from "@/components/claims/ClaimStatusBadge";
+import {
+  iamClient,
+  masterDataClient,
+  claimsClient,
+  workspaceStore,
+} from "@/lib/domains";
+import { formatCurrency } from "@/lib/utils/formatters";
+import type { RecurringPayment } from "@/lib/types/database";
+const initial = {
+  utility: "Unifi" as RecurringPayment["utility"],
+  payee_id: "",
+  ministry_id: "",
+  expense_category_id: "",
+  amount_mode: "FIXED",
+  fixed_amount: "",
+  due_day: "1",
+  start_date: new Date().toLocaleDateString("en-CA", {
+    timeZone: "Asia/Kuala_Lumpur",
+  }),
+  end_date: "",
+  is_active: true,
+};
+export default function RecurringPage() {
+  const [schedules, setSchedules] = useState(
+    workspaceStore.getState().recurringPayments,
+  );
+  const [claims, setClaims] = useState(claimsClient.getClaims());
+  const [data, setData] = useState(initial);
+  const [id, setId] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState("");
+  useEffect(() => {
+    const sync = () => {
+      setSchedules(workspaceStore.getState().recurringPayments);
+      setClaims(claimsClient.getClaims());
+    };
+    void workspaceStore.refreshDomain("/api/v1/finance");
+    return workspaceStore.subscribeDomains(["finance", "claims"], sync);
+  }, []);
+  const profiles = iamClient.getProfiles();
+  const teams = masterDataClient.getMinistries();
+  const categories = masterDataClient.getCategories();
+  async function run(action: string, payload: Record<string, unknown>) {
+    setBusy(true);
+    setError("");
+    try {
+      const r = await workspaceStore.dispatchDomainCommand(
+        "/api/v1/finance",
+        action,
+        payload,
+      );
+      await workspaceStore.refreshDomain("/api/v1/claims");
+      return r;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to save.");
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+  function edit(s: RecurringPayment) {
+    setId(s.id);
+    setData({
+      utility: s.utility,
+      payee_id: s.payee_id,
+      ministry_id: s.ministry_id,
+      expense_category_id: s.expense_category_id,
+      amount_mode: s.amount_mode,
+      fixed_amount: s.fixed_amount == null ? "" : String(s.fixed_amount),
+      due_day: String(s.due_day),
+      start_date: s.start_date,
+      end_date: s.end_date || "",
+      is_active: s.is_active,
+    });
+  }
+  return (
+    <AppLayout>
+      <div className="max-w-4xl space-y-5">
+        <header className="flex flex-wrap justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold">Recurring utility bills</h1>
+            <p className="text-sm text-muted-foreground">
+              Drafts appear 14 days before the due date. Finance reviews and
+              submits each bill.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={async () => {
+              const r = await run("run_recurring_payments", {});
+              if (r)
+                setResult(
+                  `Generated ${r.generated} draft(s); ${r.reminded} reminder(s).`,
+                );
+            }}
+          >
+            Check scheduled drafts
+          </Button>
+        </header>
+        <p className="text-sm text-muted-foreground">
+          Runs daily in Asia/Kuala_Lumpur. Variable bills show last month’s
+          amount and receive one reminder if still blank 7 days before due.
+        </p>
+        {result && <p role="status">{result}</p>}
+        <Card>
+          <CardContent className="p-4">
+            <form
+              className="space-y-4"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const r = await run("save_recurring_payment", {
+                  id,
+                  ...data,
+                  fixed_amount:
+                    data.amount_mode === "FIXED" ? data.fixed_amount : null,
+                  expense_category_id: data.expense_category_id || undefined,
+                  end_date: data.end_date || null,
+                });
+                if (r) {
+                  setId(undefined);
+                  setData(initial);
+                }
+              }}
+            >
+              <h2 className="font-semibold">
+                {id ? "Edit recurring bill" : "Configure recurring bill"}
+              </h2>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <label>
+                  Utility
+                  <Select
+                    className="w-full"
+                    value={data.utility}
+                    onChange={(e) => {
+                      const utility = e.target
+                        .value as RecurringPayment["utility"];
+                      setData({
+                        ...data,
+                        utility,
+                        payee_id: "",
+                        amount_mode: ["Unifi", "Indah Water"].includes(utility)
+                          ? "FIXED"
+                          : "VARIABLE",
+                        fixed_amount: "",
+                      });
+                    }}
+                  >
+                    {["Unifi", "Indah Water", "TNB", "Air Selangor"].map(
+                      (u) => (
+                        <option key={u}>{u}</option>
+                      ),
+                    )}
+                  </Select>
+                </label>
+                <label>
+                  JomPAY payee
+                  <Select
+                    className="w-full"
+                    value={data.payee_id}
+                    onChange={(e) =>
+                      setData({ ...data, payee_id: e.target.value })
+                    }
+                    required
+                  >
+                    <option value="">Choose {data.utility}</option>
+                    {profiles
+                      .filter(
+                        (p) =>
+                          p.is_payee_only &&
+                          p.payment_method === "JOMPAY" &&
+                          p.full_name.toLowerCase() ===
+                            data.utility.toLowerCase(),
+                      )
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.full_name}
+                        </option>
+                      ))}
+                  </Select>
+                  <Link className="text-sm underline" href="/admin/suppliers">
+                    Manage utility payees
+                  </Link>
+                </label>
+                <label>
+                  Team
+                  <Select
+                    className="w-full"
+                    value={data.ministry_id}
+                    onChange={(e) =>
+                      setData({ ...data, ministry_id: e.target.value })
+                    }
+                    required
+                  >
+                    <option value="">Choose Team</option>
+                    {teams
+                      .filter((t) => t.is_active)
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                  </Select>
+                </label>
+                <label>
+                  What was it?
+                  <Select
+                    className="w-full"
+                    value={data.expense_category_id}
+                    onChange={(e) =>
+                      setData({ ...data, expense_category_id: e.target.value })
+                    }
+                  >
+                    <option value="">Utilities (default)</option>
+                    {categories
+                      .filter((c) => c.is_active && c.code.startsWith("V2_"))
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                  </Select>
+                </label>
+                {data.amount_mode === "FIXED" ? (
+                  <label>
+                    Fixed amount (RM)
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={data.fixed_amount}
+                      onChange={(e) =>
+                        setData({ ...data, fixed_amount: e.target.value })
+                      }
+                      required
+                    />
+                  </label>
+                ) : (
+                  <p className="text-sm self-center">
+                    Variable amount — enter the new amount on each generated
+                    draft.
+                  </p>
+                )}
+                <label>
+                  Due day of month
+                  <Input
+                    type="number"
+                    min="1"
+                    max="31"
+                    value={data.due_day}
+                    onChange={(e) =>
+                      setData({ ...data, due_day: e.target.value })
+                    }
+                    required
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    Days beyond month end use its final day.
+                  </span>
+                </label>
+                <label>
+                  Start date
+                  <Input
+                    type="date"
+                    value={data.start_date}
+                    onChange={(e) =>
+                      setData({ ...data, start_date: e.target.value })
+                    }
+                    required
+                  />
+                </label>
+                <label>
+                  End date (optional)
+                  <Input
+                    type="date"
+                    value={data.end_date}
+                    onChange={(e) =>
+                      setData({ ...data, end_date: e.target.value })
+                    }
+                  />
+                </label>
+              </div>
+              <label className="flex gap-2">
+                <input
+                  type="checkbox"
+                  checked={data.is_active}
+                  onChange={(e) =>
+                    setData({ ...data, is_active: e.target.checked })
+                  }
+                />
+                Active
+              </label>
+              <div className="flex gap-2">
+                <Button loading={busy}>Save recurring bill</Button>
+                {id && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setId(undefined);
+                      setData(initial);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </div>
+              {error && (
+                <p role="alert" className="text-sm text-red-700">
+                  {error}
+                </p>
+              )}
+            </form>
+          </CardContent>
+        </Card>
+        <ul className="divide-y rounded-lg border">
+          {schedules.map((s) => (
+            <li key={s.id} className="p-4 flex flex-wrap justify-between gap-3">
+              <div>
+                <p className="font-medium">
+                  {s.utility} · {s.is_active ? "Active" : "Inactive"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {s.amount_mode === "FIXED"
+                    ? formatCurrency(s.fixed_amount)
+                    : "Variable amount"}{" "}
+                  · Due day {s.due_day}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => edit(s)}>
+                  Edit
+                </Button>
+                {s.is_active && (
+                  <Button
+                    variant="ghost"
+                    disabled={busy}
+                    onClick={() =>
+                      void run("deactivate_recurring_payment", { id: s.id })
+                    }
+                  >
+                    Deactivate
+                  </Button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+        <section>
+          <h2 className="font-semibold mb-3">Generated bills</h2>
+          <ul className="divide-y border rounded-lg">
+            {claims
+              .filter((c) => c.recurring_schedule_id)
+              .map((c) => (
+                <li
+                  key={c.id}
+                  className="p-4 flex flex-wrap justify-between gap-3"
+                >
+                  <Link href={`/claims/${c.id}`} className="underline">
+                    {c.purpose} · Due {c.recurring_due_date}
+                  </Link>
+                  <ClaimStatusBadge status={c.status} />
+                  <span>
+                    {c.total_amount
+                      ? formatCurrency(c.total_amount)
+                      : "Amount needed"}
+                  </span>
+                </li>
+              ))}
+          </ul>
+        </section>
+      </div>
+    </AppLayout>
+  );
+}

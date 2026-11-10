@@ -1,24 +1,21 @@
 "use client";
 
+import { CONTEXT_LABELS, needsBeneficiary, validateItemClassification } from "@/lib/claims-v2";
+import { ReceiptUploader, AttachmentDraft as UploadDraft } from "./ReceiptUploader";
+import type { DirectoryKind } from "@/lib/types/database";
 import { Select } from "@/components/ui/select";
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  FileText,
   Send,
   Save,
   ArrowLeft,
   AlertCircle,
   HelpCircle,
   UserCheck,
-  Building2,
-  Receipt,
   Landmark,
   Plus,
-  Search,
-  Users,
-  CheckCircle2
 } from "lucide-react";
 import {
   MALAYSIAN_BANKS,
@@ -54,9 +51,9 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
     declaration_text: "I confirm that these expenses were incurred for legitimate ministry purposes in accordance with Harvest Generation financial policies, have not previously been claimed or reimbursed from any other source, and are supported by the authentic receipts and documents provided.",
     allow_claimant_change_ministry: true,
     require_vendor_name: false,
-    require_receipt_for_all_expenses: true,
+    require_receipt_for_all_expenses: false,
     enable_internal_reference: true,
-    form_guidance_banner: "Please ensure each receipt card has an attached receipt file before submitting for approval.",
+    form_guidance_banner: "Add your receipts if available, then enter the payment and expense details.",
     max_file_size_mb: 10,
     max_attachment_count: 15,
   };
@@ -69,8 +66,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
     initialClaim?.claimant_id || user?.id || ""
   );
   const [profileSearchQuery, setProfileSearchQuery] = useState("");
-  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const profileDropdownRef = useRef<HTMLDivElement>(null);
+  const refreshPayeeDetails = useRef(false);
 
   // Add New Claimant Bank Profile Modal State
   const [isAddBankProfileOpen, setIsAddBankProfileOpen] = useState(false);
@@ -93,7 +89,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
     initialClaim?.claimant_email || initialClaim?.claimant?.email || user?.email || ""
   );
   const [claimantPhone, setClaimantPhone] = useState(
-    initialClaim?.claimant_phone || initialClaim?.claimant?.phone || user?.phone || "+60 12-345 6789"
+    initialClaim?.claimant_phone || initialClaim?.claimant?.phone || user?.phone || ""
   );
   const initialResolvedBank = resolveCanonicalBank(
     initialClaim?.bank_code ||
@@ -122,6 +118,30 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
     initialClaim?.bank_account_number || user?.bank_account_number || ""
   );
 
+  const [generalAttachments, setGeneralAttachments] = useState<UploadDraft[]>(
+    (initialClaim?.attachments || []).filter(a => !a.expense_id)
+  );
+  const savedClaimId = useRef<string | null>(null);
+  const latestGeneralAttachments = useRef(generalAttachments);
+  const attachLateReceipts = async (id: string, attachments: UploadDraft[]) => {
+    for (const attachment of attachments) {
+      try { await workspaceStore.dispatchDomainCommand("/api/v1/claims", "attach_receipt", { claim_id: id, attachment }); }
+      catch(error) { showToast.error(error instanceof Error ? error.message : "Your receipt could not be attached."); }
+    }
+  };
+  const onGeneralAttachmentsChange = (attachments: UploadDraft[]) => {
+    const previous = new Set(latestGeneralAttachments.current.map(a => a.storage_path));
+    latestGeneralAttachments.current = attachments;
+    setGeneralAttachments(attachments); setDirty(true);
+    if (savedClaimId.current) void attachLateReceipts(savedClaimId.current, attachments.filter(a => !previous.has(a.storage_path)));
+  };
+  const [payToSupplier, setPayToSupplier] = useState(Boolean(initialClaim?.claimant_id && initialClaim.claimant_id !== user?.id));
+  const [contextKind, setContextKind] = useState<DirectoryKind | null>(initialClaim?.context_kind || null);
+  const [contextValueId, setContextValueId] = useState(initialClaim?.context_value_id || "");
+  const [contextName, setContextName] = useState(initialClaim?.context_name || "");
+  const categories = masterDataClient.getCategories();
+  const managedValues = workspaceStore.getState().managedClaimValues;
+
   // 02: Claim Details State
   const [ministryId, setMinistryId] = useState(
     initialClaim?.ministry_id || ""
@@ -144,8 +164,10 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
             expense_category_id: e.expense_category_id || undefined,
             vendor: e.vendor || "",
             description: e.description,
-            amount: e.amount,
+            amount: initialClaim?.recurring_schedule_id && Number(e.amount) === 0 ? "" : e.amount,
             notes: e.notes || "",
+            invoice_number: e.invoice_number || "",
+            beneficiary_type: e.beneficiary_type || null,
             sort_order: e.sort_order,
             attachment: matchingAttachment
               ? {
@@ -174,11 +196,6 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
             attachment: null,
           },
         ]
-  );
-
-  // 04: Declaration State
-  const [declarationAccepted, setDeclarationAccepted] = useState(
-    initialClaim?.declaration_accepted || false
   );
 
   const [error, setError] = useState<string | null>(null);
@@ -222,19 +239,6 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   }, []);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        profileDropdownRef.current &&
-        !profileDropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsProfileDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
     if (error) {
       errorRef.current?.focus();
       errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -242,10 +246,12 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   }, [error]);
 
   const handleSelectClaimantProfile = (profile: Profile) => {
+    refreshPayeeDetails.current = true;
+    setPayToSupplier(profile.id !== user?.id);
     setSelectedPayeeProfileId(profile.id);
     setClaimantName(profile.full_name || "");
     setClaimantEmail(profile.email || user?.email || "");
-    setClaimantPhone(profile.phone || user?.phone || "+60 12-345 6789");
+    setClaimantPhone(profile.phone || user?.phone || "");
     const resolved = resolveCanonicalBank(profile.bank_code || profile.bank_name);
     if (resolved) {
       setBankName(resolved.name);
@@ -256,11 +262,9 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
     setBankAccountHolderName(
       profile.bank_account_holder_name || profile.full_name || ""
     );
-    if (profile.bank_account_number) {
-      setBankAccountNumber(profile.bank_account_number);
-    }
+    setBankAccountNumber(profile.bank_account_number || "");
     setProfileSearchQuery(profile.full_name || "");
-    setIsProfileDropdownOpen(false);
+
     setDirty(true);
   };
 
@@ -269,11 +273,11 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
     setNewProfileName(nameToUse);
     setNewProfileHolderName(nameToUse);
     setNewProfileEmail(claimantEmail || user?.email || "");
-    setNewProfilePhone(claimantPhone || user?.phone || "+60 12-345 6789");
+    setNewProfilePhone(claimantPhone || user?.phone || "");
     setNewProfileBankCode(bankCode || "MBBEMYKL");
     setNewProfileAccountNumber("");
     setNewProfileError(null);
-    setIsProfileDropdownOpen(false);
+
     setIsAddBankProfileOpen(true);
   };
 
@@ -326,10 +330,11 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
 
   const handleFillMyDetails = () => {
     if (user) {
+      setPayToSupplier(false);
       setSelectedPayeeProfileId(user.id);
       setClaimantName(user.full_name);
       setClaimantEmail(user.email);
-      setClaimantPhone(user.phone || "+60 12-345 6789");
+      setClaimantPhone(user.phone || "");
       const resolved = resolveCanonicalBank(user.bank_code || user.bank_name);
       if (resolved) {
         setBankName(resolved.name);
@@ -343,32 +348,33 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   };
 
   const validate = (): string | null => {
+    if (payToSupplier && !selectedPayeeProfileId) return "Choose a supplier.";
     if (!claimantName.trim()) return "Please enter the claimant full name.";
-    if (!claimantEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(claimantEmail.trim())) {
+    if (claimantEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(claimantEmail.trim())) {
       return "Please enter a valid claimant email address.";
     }
-    if (!claimantPhone.trim()) return "Please enter the claimant phone number.";
+
     const resolvedBank = resolveCanonicalBank(bankCode || bankName);
-    if (!resolvedBank) {
-      return "Please select a supported reimbursement bank from the directory.";
-    }
+    if (!payToSupplier && !resolvedBank) return "Please select a supported bank.";
     const acctValidation = validateBankAccountString(bankAccountNumber);
-    if (!acctValidation.valid) {
-      return acctValidation.error || "Please enter a valid bank account number.";
-    }
+    if (!payToSupplier && !acctValidation.valid) return acctValidation.error || "Please enter a valid bank account number.";
     if (!ministryId) return "Please select a ministry / department.";
     if (!claimDate) return "Please select the claim date.";
-    if (!purpose.trim()) return "Please provide the ministry purpose and justification.";
+    const requiredContext = ministries.find(m => m.id === ministryId)?.context_kind;
+    if (requiredContext && contextKind !== requiredContext) return "Complete the required team field.";
+    if (contextKind && !contextName.trim()) return `${CONTEXT_LABELS[contextKind]} is required.`;
 
     if (expenses.length === 0) return "Please add at least one receipt.";
 
     for (let i = 0; i < expenses.length; i++) {
       const e = expenses[i];
       if (!e.expense_date) return `Receipt #${i + 1}: Date is required.`;
-      if (!e.description.trim()) return `Receipt #${i + 1}: Item description is required.`;
+      const classificationError = validateItemClassification(e, categories);
+      if (classificationError) return `Item ${i + 1}: ${classificationError}`;
+      if (formConfig.require_vendor_name && !e.vendor?.trim()) return `Item ${i + 1}: Supplier / merchant is required.`;
       const amountCents = moneyToCents(e.amount);
       if (amountCents === null || amountCents <= 0) return `Receipt #${i + 1}: Enter a positive amount with at most two decimal places.`;
-      if (formConfig.require_receipt_for_all_expenses && !e.attachment) {
+      if (formConfig.require_receipt_for_all_expenses && !e.attachment && generalAttachments.length === 0) {
         return `Receipt #${i + 1}: Please upload the supporting receipt file.`;
       }
     }
@@ -377,7 +383,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   };
 
   const gatherAttachments = () => {
-    const atts: any[] = [];
+    const atts: any[] = [...generalAttachments];
     expenses.forEach((e) => {
       if (e.attachment) {
         atts.push({
@@ -392,20 +398,16 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
   };
 
   const handleSaveDraft = async () => {
-    if (!ministryId) {
-      setError("Choose a ministry before saving.");
-      errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
     setIsSavingDraft(true);
     setError(null);
     try {
-      const validExpenses = expenses.filter((e) => e.description.trim() || e.amount);
+      const validExpenses = expenses;
       const claimData = {
         id: isEditMode && initialClaim?.id ? initialClaim.id : undefined,
         submitted_by_user_id: user?.id || "u-sarah-02",
         claimant_id: selectedPayeeProfileId || initialClaim?.claimant_id || user?.id || "u-sarah-02",
         payee_profile_id: selectedPayeeProfileId || undefined,
+        refresh_payee_details: refreshPayeeDetails.current,
         claimant_name: claimantName.trim() || user?.full_name || "Unknown Claimant",
         claimant_email: claimantEmail.trim() || user?.email || "",
         claimant_phone: claimantPhone.trim() || user?.phone || "",
@@ -413,9 +415,12 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         bank_code: resolveCanonicalBank(bankCode || bankName)?.swiftCode || undefined,
         bank_account_holder_name: (bankAccountHolderName.trim() || claimantName.trim() || user?.full_name || "") || undefined,
         bank_account_number: bankAccountNumber.replace(/[\s\-]/g, "") || undefined,
-        ministry_id: ministryId,
+        ministry_id: ministryId || undefined,
+        context_kind: contextKind,
+        context_value_id: contextValueId || null,
+        context_name: contextName || null,
         claim_date: claimDate,
-        purpose: purpose || "Draft expense claim",
+        purpose: purpose || "",
         internal_reference: internalRef || undefined,
         expenses: validExpenses.map((e, idx) => ({
           id: e.id,
@@ -423,9 +428,11 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           expense_date: e.expense_date,
           expense_category_id: e.expense_category_id,
           vendor: e.vendor || undefined,
-          description: e.description || "Draft receipt",
+          description: e.description || "",
           amount: parseMoneyInput(e.amount),
           notes: e.notes || undefined,
+          invoice_number: e.invoice_number || undefined,
+          beneficiary_type: needsBeneficiary(categories.find(c => c.id === e.expense_category_id)) ? e.beneficiary_type : null,
           sort_order: idx + 1,
           attachment: e.attachment
             ? {
@@ -444,6 +451,8 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         version: initialClaim?.version,
         request_key: requestKey.current,
       });
+      savedClaimId.current = savedClaim.id;
+      void attachLateReceipts(savedClaim.id, latestGeneralAttachments.current.filter(a => !claimData.attachments.some(sent => sent.storage_path === a.storage_path)));
       setDirty(false);
       showToast.flashSuccess(
         isEditMode ? "Changes have been saved to the draft." : "Claim draft saved successfully.",
@@ -466,11 +475,6 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
       return;
     }
 
-    if (!declarationAccepted) {
-      setError("You must acknowledge and accept the confirmation declaration before submitting.");
-      return;
-    }
-
     setIsSubmitting(true);
     setError(null);
 
@@ -480,6 +484,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         submitted_by_user_id: user?.id || "u-sarah-02",
         claimant_id: selectedPayeeProfileId || initialClaim?.claimant_id || user?.id || "u-sarah-02",
         payee_profile_id: selectedPayeeProfileId || undefined,
+        refresh_payee_details: refreshPayeeDetails.current,
         claimant_name: claimantName.trim(),
         claimant_email: claimantEmail.trim(),
         claimant_phone: claimantPhone.trim(),
@@ -487,11 +492,14 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         bank_code: resolveCanonicalBank(bankCode || bankName)?.swiftCode || bankCode,
         bank_account_holder_name: bankAccountHolderName.trim() || claimantName.trim(),
         bank_account_number: bankAccountNumber.replace(/[\s\-]/g, ""),
-        ministry_id: ministryId,
+        ministry_id: ministryId || undefined,
+        context_kind: contextKind,
+        context_value_id: contextValueId || null,
+        context_name: contextName || null,
         claim_date: claimDate,
         purpose: purpose.trim(),
         internal_reference: internalRef.trim() || undefined,
-        declaration_accepted: true,
+
         expenses: expenses.map((e, idx) => ({
           id: e.id,
           temp_id: e.temp_id,
@@ -501,6 +509,8 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           description: e.description.trim(),
           amount: parseMoneyInput(e.amount),
           notes: e.notes || undefined,
+          invoice_number: e.invoice_number || undefined,
+          beneficiary_type: needsBeneficiary(categories.find(c => c.id === e.expense_category_id)) ? e.beneficiary_type : null,
           sort_order: idx + 1,
           attachment: e.attachment
             ? {
@@ -519,6 +529,8 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         version: initialClaim?.version,
         request_key: requestKey.current,
       });
+      savedClaimId.current = submitted.id;
+      void attachLateReceipts(submitted.id, latestGeneralAttachments.current.filter(a => !claimData.attachments.some(sent => sent.storage_path === a.storage_path)));
       setDirty(false);
       showToast.flashSuccess(
         isEditMode ? "Changes have been made and submitted for review." : "Claim has been submitted successfully.",
@@ -564,31 +576,6 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleSaveDraft}
-            loading={isSavingDraft}
-            disabled={isSavingDraft || isSubmitting}
-            className="h-8 text-xs border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 gap-1.5"
-          >
-            {!isSavingDraft && <Save className="w-3.5 h-3.5 text-zinc-400" />}
-            <span>{isSavingDraft ? "Saving..." : "Save Draft"}</span>
-          </Button>
-
-          <Button
-            type="submit"
-            size="sm"
-            loading={isSubmitting}
-            disabled={isSubmitting || isSavingDraft}
-            className="h-8 text-xs bg-zinc-900 hover:bg-zinc-800 text-white font-medium shadow-2xs gap-1.5"
-          >
-            {!isSubmitting && <Send className="w-3.5 h-3.5" />}
-            <span>{isSubmitting ? "Submitting..." : "Submit Claim"}</span>
-          </Button>
-        </div>
       </div>
 
       {/* Admin Guidance Banner */}
@@ -607,6 +594,12 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         </Alert>
       )}
 
+      <Card className="claim-section"><CardContent className="p-4 space-y-3">
+        <h2 className="font-semibold">Receipt / invoice photos</h2>
+        <p className="text-sm text-muted-foreground">Optional. You can submit while a photo is still uploading.</p>
+        <ReceiptUploader attachments={generalAttachments} onChange={onGeneralAttachmentsChange} userId={user?.id || ""} maxFileSizeMb={formConfig.max_file_size_mb} />
+      </CardContent></Card>
+      {initialClaim?.recurring_schedule_id && <Alert><AlertDescription>Bill due {initialClaim.recurring_due_date}. Last month: {initialClaim.recurring_previous_amount == null ? "No previous bill" : formatCurrency(initialClaim.recurring_previous_amount)}.</AlertDescription></Alert>}
       {/* SECTION 01: Claimant Details */}
       <Card className="claim-section border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
         <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800/80">
@@ -641,205 +634,30 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
             </div>
           </div>
 
-          {/* Saved Claimant / Payee Bank Profile Lookup & Quick-Add */}
-          <div className="p-3 rounded-lg bg-slate-50/90 dark:bg-zinc-900/80 border border-zinc-200/90 dark:border-zinc-800 space-y-2.5">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5 text-zinc-800 dark:text-zinc-200" />
-                  <span className="text-[11px] font-semibold text-zinc-900 dark:text-zinc-100">
-                    Choose payee
-                  </span>
-                  {selectedPayeeProfileId && (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold">
-                      <CheckCircle2 className="w-3 h-3" />
-                      Saved profile
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-zinc-500 mt-0.5">
-                  Select a saved payee or add a new bank profile.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleOpenAddBankProfile()}
-                className="h-8 text-xs border-zinc-300 bg-white hover:bg-zinc-100 text-zinc-900 font-semibold shrink-0 gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add Bank Profile</span>
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {/* Searchable Combobox for Claimant Profiles */}
-              <div ref={profileDropdownRef} className="relative">
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <Input
-                    type="text"
-                    id="claimantProfileSearch"
-                    placeholder="Search payee name..."
-                    value={profileSearchQuery}
-                    onFocus={() => setIsProfileDropdownOpen(true)}
-                    onChange={(e) => {
-                      setProfileSearchQuery(e.target.value);
-                      setIsProfileDropdownOpen(true);
-                    }}
-                    className="h-8 pl-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
-                  />
-                </div>
-
-                {isProfileDropdownOpen && (
-                  <div className="absolute z-30 mt-1 w-full max-h-60 overflow-y-auto rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-950 divide-y divide-zinc-100 dark:divide-zinc-800 text-xs">
-                    {(() => {
-                      const q = profileSearchQuery.trim().toLowerCase();
-                      const selectableProfiles = (profiles || []).filter(
-                        (p) =>
-                          p.status !== "INACTIVE" &&
-                          (p.id === user?.id || p.created_by_user_id === user?.id ||
-                            user?.roles?.includes("FINANCE_OFFICER") || user?.roles?.includes("SYSTEM_ADMIN")) &&
-                          Boolean(p.full_name?.trim()) &&
-                          (!q ||
-                            p.full_name.toLowerCase().includes(q) ||
-                            (p.email || "").toLowerCase().includes(q) ||
-                            (p.bank_name || "").toLowerCase().includes(q) ||
-                            (p.bank_account_number || "").toLowerCase().includes(q))
-                      );
-
-                      if (selectableProfiles.length === 0) {
-                        return (
-                          <div className="p-3 text-center space-y-2">
-                            <p className="text-zinc-500 text-[11px]">
-                              No saved bank profile matching{" "}
-                              <strong className="text-zinc-900 dark:text-zinc-100">
-                                &ldquo;{profileSearchQuery}&rdquo;
-                              </strong>
-                            </p>
-                            <Button
-                              type="button"
-                              size="sm"
-                              onClick={() => handleOpenAddBankProfile(profileSearchQuery)}
-                              className="h-7 text-[11px] bg-zinc-900 hover:bg-zinc-800 text-white gap-1"
-                            >
-                              <Plus className="w-3 h-3" />
-                              <span>
-                                Add &ldquo;{profileSearchQuery.trim() || "New Claimant"}&rdquo; Bank Profile
-                              </span>
-                            </Button>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <>
-                          {selectableProfiles.map((p) => {
-                            const bankEntry = resolveCanonicalBank(p.bank_code || p.bank_name);
-                            const isSelected = selectedPayeeProfileId === p.id;
-                            return (
-                              <button
-                                key={p.id}
-                                type="button"
-                                onClick={() => handleSelectClaimantProfile(p)}
-                                className={`w-full text-left px-3 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-900 flex items-center justify-between gap-2 transition-colors ${
-                                  isSelected ? "bg-emerald-50/60 dark:bg-emerald-950/30" : ""
-                                }`}
-                              >
-                                <div className="min-w-0">
-                                  <div className="font-semibold text-zinc-900 dark:text-zinc-100 truncate flex items-center gap-1.5">
-                                    <span>{p.full_name}</span>
-                                    {p.id === user?.id ? (
-                                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 font-medium">
-                                        Myself
-                                      </span>
-                                    ) : p.is_payee_only ? (
-                                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-zinc-100 text-zinc-600 font-normal">
-                                        Claimant Profile
-                                      </span>
-                                    ) : null}
-                                  </div>
-                                  <div className="text-[10px] text-zinc-500 truncate">
-                                    {bankEntry
-                                      ? `${bankEntry.swiftCode} · ${bankEntry.name}`
-                                      : p.bank_name || "No bank linked yet"}
-                                    {p.bank_account_number
-                                      ? ` · Acct ${p.bank_account_number}`
-                                      : ""}
-                                  </div>
-                                </div>
-                                {isSelected && (
-                                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                                )}
-                              </button>
-                            );
-                          })}
-                          <div className="p-2 bg-zinc-50/80 dark:bg-zinc-900/60 flex items-center justify-between">
-                            <span className="text-[10px] text-zinc-500">
-                              Claimant not in list?
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenAddBankProfile(profileSearchQuery)}
-                              className="text-[11px] font-semibold text-zinc-900 hover:underline inline-flex items-center gap-1 dark:text-zinc-100"
-                            >
-                              <Plus className="w-3 h-3" />
-                              <span>Add New Bank Profile</span>
-                            </button>
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
-              </div>
-
-              {/* Direct Dropdown Select for Quick Selection */}
-              <div>
-                <Select
-                  id="claimantProfileSelect"
-                  aria-label="Select Claimant Bank Profile"
-                  value={selectedPayeeProfileId}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === "__ADD_NEW__") {
-                      handleOpenAddBankProfile();
-                      return;
-                    }
-                    const found = (profiles || []).find((p) => p.id === val);
-                    if (found) {
-                      handleSelectClaimantProfile(found);
-                    } else {
-                      setSelectedPayeeProfileId("");
-                    }
-                  }}
-                  className="w-full"
-                >
-                  <option value="">-- Choose Saved Claimant Profile --</option>
-                  {(profiles || [])
-                    .filter((p) => p.status !== "INACTIVE" && Boolean(p.full_name?.trim()))
-                    .map((p) => {
-                      const bankEntry = resolveCanonicalBank(p.bank_code || p.bank_name);
-                      return (
-                        <option key={p.id} value={p.id}>
-                          {p.full_name}
-                          {bankEntry ? ` — ${bankEntry.swiftCode}` : ""}
-                          {p.bank_account_number ? ` (${p.bank_account_number})` : " (No bank yet)"}
-                        </option>
-                      );
-                    })}
-                  <option value="__ADD_NEW__">+ Add New Claimant Bank Profile...</option>
-                </Select>
-              </div>
-            </div>
+          <div className="space-y-3">
+            <label htmlFor="payTo" className="block font-medium text-sm">Pay to</label>
+            <Select id="payTo" value={payToSupplier ? "SUPPLIER" : "ME"} onChange={e => {
+              if (e.target.value === "ME") { setPayToSupplier(false); handleFillMyDetails(); }
+              else { setPayToSupplier(true); setSelectedPayeeProfileId(""); }
+            }}><option value="ME">Me</option><option value="SUPPLIER">A supplier</option></Select>
+            {payToSupplier && <>
+              <Input aria-label="Search suppliers" placeholder="Search suppliers" value={profileSearchQuery} onChange={e => setProfileSearchQuery(e.target.value)} />
+              <Select aria-label="Supplier" value={selectedPayeeProfileId} onChange={e => {
+                if(e.target.value === "__ADD_NEW__") { handleOpenAddBankProfile(); return; }
+                const profile = profiles.find(p => p.id === e.target.value); if(profile) handleSelectClaimantProfile(profile);
+              }}><option value="">Choose a supplier</option>
+                {profiles.filter(p => p.is_payee_only && p.status === "ACTIVE" && p.full_name.toLowerCase().includes(profileSearchQuery.toLowerCase())).map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+                <option value="__ADD_NEW__">Add new supplier</option>
+              </Select>
+            </>}
+            {payToSupplier && selectedPayeeProfileId && <div><p className="text-sm text-muted-foreground">Payment details are saved with this supplier. Finance will review them.</p><Button type="button" variant="ghost" onClick={() => { const p = profiles.find(p => p.id === selectedPayeeProfileId); if (p) handleSelectClaimantProfile(p); }}>Refresh supplier payment details</Button></div>}
           </div>
 
           {/* Claimant Snapshot Inputs */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          {!payToSupplier && <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
             <div className="space-y-1">
               <label htmlFor="claimantName" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-                Claimant Full Name *
+                Payee name *
               </label>
               <Input
                 type="text"
@@ -854,7 +672,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
 
             <div className="space-y-1">
               <label htmlFor="claimantEmail" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-                Claimant Email *
+                Email (optional)
               </label>
               <Input
                 type="email"
@@ -863,13 +681,12 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                 value={claimantEmail}
                 onChange={(e) => setClaimantEmail(e.target.value)}
                 className="h-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
-                required
               />
             </div>
 
             <div className="space-y-1">
               <label htmlFor="claimantPhone" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-                Claimant Phone *
+                Phone (optional)
               </label>
               <Input
                 type="tel"
@@ -878,13 +695,12 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                 value={claimantPhone}
                 onChange={(e) => setClaimantPhone(e.target.value)}
                 className="h-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 font-mono"
-                required
               />
             </div>
-          </div>
+          </div>}
 
           {/* Claimant Reimbursement Banking Details */}
-          <div className="pt-3 mt-1 border-t border-zinc-100 dark:border-zinc-800/80">
+          {!payToSupplier && <div className="pt-3 mt-1 border-t border-zinc-100 dark:border-zinc-800/80">
             <div className="flex items-center justify-between mb-2.5">
               <div className="flex items-center gap-1.5">
                 <Landmark className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />
@@ -961,7 +777,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                 </p>
               </div>
             </div>
-          </div>
+          </div>}
         </CardContent>
       </Card>
 
@@ -980,16 +796,16 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
             {/* Ministry */}
             <div className="space-y-1">
               <label htmlFor="ministryId" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider flex items-center justify-between">
-                Ministry / department *
+                Team *
               </label>
               <Select
                 id="ministryId"
                 value={ministryId}
-                onChange={(e) => setMinistryId(e.target.value)}
+                onChange={(e) => { setMinistryId(e.target.value); const kind = ministries.find(m => m.id === e.target.value)?.context_kind || null; setContextKind(kind); setContextValueId(""); setContextName(""); }}
                 className="w-full"
                 required
               >
-                <option value="">Select a ministry</option>
+                <option value="">Select a Team</option>
                 {ministries.filter((m) => m.is_active || m.id === initialClaim?.ministry_id).map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name}
@@ -998,6 +814,17 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
               </Select>
             </div>
 
+            <div className="sm:col-span-3 space-y-2">
+              {!ministries.find(m => m.id === ministryId)?.context_kind && <label className="flex gap-2 items-center text-sm"><input type="checkbox" checked={contextKind === "EVENT"} onChange={e => { setContextKind(e.target.checked ? "EVENT" : null); setContextValueId(""); setContextName(""); }} />This is for an event</label>}
+              {contextKind && <>
+                <label htmlFor="teamContext" className="block font-medium">{CONTEXT_LABELS[contextKind]} *</label>
+                <Select id="teamContext" value={contextValueId || "OTHER"} onChange={e => { const value = managedValues.find(v => v.id === e.target.value); setContextValueId(value?.id || ""); setContextName(value?.name || ""); }}>
+                  <option value="OTHER">Other – type the name</option>
+                  {managedValues.filter(v => v.kind === contextKind && v.is_active).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                </Select>
+                {!contextValueId && <Input aria-label={CONTEXT_LABELS[contextKind]} value={contextName} onChange={e => setContextName(e.target.value)} required />}
+              </>}
+            </div>
             {/* Claim Date */}
             <div className="space-y-1">
               <label htmlFor="claimDate" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
@@ -1033,7 +860,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
             {/* Ministry Purpose */}
             <div className="col-span-1 sm:col-span-3 space-y-1">
               <label htmlFor="purpose" className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-                Expense purpose *
+                Summary (optional)
               </label>
               <Textarea
                 rows={2}
@@ -1042,7 +869,6 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value)}
                 className="text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 resize-y"
-                required
               />
             </div>
           </div>
@@ -1062,6 +888,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         <CardContent className="p-4">
           <ExpenseItemsEditor
             expenses={expenses}
+            categories={categories}
             userId={user?.id || "u-sarah-02"}
             maxFileSizeMb={formConfig.max_file_size_mb}
             onChange={(items) => {
@@ -1072,40 +899,8 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         </CardContent>
       </Card>
 
-      {/* SECTION 04: Declaration */}
-      <Card className="claim-section border border-zinc-200/80 bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900/30 shadow-2xs">
-        <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800/80">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[10px] font-bold text-zinc-400">04</span>
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                Declaration
-              </CardTitle>
-            </div>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-zinc-500">Claim Total:</span>
-              <strong className="font-mono text-sm text-zinc-900 dark:text-zinc-100">
-                {formatCurrency(totalAmount)}
-              </strong>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-4 space-y-4">
-          <label className="flex items-start gap-3 text-xs text-zinc-700 dark:text-zinc-300 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={declarationAccepted}
-              onChange={(e) => setDeclarationAccepted(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900 accent-zinc-900"
-              required
-            />
-            <span className="leading-relaxed">
-              <strong className="text-zinc-900 dark:text-zinc-100">Declaration: </strong>
-              {formConfig.declaration_text ||
-                "These expenses were incurred for legitimate ministry purposes, have not previously been claimed, and are supported by authentic receipts."}
-            </span>
-          </label>
-
+      <Card className="claim-section"><CardContent className="p-4 space-y-4">
+        <p className="text-sm">Claim total <strong className="font-mono">{formatCurrency(totalAmount)}</strong></p>
           <div className="claim-actions flex items-center justify-between border-t border-zinc-200/80 dark:border-zinc-800 pt-3">
             <Button
               type="button"
@@ -1124,7 +919,7 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
               type="submit"
               size="sm"
               loading={isSubmitting}
-              disabled={isSubmitting || isSavingDraft || !declarationAccepted}
+              disabled={isSubmitting || isSavingDraft}
               className="h-8 text-xs bg-zinc-900 hover:bg-zinc-800 text-white font-medium px-5 shadow-2xs gap-1.5"
             >
               {!isSubmitting && <Send className="w-3.5 h-3.5" />}
@@ -1144,18 +939,18 @@ export function ClaimForm({ initialClaim, isEditMode = false }: ClaimFormProps) 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-sm">
             <Landmark className="w-4 h-4 text-zinc-900" />
-            <span>Add Claimant Bank Account Profile</span>
+            <span>Add new supplier</span>
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSaveNewBankProfile} className="space-y-3.5 my-2 text-xs">
           <p className="text-zinc-500 leading-relaxed">
-            Save a claimant&apos;s bank account details to the directory. Once saved, selecting their name automatically links future reimbursement claims to their disbursement account.
+            Save the supplier’s bank details. Finance will review new payment details.
           </p>
 
           <div className="space-y-1">
             <label htmlFor="newProfileName" className="font-semibold text-zinc-700 block">
-              Claimant Full Name <span className="text-red-500">*</span>
+              Payee name <span className="text-red-500">*</span>
             </label>
             <Input
               id="newProfileName"

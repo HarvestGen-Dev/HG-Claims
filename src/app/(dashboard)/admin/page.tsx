@@ -23,7 +23,7 @@ export default function AdminOverviewPage() {
       href: "/admin/users",
     },
     {
-      title: "Ministries & Departments",
+      title: "Teams",
       desc: "Manage the ministries available on claim forms.",
       icon: <Building2 className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />,
       href: "/admin/ministries",
@@ -36,7 +36,7 @@ export default function AdminOverviewPage() {
     },
     {
       title: "Form & Settings",
-      desc: "Customize declaration statement, guidance banner, upload limits, and payment methods.",
+      desc: "Customize the guidance banner, upload limits, and payment methods.",
       icon: <Settings className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />,
       href: "/admin/settings",
     },
@@ -50,7 +50,7 @@ export default function AdminOverviewPage() {
             System Administration
           </h1>
           <p className="text-xs text-zinc-500">
-            Manage users, ministries, and claim settings.
+            Manage users, teams, and claim settings.
           </p>
         </div>
 

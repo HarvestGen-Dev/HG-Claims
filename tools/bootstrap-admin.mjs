@@ -15,7 +15,7 @@ assert.ok(key, "The CLI account cannot retrieve this project's server key.");
 const client = createClient(`https://${projectRef}.supabase.co`, key, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
-const { data: role, error: roleError } = await client.from("roles").select("id").eq("code", "SYSTEM_ADMIN").single();
+const { data: role, error: roleError } = await client.from("roles").select("id").eq("code", "FINANCE").single();
 assert.ifError(roleError);
 const { data: admins, error: adminError } = await client.from("user_roles").select("user_id").eq("role_id", role.id);
 assert.ifError(adminError);
@@ -38,4 +38,4 @@ assert.ifError(error);
 const { data: grant, error: verifyError } = await client.from("user_roles").select("user_id").eq("user_id", user.id).eq("role_id", role.id).single();
 assert.ifError(verifyError);
 assert.equal(grant.user_id, user.id);
-console.log(`Administrator provisioned: ${email}. Email verified: ${Boolean(user.email_confirmed_at)}. No email sent or password assigned.`);
+console.log(`Finance user provisioned: ${email}. Email verified: ${Boolean(user.email_confirmed_at)}. No email sent or password assigned.`);

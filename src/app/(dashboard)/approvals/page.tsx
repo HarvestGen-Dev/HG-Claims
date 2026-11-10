@@ -11,6 +11,7 @@ import {
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { MobileClaimList } from "@/components/claims/MobileClaimList";
+import { canUserApproveClaim } from "@/lib/auth/permissions";
 import { useAuth } from "@/lib/auth/context";
 import { claimsClient, workspaceStore } from "@/lib/domains";
 import { Claim } from "@/lib/types/database";
@@ -21,7 +22,7 @@ export default function ApprovalsInboxPage() {
   const { user } = useAuth();
   const [claims, setClaims] = useState<Claim[]>([]);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
+  const [activeTab, setActiveTab] = useState<"pending" | "history" | "team">("pending");
 
   useEffect(() => {
     if (!user) return;
@@ -31,24 +32,13 @@ export default function ApprovalsInboxPage() {
     });
   }, [user]);
 
-  const pendingApprovals = claims.filter(c => {
-    const isSubmitterOrClaimant = c.submitted_by_user_id === user?.id || c.claimant_id === user?.id;
-    const isFinanceOrAdmin = user?.roles?.includes("SYSTEM_ADMIN") || user?.roles?.includes("FINANCE_OFFICER");
-    if (isSubmitterOrClaimant && !isFinanceOrAdmin) return false;
-    const currentStep = c.workflow_steps?.find(s => s.status === "IN_PROGRESS");
-    if (!currentStep) return false;
-
-    if (user?.roles?.includes("SYSTEM_ADMIN")) return true;
-    if (user?.roles?.includes("FINANCE_OFFICER") && currentStep.approver_role === "FINANCE_OFFICER") return true;
-
-    return false;
-  });
+  const pendingApprovals = claims.filter(c => canUserApproveClaim(user,c));
 
   const reviewedHistory = claims.filter(c =>
     (c.approval_actions || []).some(a => a.actor_id === user?.id && a.action !== "SUBMIT")
   );
 
-  const displayedList = (activeTab === "pending" ? pendingApprovals : reviewedHistory).filter(c => {
+  const displayedList = (activeTab === "pending" ? pendingApprovals : activeTab === "team" ? claims.filter(c => c.ministry?.team_lead_ids?.includes(user?.id || "") && c.status !== "DRAFT") : reviewedHistory).filter(c => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
@@ -87,7 +77,8 @@ export default function ApprovalsInboxPage() {
 
         {/* Tab Switcher & Search Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-          <div className="flex items-center gap-1 p-1 rounded-lg bg-zinc-100 dark:bg-zinc-900">
+          <div className="flex flex-wrap items-center gap-1 p-1 rounded-lg bg-zinc-100 dark:bg-zinc-900">
+            <button className="min-h-11 px-3 text-sm" onClick={() => setActiveTab("team")}>Team claims</button>
             <button
               onClick={() => setActiveTab("pending")}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
@@ -148,7 +139,7 @@ export default function ApprovalsInboxPage() {
                       <th className="py-2.5 px-4">Claim #</th>
                       <th className="py-2.5 px-4">Claimant</th>
                       <th className="py-2.5 px-4">Submitter</th>
-                      <th className="py-2.5 px-4">Ministry</th>
+                      <th className="py-2.5 px-4">Team</th>
                       <th className="py-2.5 px-4">Purpose</th>
                       <th className="py-2.5 px-4">Submitted</th>
                       <th className="py-2.5 px-4 text-right">Amount (RM)</th>

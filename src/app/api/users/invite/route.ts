@@ -4,7 +4,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const roleEnum = z.enum(["CLAIMANT", "FINANCE_OFFICER", "SYSTEM_ADMIN"]);
+const roleEnum = z.enum(["TEAM_LEAD", "FINANCE"]);
 
 const schema = z
   .object({
@@ -12,7 +12,7 @@ const schema = z
     full_name: z.string().trim().max(150).optional(),
     phone: z.string().trim().max(50).optional(),
     role_code: roleEnum.optional(),
-    roles: z.array(roleEnum).min(1).optional(),
+    roles: z.array(roleEnum).optional(),
     ministry_id: z.string().uuid().nullable().optional(),
     is_multi_user: z.boolean().optional(),
   })
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     const profile = data?.profiles?.find((p: { id: string }) => p.id === user.id);
-    if (error || !profile?.roles?.includes("SYSTEM_ADMIN")) {
+    if (error || !profile?.roles?.includes("FINANCE")) {
       return NextResponse.json({ error: "Administrator access required." }, { status: 403 });
     }
 
@@ -70,10 +70,7 @@ export async function POST(request: NextRequest) {
     }
 
     const invitedUserId = result.data.user.id;
-    const assignedRoles =
-      body.roles && body.roles.length > 0
-        ? body.roles
-        : [body.role_code || "CLAIMANT"];
+    const assignedRoles = body.roles ?? (body.role_code ? [body.role_code] : []);
 
     // Provision profile and roles through the audited domain command
     const { error: profileError } = await client.rpc("nlcc_command", {

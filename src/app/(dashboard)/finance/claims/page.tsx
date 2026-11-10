@@ -203,7 +203,7 @@ function FinanceClaimsContent() {
     try {
       const created = await financeClient.finalizeReimbursementBatch({
         claim_ids: ids,
-        mark_exported: true,
+        mark_exported: false,
         notes: "Generated Alliance Bank .xls disbursement file",
       });
       setSelectedClaimIds([]);
@@ -212,7 +212,7 @@ function FinanceClaimsContent() {
         workspaceStore.refreshDomain("/api/v1/claims"),
       ]);
       showToast.success(
-        `XLS file (${created.batch_number}.xls) created for ${ids.length} claim(s). Once bank disbursement is done, click "Mark .xls as Disbursed".`,
+        `XLS file (${created.batch_number}.xls) created for ${ids.length} claim(s). Once bank disbursement is done, click "Mark .xls as Processed".`,
         "XLS File Created"
       );
       window.location.assign(`/api/v1/finance/batches/${created.id}/export`);
@@ -226,31 +226,7 @@ function FinanceClaimsContent() {
     }
   };
 
-  const handleMarkBatchDisbursed = async (batch: ReimbursementBatch) => {
-    if (disbursingBatchId) return;
-    setDisbursingBatchId(batch.id);
-    try {
-      await financeClient.disburseReimbursementBatch({
-        batch_id: batch.id,
-        bank_reference: batch.batch_number,
-      });
-      await Promise.all([
-        workspaceStore.refreshDomain("/api/v1/finance"),
-        workspaceStore.refreshDomain("/api/v1/claims"),
-      ]);
-      showToast.success(
-        `${batch.batch_number}.xls marked as Disbursed. All ${batch.claim_count} linked claim(s) are now marked as Disbursed!`,
-        "Disbursement Complete"
-      );
-    } catch (err: any) {
-      showToast.error(
-        err?.message || "Failed to mark .xls file as disbursed.",
-        "Disbursement Error"
-      );
-    } finally {
-      setDisbursingBatchId(null);
-    }
-  };
+  const handleMarkBatchProcessed = async (batch: ReimbursementBatch) => { window.location.assign(`/finance/batches/${batch.id}`); };
 
   const handleExport = () => {
     const csv = generateClaimsCsv(filtered);
@@ -323,7 +299,7 @@ function FinanceClaimsContent() {
           Claims
         </button>
         <button type="button" aria-pressed={isHistory} onClick={() => setView("disbursed")} className="min-h-11 border-b-2 border-transparent px-1 text-sm text-muted-foreground aria-pressed:border-primary aria-pressed:font-semibold aria-pressed:text-foreground">
-          Disbursed files
+          Processed files
         </button>
       </div>
 
@@ -341,7 +317,7 @@ function FinanceClaimsContent() {
       )}
 
       {(isHistory || visibleBatches.length > 0) && (
-        <section className="rounded-xl border border-border bg-card" aria-label={isHistory ? "Disbursed files" : "Files awaiting disbursement"}>
+        <section className="rounded-xl border border-border bg-card" aria-label={isHistory ? "Processed files" : "Files awaiting disbursement"}>
           {!isHistory && (
             <h2 className="border-b border-border px-4 py-3 text-sm font-semibold">Files awaiting disbursement</h2>
           )}
@@ -368,7 +344,7 @@ function FinanceClaimsContent() {
                         type="button"
                         variant="secondary"
                         loading={disbursingBatchId === batch.id}
-                        onClick={() => handleMarkBatchDisbursed(batch)}
+                        onClick={() => handleMarkBatchProcessed(batch)}
                         className="min-h-11"
                       >
                         Mark disbursed
@@ -421,7 +397,7 @@ function FinanceClaimsContent() {
               <option value="APPROVED_FOR_PAYMENT">
                 Approved (Ready for XLS / XLS Created)
               </option>
-              <option value="PAID">Disbursed / Paid Out</option>
+              <option value="PAID">Processed / Processed</option>
             </Select>
           </div>
 
@@ -435,7 +411,7 @@ function FinanceClaimsContent() {
               onChange={(e) => setSelectedMinistry(e.target.value)}
               className="w-full"
             >
-              <option value="ALL">All Ministries</option>
+              <option value="ALL">All Teams</option>
               {ministries.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
@@ -491,7 +467,7 @@ function FinanceClaimsContent() {
                       </th>
                       <th className="py-2.5 px-4">Claim #</th>
                       <th className="py-2.5 px-4">Claimant</th>
-                      <th className="py-2.5 px-4">Ministry</th>
+                      <th className="py-2.5 px-4">Team</th>
                       <th className="py-2.5 px-4">Disbursement Voucher</th>
                       <th className="py-2.5 px-4">Purpose</th>
                       <th className="py-2.5 px-4 text-right">Amount (RM)</th>

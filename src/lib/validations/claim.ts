@@ -7,7 +7,9 @@ export const expenseItemSchema = z.object({
   expense_date: z.string().min(1, "Receipt date is required"),
   expense_category_id: z.string().optional().nullable(),
   vendor: z.string().optional().nullable(),
-  description: z.string().min(3, "Description must be at least 3 characters"),
+  description: z.string().default(""),
+  beneficiary_type: z.enum(["INTERNAL","EXTERNAL"]).nullable().optional(),
+  invoice_number: z.string().nullable().optional(),
   cost_centre_id: z.string().optional().nullable(),
   amount: z.coerce.number().positive("Amount must be greater than RM 0.00")
     .refine(value => moneyToCents(value) !== null, "Enter an amount with at most two decimal places"),
@@ -26,13 +28,11 @@ export const claimFormSchema = z.object({
   claimant_phone: z.string().optional().nullable(),
   bank_name: z.string().optional().nullable(),
   bank_account_number: z.string().optional().nullable(),
-  ministry_id: z.string().min(1, "Please select a ministry"),
+  ministry_id: z.string().min(1, "Please select a Team"),
   claim_date: z.string().min(1, "Submission date is required"),
-  purpose: z.string().min(5, "Ministry purpose / justification is required"),
+  purpose: z.string().default(""),
   internal_reference: z.string().optional().nullable(),
-  declaration_accepted: z.boolean().refine(val => val === true, {
-    message: "You must confirm and accept the declaration to submit your claim",
-  }),
+  declaration_accepted: z.boolean().optional(),
   expenses: z.array(expenseItemSchema).min(1, "At least one receipt is required"),
 });
 

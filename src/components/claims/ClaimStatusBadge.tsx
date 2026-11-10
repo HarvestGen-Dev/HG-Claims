@@ -14,23 +14,23 @@ const REIMBURSEMENT_BADGE_MAP: Record<
   { label: string; classes: string }
 > = {
   ELIGIBLE: {
-    label: "Ready for XLS",
+    label: "Eligible for batching",
     classes: "bg-emerald-50 text-emerald-800 border-emerald-200",
   },
   RESERVED_IN_BATCH: {
-    label: "XLS File Created",
+    label: "Reserved in batch",
     classes: "bg-amber-50 text-amber-800 border-amber-200",
   },
   EXPORTED_PENDING_CONFIRMATION: {
-    label: "XLS File Created",
+    label: "File exported",
     classes: "bg-amber-50 text-amber-800 border-amber-200",
   },
   SUBMITTED_TO_BANK: {
-    label: "XLS File Created",
+    label: "Uploaded to bank",
     classes: "bg-amber-50 text-amber-800 border-amber-200",
   },
   PAID: {
-    label: "Disbursed",
+    label: "Processed",
     classes: "bg-emerald-50 text-emerald-800 border-emerald-200",
   },
   FAILED: {
