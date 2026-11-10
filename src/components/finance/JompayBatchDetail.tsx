@@ -5,16 +5,13 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { financeClient, workspaceStore } from "@/lib/domains";
-import {
-  JOMPAY_COLUMNS,
-  JOMPAY_TEMPLATE_BLOCKER,
-  getJompayReviewRows,
-} from "@/lib/banking/jompay";
+import { JOMPAY_COLUMNS, getJompayReviewRows } from "@/lib/banking/jompay";
 import { formatCurrency } from "@/lib/utils/formatters";
 import type { ReimbursementBatch } from "@/lib/types/database";
 export function JompayBatchDetail({ batch }: { batch: ReimbursementBatch }) {
   const [reason, setReason] = useState("");
   const [reference, setReference] = useState("");
+  const [uploadReference, setUploadReference] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   async function run(work: () => Promise<unknown>) {
@@ -43,13 +40,82 @@ export function JompayBatchDetail({ batch }: { batch: ReimbursementBatch }) {
             {formatCurrency(batch.total_amount)} · {batch.status}
           </p>
         </header>
-        <p className="rounded-lg border bg-muted p-4 text-sm">
-          {JOMPAY_TEMPLATE_BLOCKER}
-        </p>
+        <section className="space-y-3 border rounded-lg p-4">
+          <h2 className="font-semibold">Bank file and upload</h2>
+          <p className="text-sm text-muted-foreground">
+            Download the frozen JomPAY file, upload it in Alliance Bank, then
+            record the upload here. Exporting or recording an upload keeps
+            claims Approved until payment completion is confirmed.
+          </p>
+          {batch.status !== "VOIDED" && (
+            <Button
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  const response = await fetch(
+                    `/api/v1/finance/batches/${batch.id}/export`,
+                  );
+                  if (!response.ok) {
+                    const result = await response.json();
+                    throw new Error(
+                      result.error || "Unable to download JomPAY file.",
+                    );
+                  }
+                  const url = URL.createObjectURL(await response.blob());
+                  const link = document.createElement("a");
+                  link.href = url;
+                  link.download = `${batch.batch_number}.xlsx`;
+                  link.click();
+                  setTimeout(() => URL.revokeObjectURL(url), 1000);
+                  await workspaceStore.refreshDomain("/api/v1/finance");
+                })
+              }
+            >
+              Download JomPAY XLSX
+            </Button>
+          )}
+          <p className="text-xs break-all text-muted-foreground">
+            {batch.exported_file_hash_sha256
+              ? `File SHA-256: ${batch.exported_file_hash_sha256}`
+              : "Not exported yet"}
+          </p>
+          {batch.bank_uploaded_at && (
+            <p className="text-sm">
+              Bank upload recorded: {batch.bank_upload_reference}
+            </p>
+          )}
+          {batch.status === "EXPORTED" && (
+            <div className="space-y-2 max-w-md">
+              <label className="block" htmlFor="jompay-upload-reference">
+                Bank upload reference
+              </label>
+              <Input
+                id="jompay-upload-reference"
+                value={uploadReference}
+                onChange={(e) => setUploadReference(e.target.value)}
+              />
+              <Button
+                variant="outline"
+                disabled={busy || !uploadReference.trim()}
+                onClick={() =>
+                  void run(async () => {
+                    await financeClient.recordBatchBankUpload({
+                      batch_id: batch.id,
+                      bank_upload_reference: uploadReference.trim(),
+                    });
+                    await workspaceStore.refreshDomain("/api/v1/finance");
+                  })
+                }
+              >
+                Record Bank Upload
+              </Button>
+            </div>
+          )}
+        </section>
         <div className="overflow-x-auto border rounded-lg">
           <table className="w-full text-sm">
             <caption className="text-left p-3 font-medium">
-              Frozen JomPAY instructions — review data only
+              Frozen JomPAY instructions
             </caption>
             <thead>
               <tr>

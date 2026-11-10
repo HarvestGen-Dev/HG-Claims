@@ -9,8 +9,7 @@ export const JOMPAY_COLUMNS = [
   "Fail Email Address 2",
   "Biller Name",
 ] as const;
-export const JOMPAY_TEMPLATE_BLOCKER =
-  "The supplied Alliance Bank JomPAY template is unavailable. Bank-compliant export remains disabled until its layout is validated.";
+export const JOMPAY_TEMPLATE_VERSION = "JOMPAY_BULK_B1_XLSX_V1";
 export function previewJompayClaims(claims: Claim[]) {
   return claims.map((c) => {
     const details = c.approved_snapshot?.jompay;
@@ -28,7 +27,7 @@ export function previewJompayClaims(claims: Claim[]) {
     return { claimId: c.id, eligible: valid, amountCents: cents || 0, details };
   });
 }
-/** Review data only. This does not invent a bank upload file format. */
+/** Frozen rows shared by the Finance preview and template-based export. */
 export function getJompayReviewRows(batch: ReimbursementBatch): string[][] {
   if (batch.payment_method !== "JOMPAY")
     throw new Error("Choose a JomPAY batch.");
@@ -40,14 +39,17 @@ export function getJompayReviewRows(batch: ReimbursementBatch): string[][] {
         i.claim_count !== 1 ||
         !d ||
         !/^\d+$/.test(d.biller_code) ||
-        !d.reference_1?.trim()
+        !d.reference_1?.trim() ||
+        !d.biller_name?.trim() ||
+        !Number.isSafeInteger(Number(i.amount_cents)) ||
+        Number(i.amount_cents) <= 0
       )
         throw new Error("Invalid individual JomPAY bill snapshot.");
       return [
         d.biller_code,
         d.reference_1,
         d.reference_2 || "",
-        (Number(i.amount_cents) / 100).toFixed(2),
+        `${Math.floor(Number(i.amount_cents) / 100)}.${String(Number(i.amount_cents) % 100).padStart(2, "0")}`,
         d.fail_email_1 || "",
         d.fail_email_2 || "",
         d.biller_name,

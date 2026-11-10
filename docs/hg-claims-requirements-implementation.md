@@ -55,3 +55,7 @@ Bank identity must be receiving payee, not submitting user. Existing encrypted a
 ## Testing strategy
 
 Test baseline users with empty and absent roles, combined roles, team scope, lead self-bypass, required context and beneficiaries, Other explanations, monetary precision, protected corrections, payment revisions, bank grouping versus individual JomPAY rows, frozen snapshots, duplicate reservations, void/failure releases and calendar/idempotency boundaries. Run integration tests only against an isolated local backend. Browser tests must use local fixtures. Actual Alliance portal acceptance and missing JomPAY template remain external verification gates.
+
+## Follow-up: supplied JomPAY template
+
+On 2026-11-11 the user supplied `JomPay_Bulk_Sample_B1.xlsx`. The initial missing-asset blocker is resolved by the additive `20261110164319_jompay_bulk_b1_template.sql` migration and a template-preserving XLSX adapter. The original audit above records the repository state before that file was supplied. See [the measured B1 contract](hg-claims-jompay-b1-template.md) and updated implementation report. Live bank-portal acceptance remains externally unverified.

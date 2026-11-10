@@ -26,10 +26,9 @@ flowchart TD
     Method -- JomPAY --> Jompay[Reserve claims atomically<br/>One immutable instruction per individual bill]
     SBP --> XLS[Existing Alliance SBP_BIFF8_V1 XLS<br/>Record file SHA-256, preserve payment references]
     XLS --> Upload[Record Bank Upload]
-    Jompay --> Missing[Bank export blocked pending supplied Alliance template<br/>Seven-column review data available]
+    Jompay --> JompayFile[Alliance JomPAY B1 XLSX<br/>Seven columns, one row per bill, text identifiers and amounts]
+    JompayFile --> Upload
     Upload --> Confirm{Finance records actual payment outcome}
-    Missing --> Manual[Finance may reconcile a payment actually completed separately]
-    Manual --> Confirm
     Confirm -- Completed with reference --> Processed[Processed<br/>Payment record and actor audit]
     Confirm -- Failed with reason --> Release[Release claim reservation<br/>Retain failed frozen instruction and history]
     Release --> Approved

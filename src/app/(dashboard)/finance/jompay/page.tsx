@@ -5,10 +5,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { financeClient, claimsClient, workspaceStore } from "@/lib/domains";
 import { formatCurrency } from "@/lib/utils/formatters";
-import {
-  JOMPAY_TEMPLATE_BLOCKER,
-  previewJompayClaims,
-} from "@/lib/banking/jompay";
+import { previewJompayClaims } from "@/lib/banking/jompay";
 export default function JompayPage() {
   const [claims, setClaims] = useState(claimsClient.getClaims());
   const [batches, setBatches] = useState(
@@ -35,9 +32,6 @@ export default function JompayPage() {
             same payee.
           </p>
         </header>
-        <p role="status" className="border rounded-lg p-4 text-sm bg-muted">
-          {JOMPAY_TEMPLATE_BLOCKER}
-        </p>
         <Link className="underline text-sm" href="/finance/batches">
           Bank Transfer batches
         </Link>

@@ -525,6 +525,78 @@ check(
     b.instructions[0].jompay_snapshot.reference_1 === "0000456",
   "JomPAY leading zeros frozen as text",
 );
+check(
+  b.template_version === "JOMPAY_BULK_B1_XLSX_V1",
+  "new JomPAY batch selects supplied B1 XLSX template",
+);
+// Simulate a batch frozen before this follow-up migration; preserve its fingerprint.
+sql(
+  `UPDATE public.reimbursement_batches SET template_version='JOMPAY_TEMPLATE_PENDING' WHERE id='${jb.id}';`,
+);
+await denied(finance, "record_batch_bank_upload", {
+  batch_id: jb.id,
+  bank_upload_reference: "Too early",
+});
+await denied(member, "record_batch_export", {
+  batch_id: jb.id,
+  file_hash_sha256: "b".repeat(64),
+  filename: "local.xlsx",
+  template_version: "JOMPAY_BULK_B1_XLSX_V1",
+});
+await denied(finance, "record_batch_export", {
+  batch_id: jb.id,
+  file_hash_sha256: "b".repeat(64),
+  filename: "local.xlsx",
+  template_version: "UNKNOWN",
+});
+await denied(finance, "record_batch_export", {
+  batch_id: jb.id,
+  file_hash_sha256: "b".repeat(64),
+  filename: "local.xls",
+  template_version: "JOMPAY_BULK_B1_XLSX_V1",
+});
+await cmd(finance, "record_batch_export", {
+  batch_id: jb.id,
+  file_hash_sha256: "b".repeat(64),
+  filename: "local.xlsx",
+  template_version: "JOMPAY_BULK_B1_XLSX_V1",
+});
+check(
+  (await detail(member, bills[0])).status === "APPROVED_FOR_PAYMENT",
+  "JomPAY export leaves claim Approved",
+);
+const legacyJompay = (await snap(finance)).reimbursementBatches.find(
+  (x) => x.id === jb.id,
+);
+check(
+  legacyJompay.template_version === "JOMPAY_TEMPLATE_PENDING" &&
+    legacyJompay.content_digest_sha256 === b.content_digest_sha256,
+  "historical JomPAY export preserves original version and snapshot fingerprint",
+);
+await denied(finance, "record_batch_export", {
+  batch_id: jb.id,
+  file_hash_sha256: "c".repeat(64),
+  filename: "local.xlsx",
+  template_version: "JOMPAY_BULK_B1_XLSX_V1",
+});
+await denied(finance, "record_batch_bank_upload", { batch_id: jb.id });
+await cmd(finance, "record_batch_bank_upload", {
+  batch_id: jb.id,
+  bank_upload_reference: "LOCAL-JOMPAY-UPLOAD",
+});
+check(
+  (await detail(member, bills[0])).status === "APPROVED_FOR_PAYMENT",
+  "JomPAY bank upload leaves claim Approved",
+);
+check(
+  (await snap(finance)).reimbursementBatches.find((x) => x.id === jb.id)
+    .status === "SUBMITTED_TO_BANK",
+  "JomPAY upload tracked separately from payment completion",
+);
+await denied(finance, "setting", {
+  key: "jompay_export_config",
+  value: { fail_email_2: "invalid" },
+});
 await cmd(finance, "create_payee_profile", {
   id: payee.id,
   full_name: "TNB",
@@ -919,7 +991,27 @@ check(
   "database rejects assigning legacy Claimant role",
 );
 
-check(!(await detail(member,bills[0])).jompay_details && !(await detail(member,bills[0])).approved_snapshot, 'submitting a managed supplier claim does not disclose private payment references');
+check(
+  !(await detail(member, bills[0])).jompay_details &&
+    !(await detail(member, bills[0])).approved_snapshot,
+  "submitting a managed supplier claim does not disclose private payment references",
+);
+// Reserve an independent two-bill batch for actual HTTP/UI workbook acceptance tests.
+const browserJompayClaims = [];
+for (let i = 0; i < 2; i++) {
+  const bill = await cmd(member, "submit_claim", {
+    ...payload,
+    payee_profile_id: payee.id,
+    request_key: randomUUID(),
+  });
+  await transition(lead, "approve", bill.id);
+  await transition(finance, "approve", bill.id);
+  browserJompayClaims.push(bill.id);
+}
+const browserJompayBatch = await cmd(finance, "finalize_jompay_batch", {
+  claim_ids: browserJompayClaims,
+  request_key: randomUUID(),
+});
 // Save local fixture credentials solely for browser QA, outside repository.
 writeFileSync(
   "/private/tmp/hg-v2-browser-fixtures.json",
@@ -935,6 +1027,7 @@ writeFileSync(
     team: team.id,
     claim: original.id,
     recurring: recurringId,
+    jompayBatch: browserJompayBatch.id,
   }),
 );
 console.log(`PASS ${count} v2 backend assertions. Local fixtures: ${suffix}`);

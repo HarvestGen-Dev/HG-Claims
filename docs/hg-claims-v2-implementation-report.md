@@ -17,7 +17,7 @@ Branch: `feat/claims-workflow-v2`. Baseline commit: `c66f7ca1718f527d3f92d283747
 | Payment verification | New/changed payment details become Unverified. Revision-checked profile verification and claim-specific verification. Finance sees “Review bank details before approving.” without an approval block. Payment changes are privately audited; general logs omit payment identifiers. New ciphertext uses a generated private database key; legacy ciphertext remains readable. |
 | Statuses | Draft / Submitted / Returned / Rejected / Approved / Processed presentation across forms, queues, dashboards, details, reports, CSV and payment controls. Banking state values remain distinct and stored claim statuses remain compatible. Historical Cancelled records remain readable. |
 | Alliance Bank transfers | Retains original XLS library, adapter, SBP_BIFF8_V1 contract, annual references, bank directory and frozen transfer rows. Receiving-payee identity and decrypted exact destinations govern aggregation. Server SHA-256, reservation uniqueness, export hash validation, explicit upload/confirmation, failed transfer release and void/release remain. Creation, export and completion are distinct. Whole-batch completion leaves failed instructions and their claims unchanged. |
-| JomPAY | Separate payment-method batches using existing reservation/reconciliation infrastructure. Individual bills never aggregate. Text identifiers preserve zeros; each frozen instruction includes biller/code/references and configurable failure emails. Seven-column review mapping, validation, failure handling and voiding are implemented. Bank upload/export is deliberately blocked pending the actual supplied Alliance template. |
+| JomPAY | Separate payment-method batches using existing reservation/reconciliation infrastructure. Individual bills never aggregate. Text identifiers preserve zeros; each frozen instruction includes biller/code/references and configurable failure emails. The supplied B1 XLSX template is integrated with seven-column export, format/round-trip validation, SHA-256 recording and Record Bank Upload. Its original header styling, widths and print settings are retained; identifiers and two-decimal amounts are text cells. Historical pending-template batches remain exportable without rewriting their frozen version/fingerprint. Bank-portal acceptance remains externally unverified. |
 | Recurring bills | Finance configuration for Unifi/Indah Water fixed bills and TNB/Air Selangor variable bills. Defaults to Utilities. One active schedule per configured payee. Persistent schedule/period records, idempotent 14-day generation, blank variable amount, exact previous-calendar-month reference, optional attachments and deduplicated 7-day in-app reminders. Active dates, shorter months, retries and missed executions are handled. Finance reviews/submits ordinary Drafts. No variation alerts exist. |
 | Background receipts | Submission does not await uploads. Completed uploads attach to the newly saved claim through an ownership-checked, audited command while the claim remains editable or under review. A failure to attach after approval is surfaced to the user. |
 
@@ -31,9 +31,9 @@ Domain layering remains browser clients/store → authenticated Next API service
 
 ## Database migration
 
-`supabase/migrations/20261110070626_claims_workflow_v2.sql` is additive and transactional. No database reset or deletion of claims, payments, receipts, batches, users or financial history is required.
+`supabase/migrations/20261110070626_claims_workflow_v2.sql` and the follow-up `20261110164319_jompay_bulk_b1_template.sql` are additive and transactional. No database reset or deletion of claims, payments, receipts, batches, users or financial history is required.
 
-It extends profiles, ministries, claims, expenses, attachments and existing reimbursement tables. New tables: `claim_dropdown_values`, `claim_classification_changes`, `recurring_payments`, `recurring_billing_periods`, and private payment-detail/key storage. New indexes cover normalized directory names, per-claim attachment paths, active recurring payees and unique billing periods. The existing partial unique active-claim reservation index is preserved.
+It extends profiles, ministries, claims, expenses, attachments and existing reimbursement tables. New tables: `claim_dropdown_values`, `claim_classification_changes`, `recurring_payments`, `recurring_billing_periods`, and private payment-detail/key storage. The follow-up migration enables the actual B1 template, preserves historical snapshots, validates JomPAY export/upload actions and includes configured failure emails in new batch snapshot fingerprints. New indexes cover normalized directory names, per-claim attachment paths, active recurring payees and unique billing periods. The existing partial unique active-claim reservation index is preserved.
 
 Role catalog entries and stored status strings remain available for historical interpretation. Unsupported old role assignments are removed; migration audit rows retain old assignments. No ambiguous legacy Team/category data is guessed or rewritten. Run `supabase/operations/v2-migration-review.sql` and have Finance review the retained legacy classifications/Teams. New forms offer the current classification set; historical selected values remain readable/editable.
 
@@ -51,20 +51,20 @@ Only isolated local Supabase projects were mutated. Production data, environment
 | Baseline `npm run build` | PASS — pre-existing lint warnings |
 | Final `npm run typecheck` | PASS |
 | Final `npm run lint` | PASS — 0 errors, 99 warnings |
-| Final `npm test` | PASS — 155 tests, 18 files |
-| `node tests/v2-backend.integration.mjs` | PASS — 87 assertions against actual isolated local Supabase |
-| `npx playwright test` | PASS — 3 scenarios, production-mode app, Chromium, 11.1 seconds |
+| Final `npm test` | PASS — 176 tests, 19 files |
+| `node tests/v2-backend.integration.mjs` | PASS — 99 assertions against actual isolated local Supabase |
+| `npx playwright test` | PASS — 4 scenarios, production-mode app, Chromium |
 | Final `npm run build` | PASS — isolated local configuration and `.next-v2-test` output |
 | `supabase db advisors --workdir /private/tmp/hg-claims-v2-clean --type security --level warn` | PASS — no warning/error issues found, local database port 59322 |
 | Complete migration replay on fresh local backend with pre-v2 fixtures | PASS |
 | Historical migration assertions | PASS — role conversion, baseline access, original claim amount/status, frozen snapshot, encrypted bank destination, batch fingerprint/status and reservation retained |
 | Persistent Cron installation | PASS locally — `hg-claims-recurring-drafts`, `5 17 * * *`, active |
 | Actual Alliance bank portal acceptance | Not externally verified |
-| JomPAY bank-compliant workbook | Blocked by missing supplied template |
+| JomPAY supplied B1 workbook contract | PASS locally — original layout/styles, exact text values, frozen rows, stable file SHA-256 and actual HTTP/UI download/upload; bank portal not externally verified |
 
 Backend coverage includes roleless access, role combinations, team/budget scope, self-lead bypass, conditional fields, Other explanation, Finance financial-field rejection, classification audits, returns/resubmission, verification revisions, same-payee aggregation, duplicate reservations, frozen JomPAY rows, void/failure releases, processed confirmation, duplication independence/multiple receipts, recurring boundary/retry/reminder/reference behavior and session expiry.
 
-Browser coverage uses 390×844 and 1440×1000 viewports, verifies no horizontal overflow on the main member flow, conditionally required beneficiaries, submission without receipts, independent duplication, management screens, actual HTTP BIFF8 download/re-download equality and an upload that finishes after submission. Local screenshots are stored outside the repository under `/private/tmp/hg-v2-*.png`.
+Browser coverage uses 390×844 and 1440×1000 viewports, verifies no horizontal overflow on the main member flow, conditionally required beneficiaries, submission without receipts, independent duplication, management screens, actual HTTP BIFF8 download/re-download equality, an upload that finishes after submission, and template-based JomPAY download/upload/completion. JomPAY tests verify that export and upload keep claims Approved, and only explicit completion produces a JomPAY payment record. Local screenshots are stored outside the repository under `/private/tmp/hg-v2-*.png`.
 
 The static/mock tests remain useful regression checks, but bank acceptance is not claimed from them. Failed intermediate test runs were corrected and rerun; the table above records the final outcomes. Production-mode browser testing found simultaneous post-login redirects; login now navigates once to the correct dashboard/onboarding destination. Sandbox-restricted browser/network attempts were rerun with permission against the same isolated targets.
 
@@ -81,12 +81,12 @@ The static/mock tests remain useful regression checks, but bank acceptance is no
 
 1. Review the branch and create a protected database backup, including private key/audit tables. Run the read-only migration inventory on staging and resolve any uncertain Team/category mapping with Finance; retain unmappable history.
 2. Rehearse the migration against a recent staging copy. Verify at least one active Finance grant, legacy bank snapshot readability, team assignments, budgets, current batches and invitation conversion.
-3. Apply the v2 migration before deploying the matching Next.js application. Keep the existing Supabase/Vercel credentials and one-hour session configuration. No new production environment variables are required for the scheduler.
+3. Apply both v2 migrations in timestamp order before deploying the matching Next.js application. Keep the existing Supabase/Vercel credentials and one-hour session configuration. No new production environment variables are required for the scheduler.
 4. Confirm Finance and baseline member logins, dual-role review, no budget leakage, supplier verification and returned-claim editing. Obtain Finance confirmation of Unifi, Indah Water, TNB and Air Selangor JomPAY details and create their real schedules. Do not seed guessed biller codes, references, amounts, due dates or Teams.
 5. Install `supabase/operations/install-recurring-job.sql` on the intended deployed database. It creates the persistent Postgres Cron job at 17:05 UTC, which is 01:05 the following day in Asia/Kuala_Lumpur. The function derives its business date explicitly in Malaysia time.
 6. Monitor `cron.job` and `cron.job_run_details` through the Supabase Cron dashboard or the script's query. The deployment owner should check daily success and Finance should review generated Drafts/in-app reminders. A failed run rolls back; the next run catches up eligible periods. Trigger a controlled staging retry to confirm no duplication.
 7. Validate SBP XLS with the authorized Alliance Bank operator using the bank's normal acceptance procedure. Local binary/round-trip verification does not establish bank portal acceptance.
-8. Obtain the actual Alliance Bank JomPAY template. Implement its exact workbook/file contract behind the existing export boundary, verify text identifiers/monetary cells and frozen hashes, then perform bank-side acceptance before enabling JomPAY export/upload. The current application clearly blocks that unsupported export.
+8. Validate the template-based JomPAY B1 XLSX with the authorized Alliance Bank operator before operational use. The user-supplied sample is integrated and local contract/HTTP/UI tests pass; the sample alone does not establish portal acceptance. Compare identifiers, optional references, failure-email fields, amount text and individual bill rows during staging acceptance. See [the measured JomPAY contract](hg-claims-jompay-b1-template.md).
 9. Keep existing Auth SMTP invitation/recovery checks in the launch procedure. Claim and recurring reminders are in-app; no new outbound status-email integration is claimed.
 
 ## Rollback and operational considerations
@@ -99,7 +99,7 @@ Repository local changes were present at task start. They were preserved; overla
 
 ## External dependencies and limitations
 
-- Actual Alliance JomPAY template is missing; no invented bank-compliant file is delivered. Domain batching, review mapping and reconciliation are implemented and tested.
+- The supplied JomPAY template blocker is resolved. The actual B1 format is implemented and tested locally; live bank-portal acceptance is still required.
 - Live Alliance portal acceptance of either payment path requires the authorized bank operator. No live banking operations were performed.
 - Real utility billing details/schedules and production Cron activation require deployment configuration by Finance/IT; no values were guessed or written to production.
 - Historical category/Team exceptions are preserved for Finance review. Legacy encryption key exposure remains relevant to historical ciphertext; new writes use the generated private key.
@@ -109,7 +109,7 @@ Repository local changes were present at task start. They were preserved; overla
 
 Implementation commit: `8dabd4c` (`feat: implement claims v2 roles, review, payees and recurring billing`). The documentation is committed separately on the same branch. See the branch history for the documentation commit and subsequent review amendments.
 
-Branch: [feat/claims-workflow-v2](https://github.com/HarvestGen-Dev/HG-Claims/tree/feat/claims-workflow-v2). No merge into `main` is authorized or performed. Push and pull-request outcomes are reported with the handoff.
+Branch: [feat/claims-workflow-v2](https://github.com/HarvestGen-Dev/HG-Claims/tree/feat/claims-workflow-v2). No merge into `main` is authorized or performed. The branch is pushed and [draft PR #12](https://github.com/HarvestGen-Dev/HG-Claims/pull/12) is open. The JomPAY-template follow-up is committed separately; its hash is provided with the handoff.
 
 ## Files changed
 
@@ -157,6 +157,8 @@ Branch: [feat/claims-workflow-v2](https://github.com/HarvestGen-Dev/HG-Claims/tr
 - `src/lib/auth/permissions.ts`
 - `src/lib/auth/roles.ts`
 - `src/lib/banking/jompay.ts`
+- `src/lib/banking/jompay-export-adapter.ts`
+- `src/lib/banking/templates/jompay-bulk-b1.json`
 - `src/lib/banking/reimbursement-preview.ts`
 - `src/lib/claims-v2.ts`
 - `src/lib/data/repository.ts`
@@ -181,6 +183,7 @@ Branch: [feat/claims-workflow-v2](https://github.com/HarvestGen-Dev/HG-Claims/tr
 - `docs/hg-claims-requirements-implementation.md`
 - `docs/hg-claims-v2-implementation-report.md`
 - `docs/hg-claims-v2-workflow.md`
+- `docs/hg-claims-jompay-b1-template.md`
 
 ### Tests and tooling
 
@@ -196,12 +199,14 @@ Branch: [feat/claims-workflow-v2](https://github.com/HarvestGen-Dev/HG-Claims/tr
 - `tests/simplified-roles-and-invitations.test.ts`
 - `tests/v2-backend.integration.mjs`
 - `tests/v2-domain.test.ts`
+- `tests/jompay-export.test.ts`
 - `tools/bootstrap-admin.mjs`
 - `vitest.config.ts`
 
 ### Database and operations
 
 - `supabase/migrations/20261110070626_claims_workflow_v2.sql`
+- `supabase/migrations/20261110164319_jompay_bulk_b1_template.sql`
 - `supabase/operations/install-recurring-job.sql`
 - `supabase/operations/pause-recurring-job.sql`
 - `supabase/operations/v2-migration-review.sql`

@@ -1,11 +1,17 @@
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
+import * as XLSX from "xlsx";
+import { createHash } from "node:crypto";
 const fixture = JSON.parse(
   readFileSync("/private/tmp/hg-v2-browser-fixtures.json", "utf8"),
 );
-test.beforeEach(async ({page}) => {
-  await page.route("**/auth/v1/**", route => new URL(route.request().url()).origin === fixture.api ? route.continue() : route.abort());
+test.beforeEach(async ({ page }) => {
+  await page.route("**/auth/v1/**", (route) =>
+    new URL(route.request().url()).origin === fixture.api
+      ? route.continue()
+      : route.abort(),
+  );
 });
 async function login(page: import("@playwright/test").Page, role = "member") {
   await page.goto("/login");
@@ -13,7 +19,9 @@ async function login(page: import("@playwright/test").Page, role = "member") {
   await page
     .getByLabel("Password", { exact: true })
     .fill(fixture.users[role].password);
-  const tokenRequest = page.waitForRequest(r => r.url().includes("/auth/v1/token"));
+  const tokenRequest = page.waitForRequest((r) =>
+    r.url().includes("/auth/v1/token"),
+  );
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   expect(new URL((await tokenRequest).url()).origin).toBe(fixture.api);
   await page.waitForURL("**/dashboard", { timeout: 30000 });
@@ -38,11 +46,9 @@ test("roleless member submits on narrow mobile viewport and duplicates all attac
       .evaluate((e) => e.scrollWidth <= window.innerWidth),
   ).toBe(true);
   await page.locator("#ministryId").selectOption(fixture.team);
-  await page
-    .locator('[id="receipt-0-category"]')
-    .selectOption({
-      label: "Member care (flowers, wreaths, hospital visits, condolence)",
-    });
+  await page.locator('[id="receipt-0-category"]').selectOption({
+    label: "Member care (flowers, wreaths, hospital visits, condolence)",
+  });
   await expect(page.getByLabel("Who was it for? *")).toBeVisible();
   await page.locator('[id="receipt-0-beneficiary"]').selectOption("INTERNAL");
   await page
@@ -165,20 +171,109 @@ test("submission does not wait for receipt upload and later attachment is retain
     if (route.request().method() === "POST") await uploadGate;
     await route.continue();
   });
-  await page
-    .locator('input[type="file"][multiple]')
-    .setInputFiles({
-      name: "late-receipt.png",
-      mimeType: "image/png",
-      buffer: Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=",
-        "base64",
-      ),
-    });
+  await page.locator('input[type="file"][multiple]').setInputFiles({
+    name: "late-receipt.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=",
+      "base64",
+    ),
+  });
   await page.getByRole("button", { name: "Submit Claim", exact: true }).click();
   await page.waitForURL(/\/claims\/[a-f0-9-]+$/);
   release!();
   await expect(page.getByText("late-receipt.png", { exact: true })).toBeVisible(
     { timeout: 15000 },
   );
+});
+
+test("JomPAY downloads the supplied B1 layout and records upload without completing payment", async ({
+  page,
+}) => {
+  await login(page, "finance");
+  const client = createClient(fixture.api, fixture.anon, {
+    auth: { persistSession: false },
+  });
+  await client.auth.signInWithPassword(fixture.users.finance);
+  const getBatch = async () => {
+    const r = await client.rpc("nlcc_snapshot");
+    expect(r.error).toBeNull();
+    return r.data.reimbursementBatches.find(
+      (b: { id: string }) => b.id === fixture.jompayBatch,
+    );
+  };
+  const original = await getBatch();
+  expect(original.instructions).toHaveLength(2);
+  const claimIds = original.instructions.flatMap(
+    (i: { claims: { claim_id: string }[] }) => i.claims.map((c) => c.claim_id),
+  );
+  await page.goto(`/finance/batches/${fixture.jompayBatch}`);
+  await expect(
+    page.getByRole("heading", { name: "Bank file and upload" }),
+  ).toBeVisible();
+  const downloadEvent = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download JomPAY XLSX" }).click();
+  const download = await downloadEvent;
+  await download.saveAs("/private/tmp/hg-jompay-template-work/export.xlsx");
+  expect(download.suggestedFilename()).toMatch(/\.xlsx$/);
+  const path = await download.path();
+  const bytes = readFileSync(path!);
+  const wb = XLSX.read(bytes, { type: "buffer", cellNF: true });
+  expect(wb.SheetNames).toEqual(["Sheet1"]);
+  expect(wb.Sheets.Sheet1["!ref"]).toBe("A1:G3");
+  expect(wb.Sheets.Sheet1.A2).toMatchObject({ t: "s", v: "000999", z: "@" });
+  expect(wb.Sheets.Sheet1.B2).toMatchObject({ t: "s", v: "0000888", z: "@" });
+  expect(wb.Sheets.Sheet1.D2.t).toBe("s");
+  expect(wb.Sheets.Sheet1.D2.v).toMatch(/^\d+\.\d{2}$/);
+  const exported = await getBatch();
+  expect(exported.exported_file_hash_sha256).toBe(
+    createHash("sha256").update(bytes).digest("hex"),
+  );
+  expect(exported.status).toBe("EXPORTED");
+  const repeat = await page.request.get(
+    `/api/v1/finance/batches/${fixture.jompayBatch}/export`,
+  );
+  expect(repeat.status()).toBe(200);
+  expect(repeat.headers()["x-template-version"]).toBe("JOMPAY_BULK_B1_XLSX_V1");
+  expect((await repeat.body()).equals(bytes)).toBe(true);
+  await page
+    .getByLabel("Bank upload reference", { exact: true })
+    .fill("LOCAL-BROWSER-JOMPAY");
+  await page
+    .getByRole("button", { name: "Record Bank Upload", exact: true })
+    .click();
+  await expect(
+    page.getByText("Bank upload recorded: LOCAL-BROWSER-JOMPAY", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  expect((await getBatch()).status).toBe("SUBMITTED_TO_BANK");
+  for (const id of claimIds) {
+    const r = await client.rpc("nlcc_claim_detail", { p_claim_id: id });
+    expect(r.data.claim.status).toBe("APPROVED_FOR_PAYMENT");
+  }
+  await page
+    .getByLabel("Payment confirmation reference", { exact: true })
+    .fill("LOCAL-COMPLETION-ONLY");
+  await page
+    .getByRole("button", { name: "Confirm Processed", exact: true })
+    .first()
+    .click();
+  await expect
+    .poll(
+      async () =>
+        (await getBatch()).instructions.filter(
+          (i: { status: string }) => i.status === "PAID",
+        ).length,
+    )
+    .toBe(1);
+  const reconciled = await getBatch();
+  const completed = reconciled.instructions.find(
+    (i: { status: string }) => i.status === "PAID",
+  );
+  const paid = await client.rpc("nlcc_claim_detail", {
+    p_claim_id: completed.claims[0].claim_id,
+  });
+  expect(paid.data.claim.status).toBe("PAID");
+  expect(paid.data.claim.payment.payment_method).toBe("JOMPAY");
 });
