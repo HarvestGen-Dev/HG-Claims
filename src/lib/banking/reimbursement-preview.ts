@@ -216,6 +216,7 @@ export function sanitizeSpreadsheetText(value?: string | null, maxLength = 140):
  */
 export function evaluateClaimForReimbursement(claim: Claim): ClaimEligibilityEvaluation {
   const blockers: string[] = [];
+  if (claim.payee_payment_method === "JOMPAY") blockers.push("Use a separate JomPAY batch for this bill.");
 
   if (claim.status !== "APPROVED_FOR_PAYMENT" && claim.status !== "APPROVED") {
     blockers.push(`Claim status is ${claim.status} (must be APPROVED_FOR_PAYMENT).`);

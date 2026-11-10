@@ -37,6 +37,7 @@ export function ReceiptUploader({
 }: ReceiptUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [previewItem, setPreviewItem] = useState<ClaimAttachment | null>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -140,6 +141,7 @@ export function ReceiptUploader({
         </p>
       </div>
 
+      {!disabled && <div><input type="file" accept="image/*" capture="environment" ref={cameraRef} className="hidden" onChange={e=>handleFiles(e.target.files)} /><button type="button" onClick={()=>cameraRef.current?.click()} className="min-h-11 border rounded-lg px-4 text-sm">Take a photo</button></div>}
       {!disabled && (
         <div
           role="button"

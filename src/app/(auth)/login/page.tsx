@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
 import { Alert } from "@/components/ui/alert";
@@ -8,24 +8,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
+import { isOnboardingCompleted } from "@/lib/auth/permissions";
 
 export default function LoginPage() {
-  const { login, isAuthenticated, isLoading, error: authError } = useAuth();
-  const router = useRouter();
+  const { login, user, isAuthenticated, isLoading, error: authError } = useAuth();
+  const redirecting = useRef(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const expired = useSearchParams().get("expired") === "1";
   useEffect(() => {
-    if (!isLoading && isAuthenticated) window.location.assign("/dashboard");
-  }, [isLoading, isAuthenticated]);
+    if (!isLoading && !busy && isAuthenticated && !redirecting.current) {
+      redirecting.current = true;
+      window.location.assign(isOnboardingCompleted(user) ? "/dashboard" : "/onboarding");
+    }
+  }, [isLoading, isAuthenticated, busy, user]);
   async function signIn(address: string) {
     setBusy(true);
     setError("");
     try {
-      if (await login(address, password)) window.location.assign("/dashboard");
-      else setError("Email or password is incorrect.");
+      if (!(await login(address, password))) setError("Email or password is incorrect.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to sign in. Please try again.");
     } finally { setBusy(false); }

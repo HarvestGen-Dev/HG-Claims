@@ -33,7 +33,7 @@ export function PaymentModal({
   const today = new Date().toISOString().split("T")[0];
   const [paymentDate, setPaymentDate] = useState(today);
   const [paymentRef, setPaymentRef] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("BANK_TRANSFER");
+  const [paymentMethod, setPaymentMethod] = useState<string>(claim?.payee_payment_method || "BANK_TRANSFER");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -78,7 +78,7 @@ export function PaymentModal({
             <Banknote className="w-5 h-5" />
           </div>
           <div>
-            <DialogTitle>Record Payment & Mark as Paid</DialogTitle>
+            <DialogTitle>Record Payment & Confirm Payment Completion</DialogTitle>
             <DialogDescription>
               Claim {claim.claim_number} &middot; Total: <strong className="text-emerald-700">{formatCurrency(claim.total_amount)}</strong>
             </DialogDescription>
@@ -150,7 +150,7 @@ export function PaymentModal({
               onChange={(e) => setPaymentMethod(e.target.value)}
               className="w-full"
             >
-              <option value="BANK_TRANSFER">Bank Online Transfer (IBG / DuitNow)</option>
+              <option value="JOMPAY">JomPAY</option><option value="BANK_TRANSFER">Bank Online Transfer (IBG / DuitNow)</option>
               <option value="CHEQUE">Cheque</option>
               <option value="CASH">Cash Voucher</option>
               <option value="ONLINE_BANKING">Direct Bill Payment</option>
@@ -200,7 +200,7 @@ export function PaymentModal({
           disabled={loading || !paymentRef.trim()}
           className="bg-zinc-900 hover:bg-zinc-800 text-white"
         >
-          {loading ? "Processing..." : "Confirm & Mark as Paid"}
+          {loading ? "Processing..." : "Confirm & Confirm Payment Completion"}
         </Button>
       </DialogFooter>
     </Dialog>

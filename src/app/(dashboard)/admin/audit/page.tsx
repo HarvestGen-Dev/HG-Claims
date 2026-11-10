@@ -4,15 +4,19 @@ import React, { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { notificationClient, workspaceStore } from "@/lib/domains";
+import { useAuth } from "@/lib/auth/context";
 import { AuditLog } from "@/lib/types/database";
 import { formatDateTime } from "@/lib/utils/formatters";
 import { History, Search, ShieldCheck } from "lucide-react";
 
 export default function AuditTrailPage() {
+  const { hasRole, isLoading } = useAuth();
+  const isAdmin = hasRole("FINANCE");
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
+    if (!isAdmin) return;
     const sync = () => {
       setLogs(notificationClient.getAuditLogs());
     };
@@ -21,7 +25,21 @@ export default function AuditTrailPage() {
       void workspaceStore.refreshDomain("/api/v1/notifications").catch(() => {});
     }
     return workspaceStore.subscribeDomains(["notifications"], sync);
-  }, []);
+  }, [isAdmin]);
+
+  if (!isLoading && !isAdmin) {
+    return (
+      <AppLayout>
+        <div className="max-w-md mx-auto py-12 text-center space-y-3">
+          <ShieldCheck className="w-10 h-10 text-rose-500 mx-auto" />
+          <h2 className="text-lg font-bold text-zinc-900">Access Restricted</h2>
+          <p className="text-xs text-zinc-500">
+            The security audit trail is available to Finance.
+          </p>
+        </div>
+      </AppLayout>
+    );
+  }
 
   const filtered = logs.filter((l) => {
     if (!search.trim()) return true;

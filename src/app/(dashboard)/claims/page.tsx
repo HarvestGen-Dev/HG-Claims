@@ -125,7 +125,7 @@ function ClaimsContent() {
     { label: "Finance", value: "PENDING_FINANCE_REVIEW" },
     { label: "Returned", value: "RETURNED_FOR_CLARIFICATION" },
     { label: "Approved", value: "APPROVED" },
-    { label: "Paid", value: "PAID" },
+    { label: "Processed", value: "PAID" },
     { label: "Rejected", value: "REJECTED" },
     { label: "Cancelled", value: "CANCELLED" },
   ];
@@ -223,7 +223,7 @@ function ClaimsContent() {
                     <th className="py-2.5 px-4">Claimant</th>
                     <th className="py-2.5 px-4">Submitter</th>
                     <th className="py-2.5 px-4">Date</th>
-                    <th className="py-2.5 px-4">Ministry & Purpose</th>
+                    <th className="py-2.5 px-4">Team & Purpose</th>
                     <th className="py-2.5 px-4 text-center">Receipts</th>
                     <th className="py-2.5 px-4">Disbursement Voucher</th>
                     <th className="py-2.5 px-4 text-right">Amount (RM)</th>

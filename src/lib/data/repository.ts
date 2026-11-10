@@ -44,7 +44,7 @@ class Repository {
     return iamClient.getSignupInvitations();
   }
   createSignupInvitation(data: {
-    role_code: RoleCode;
+    role_code: RoleCode | null;
     ministry_id?: string | null;
     max_uses?: number;
     expires_in_days?: number;

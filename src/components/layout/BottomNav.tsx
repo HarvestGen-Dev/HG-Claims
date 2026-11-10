@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Bell,
 } from "lucide-react";
+import { canUserApproveClaim } from "@/lib/auth/permissions";
 import { useAuth } from "@/lib/auth/context";
 import { canUserCreateClaim } from "@/lib/auth/permissions";
 import { claimsClient, notificationClient, workspaceStore } from "@/lib/domains";
@@ -29,16 +30,7 @@ export function BottomNav() {
     const updateBadges = () => {
       const all = claimsClient.getClaims(user);
 
-      const pendingApprovals = all.filter((c) => {
-        const isSubmitterOrClaimant = c.claimant_id === user.id || c.submitted_by_user_id === user.id;
-        const isFinanceOrAdmin = user.roles?.includes("SYSTEM_ADMIN") || user.roles?.includes("FINANCE_OFFICER");
-        if (isSubmitterOrClaimant && !isFinanceOrAdmin) return false;
-        const currentStep = c.workflow_steps?.find((s) => s.status === "IN_PROGRESS");
-        if (!currentStep) return false;
-        if (user.roles?.includes("SYSTEM_ADMIN")) return true;
-        if (currentStep.approver_role === "FINANCE_OFFICER" && user.roles?.includes("FINANCE_OFFICER")) return true;
-        return false;
-      }).length;
+      const pendingApprovals = all.filter(c => canUserApproveClaim(user,c)).length;
       setApprovalsCount(pendingApprovals);
 
       const pendingFinance = all.filter(
@@ -60,7 +52,7 @@ export function BottomNav() {
 
   const isFinance = hasRole("FINANCE_OFFICER");
   const isAdmin = hasRole("SYSTEM_ADMIN");
-  const isApprover = isFinance || isAdmin;
+  const isApprover = isFinance || isAdmin || hasRole("TEAM_LEAD");
   const canCreate = canCreateClaim() || canUserCreateClaim(user);
 
   const isTabActive = (href: string, exact = false) => {

@@ -324,9 +324,9 @@ describe("Comprehensive NLCC System & Workflow Test Suite", () => {
   });
 
   describe("6. Sign-up Invitation Constraints & Role Locking", () => {
-    it("should prevent non-admin from creating invitations", () => {
+    it("restricts invitations to Finance", () => {
       expect(canUserManageSystem(leader)).toBe(false);
-      expect(canUserManageSystem(finance)).toBe(false);
+      expect(canUserManageSystem(finance)).toBe(true);
       expect(canUserManageSystem(admin)).toBe(true);
     });
 

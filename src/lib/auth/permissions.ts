@@ -1,36 +1,35 @@
 import { Profile, Claim, RoleCode, Ministry } from "@/lib/types/database";
 
+export function isFinance(user: Profile | null | undefined): boolean {
+  return !!user && user.status === "ACTIVE" && Boolean(user.roles?.some(r =>
+    ["FINANCE", "FINANCE_OFFICER", "SYSTEM_ADMIN"].includes(r)));
+}
+
 export function userHasRole(user: Profile | null | undefined, role: RoleCode): boolean {
-  if (!user || user.status !== "ACTIVE" || !user.roles) return false;
-  if (user.roles.includes("SYSTEM_ADMIN")) return true;
-  return user.roles.includes(role);
+  if (!user || user.status !== "ACTIVE") return false;
+  if (["FINANCE", "FINANCE_OFFICER", "SYSTEM_ADMIN"].includes(role)) return isFinance(user);
+  return Boolean(user.roles?.includes(role));
 }
 
 export function canUserCreateClaim(user: Profile | null | undefined): boolean {
-  if (!user || user.status !== "ACTIVE" || !user.roles) return false;
-  return (
-    user.roles.includes("CLAIMANT") ||
-    user.roles.includes("TEAM_LEAD") ||
-    user.roles.includes("FINANCE_OFFICER") ||
-    user.roles.includes("SYSTEM_ADMIN")
-  );
+  return !!user && user.status === "ACTIVE" && !user.is_payee_only;
 }
 
 export function canUserViewMinistryBudget(
   user: Profile | null | undefined,
   ministry?: Ministry | null
 ): boolean {
-  if (!user || user.status !== "ACTIVE" || !user.roles) return false;
-  if (user.roles.includes("SYSTEM_ADMIN") || user.roles.includes("FINANCE_OFFICER")) return true;
-  if (user.roles.includes("TEAM_LEAD") && ministry) {
+  if (!user || user.status !== "ACTIVE") return false;
+  if (isFinance(user)) return true;
+  if (user.roles?.includes("TEAM_LEAD") && ministry) {
     return Boolean(ministry.team_lead_ids?.includes(user.id));
   }
   return false;
 }
 
 export function canUserManageMinistryBudget(user: Profile | null | undefined): boolean {
-  if (!user || user.status !== "ACTIVE" || !user.roles) return false;
-  return user.roles.includes("SYSTEM_ADMIN") || user.roles.includes("FINANCE_OFFICER");
+  if (!user || user.status !== "ACTIVE") return false;
+  return isFinance(user);
 }
 
 export function isClaimSubmitter(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
@@ -39,24 +38,21 @@ export function isClaimSubmitter(user: Profile | null | undefined, claim: Claim 
 }
 
 export function canUserReviewClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
-  if (!user || !claim || user.status !== "ACTIVE" || !user.roles) return false;
+  if (!user || !claim || user.status !== "ACTIVE") return false;
 
-  // Must be Finance Officer or System Admin
-  const isFinanceOrAdmin = user.roles.includes("FINANCE_OFFICER") || user.roles.includes("SYSTEM_ADMIN");
-  if (!isFinanceOrAdmin) return false;
-
-  // Finance officers and system administrators can review their own claims
-  return true;
+  if (isFinance(user) && claim.status === "PENDING_FINANCE_REVIEW") return true;
+  const team = claim.ministry;
+  return claim.status === "PENDING_MINISTRY_APPROVAL" &&
+    !!team && !!user.roles?.includes("TEAM_LEAD") &&
+    !!team.team_lead_ids?.includes(user.id) && !isClaimSubmitter(user, claim);
 }
 
 export function canUserApproveClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
-  if (!canUserReviewClaim(user, claim)) return false;
-  if (!claim) return false;
-  return claim.status === "PENDING_FINANCE_REVIEW";
+  return canUserReviewClaim(user, claim);
 }
 
 export function canUserReturnClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
-  return canUserApproveClaim(user, claim);
+  return canUserApproveClaim(user, claim) || (isFinance(user) && claim?.status === "APPROVED_FOR_PAYMENT" && !claim.active_batch_id && !claim.payment);
 }
 
 export function canUserRejectClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
@@ -66,26 +62,26 @@ export function canUserRejectClaim(user: Profile | null | undefined, claim: Clai
 export function canUserEditClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
   if (!user || !claim || user.status !== "ACTIVE") return false;
   // Submitter can edit only if DRAFT or RETURNED_FOR_CLARIFICATION
-  if (isClaimSubmitter(user, claim) && (claim.status === "DRAFT" || claim.status === "RETURNED_FOR_CLARIFICATION")) {
+  if ((isClaimSubmitter(user, claim) || (isFinance(user) && claim.recurring_schedule_id)) && (claim.status === "DRAFT" || claim.status === "RETURNED_FOR_CLARIFICATION")) {
     return true;
   }
   return false;
 }
 
 export function canUserRecordPayment(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
-  if (!user || !claim || user.status !== "ACTIVE" || !user.roles) return false;
+  if (!user || !claim || user.status !== "ACTIVE") return false;
   if (claim.status !== "APPROVED_FOR_PAYMENT") return false;
-  return user.roles.includes("FINANCE_OFFICER") || user.roles.includes("SYSTEM_ADMIN");
+  return isFinance(user);
 }
 
 export function canUserVerifyClaim(user: Profile | null | undefined, claim: Claim | null | undefined): boolean {
   if (!user || !claim || !canUserReviewClaim(user, claim)) return false;
-  return claim.status === "PENDING_FINANCE_REVIEW";
+  return isFinance(user) && claim.status === "PENDING_FINANCE_REVIEW";
 }
 
 export function canUserManageSystem(user: Profile | null | undefined): boolean {
-  if (!user || user.status !== "ACTIVE" || !user.roles) return false;
-  return user.roles.includes("SYSTEM_ADMIN");
+  if (!user || user.status !== "ACTIVE") return false;
+  return isFinance(user);
 }
 
 export function canUserViewClaim(
@@ -93,14 +89,26 @@ export function canUserViewClaim(
   claim: Claim | null | undefined,
   ministry?: Ministry | null
 ): boolean {
-  if (!user || !claim || user.status !== "ACTIVE" || !user.roles) return false;
-  if (user.roles.includes("SYSTEM_ADMIN")) return true;
-  if (user.roles.includes("FINANCE_OFFICER")) return true;
-  if (isClaimSubmitter(user, claim) || claim.claimant_id === user.id) return true;
-  if (user.roles.includes("TEAM_LEAD") && ministry && ministry.id === claim.ministry_id) {
+  if (!user || !claim || user.status !== "ACTIVE") return false;
+  if (isFinance(user)) return true;
+  if (isClaimSubmitter(user, claim)) return true;
+  if (user.roles?.includes("TEAM_LEAD") && ministry && ministry.id === claim.ministry_id) {
     return Boolean(ministry.team_lead_ids?.includes(user.id));
   }
   return false;
+}
+
+export function canUserViewReportsAndBatches(user: Profile | null | undefined): boolean {
+  return isFinance(user);
+}
+
+export function isAuditorOnly(user: Profile | null | undefined): boolean {
+  if (!user || !user.roles) return false;
+  return (
+    user.roles.includes("AUDITOR") &&
+    !user.roles.includes("SYSTEM_ADMIN") &&
+    !user.roles.includes("FINANCE_OFFICER")
+  );
 }
 
 export function isRealFullName(name?: string | null, email?: string | null): boolean {

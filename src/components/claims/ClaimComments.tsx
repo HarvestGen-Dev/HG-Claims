@@ -29,7 +29,7 @@ export function ClaimComments({
   const visibleComments = (comments || []).filter(c => {
     if (c.visibility === "PUBLIC_WORKFLOW") return true;
     if (c.visibility === "FINANCE_INTERNAL") {
-      return currentUser?.roles?.includes("FINANCE_OFFICER") || currentUser?.roles?.includes("SYSTEM_ADMIN");
+      return currentUser?.roles?.includes("FINANCE") || currentUser?.roles?.includes("FINANCE_OFFICER") || currentUser?.roles?.includes("SYSTEM_ADMIN");
     }
     return false;
   });

@@ -17,7 +17,7 @@ import { formatRole, roleLabels } from "@/lib/auth/roles";
 import type { Profile, RoleCode, SignupInvitation } from "@/lib/types/database";
 import { showToast } from "@/lib/utils/toast";
 
-const roles = Object.keys(roleLabels) as RoleCode[];
+const roles: RoleCode[] = ["TEAM_LEAD", "FINANCE"];
 const field = "space-y-1.5";
 const form = "space-y-4 text-sm";
 const row = "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 px-4 py-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_7.5rem_13rem] md:items-center md:gap-4 md:px-5";
@@ -28,7 +28,7 @@ const rowActions = "table-actions col-span-2 w-fit md:col-span-1 md:justify-self
 function RoleOptions({ value, onChange }: { value: RoleCode[]; onChange: (roles: RoleCode[]) => void }) {
   return (
     <fieldset className="space-y-1.5">
-      <legend className="mb-1 font-medium">Roles</legend>
+      <legend className="mb-1 font-medium">Additional roles (optional)</legend><p className="text-sm text-muted-foreground">Every member can submit and track their own claims.</p>
       {roles.map((role) => (
         <label key={role} className="flex min-h-8 cursor-pointer items-center gap-2.5">
           <Checkbox
@@ -63,7 +63,7 @@ function UserList({ profiles, onEdit, onStatus }: {
                 <p className="mt-0.5 text-sm text-muted-foreground">{profile.email}</p>
               </div>
               <div className="text-sm">
-                <p>{profile.roles?.length ? profile.roles.map(formatRole).join(", ") : profile.is_payee_only ? "Saved payee" : "No role"}</p>
+                <p>{profile.roles?.length ? profile.roles.map(formatRole).join(", ") : profile.is_payee_only ? "Saved payee" : "Member"}</p>
               </div>
               <div className={rowStatus}>
                 <Badge variant={active ? profile.onboarding_completed_at ? "success" : "warning" : "secondary"}>
@@ -92,8 +92,8 @@ export default function UserManagementPage() {
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
   const [deletingInvite, setDeletingInvite] = useState<SignupInvitation | null>(null);
   const [email, setEmail] = useState("");
-  const [selectedRoles, setSelectedRoles] = useState<RoleCode[]>(["CLAIMANT"]);
-  const [inviteRole, setInviteRole] = useState<RoleCode>("CLAIMANT");
+  const [selectedRoles, setSelectedRoles] = useState<RoleCode[]>([]);
+  const [inviteRole, setInviteRole] = useState<RoleCode | "">("");
   const [maxUses, setMaxUses] = useState("1");
   const [expiresDays, setExpiresDays] = useState(7);
   const [description, setDescription] = useState("");
@@ -136,12 +136,12 @@ export default function UserManagementPage() {
 
   function openEmail() {
     setEmail("");
-    setSelectedRoles(["CLAIMANT"]);
+    setSelectedRoles([]);
     openDialog("email");
   }
 
   function openLink() {
-    setInviteRole("CLAIMANT");
+    setInviteRole("");
     setMaxUses("1");
     setExpiresDays(7);
     setDescription("");
@@ -168,10 +168,6 @@ export default function UserManagementPage() {
 
   function sendInvite(event: FormEvent) {
     event.preventDefault();
-    if (!selectedRoles.length) {
-      setError("Choose at least one role.");
-      return;
-    }
     void run(async () => {
       await iamClient.inviteUserByEmail({ email: email.trim(), roles: selectedRoles });
       setActiveTab("users");
@@ -184,7 +180,7 @@ export default function UserManagementPage() {
     event.preventDefault();
     void run(async () => {
       const result = await iamClient.createSignupInvitation({
-        role_code: inviteRole,
+        role_code: inviteRole || null,
         max_uses: Number(maxUses),
         expires_in_days: expiresDays,
         description: description.trim() || undefined,
@@ -199,10 +195,6 @@ export default function UserManagementPage() {
   function saveUser(event: FormEvent) {
     event.preventDefault();
     if (!editingUser) return;
-    if (!selectedRoles.length && !editingUser.is_payee_only) {
-      setError("Choose at least one role.");
-      return;
-    }
     void run(async () => {
       await iamClient.updateProfile(editingUser.id, {
         full_name: editingUser.full_name,
@@ -364,7 +356,7 @@ export default function UserManagementPage() {
                   <div className={field}>
                     <Label htmlFor="link-role">Role</Label>
                     <Select id="link-role" className="w-full" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as RoleCode)}>
-                      {roles.map((role) => <option key={role} value={role}>{roleLabels[role]}</option>)}
+                      <option value="">Member (baseline access)</option>{roles.map((role) => <option key={role} value={role}>{roleLabels[role]}</option>)}
                     </Select>
                   </div>
                   <div className="grid grid-cols-2 gap-3">

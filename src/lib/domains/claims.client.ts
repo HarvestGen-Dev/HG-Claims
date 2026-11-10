@@ -259,7 +259,7 @@ export class ClaimsClient {
         }
         const data = await response.json();
         if (data?.claim && data.claim.id) {
-          workspaceStore.upsertClaim(data.claim as Claim);
+          workspaceStore.upsertClaim({ ...data.claim, classification_changes: data.classification_changes || [] } as Claim);
           return this.getClaimById(id);
         }
         return this.getClaimById(id);
@@ -445,6 +445,10 @@ export class ClaimsClient {
       payload
     );
     return this.getClaimById(result.id)!;
+  }
+
+  async duplicateClaim(id: string, requestKey: string): Promise<{ id: string }> {
+    return workspaceStore.dispatchDomainCommand(CLAIMS_ENDPOINT, "duplicate_claim", { claim_id: id, request_key: requestKey });
   }
 
   async deleteClaim(id: string) {

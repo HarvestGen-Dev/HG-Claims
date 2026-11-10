@@ -9,7 +9,7 @@ import { userHasRole, canUserCreateClaim, canUserApproveClaim, canUserEditClaim,
 
 interface AuthContextType {
   user: Profile | null;
-  activeRole: RoleCode;
+  activeRole: RoleCode | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   isRefreshing: boolean;
@@ -17,7 +17,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
-  setActiveRole: (role: RoleCode) => void;
+  setActiveRole: (role: RoleCode | null) => void;
   hasRole: (role: RoleCode) => boolean;
   canCreateClaim: () => boolean;
   canApprove: (claim: Claim) => boolean;
@@ -30,7 +30,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<Profile | null>(null);
-  const [activeRole, setActiveRole] = useState<RoleCode>("CLAIMANT");
+  const [activeRole, setActiveRole] = useState<RoleCode | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setUser(profile);
-    const primaryRole = (profile?.roles?.[0] as RoleCode) || "CLAIMANT";
+    const primaryRole = (profile?.roles?.find(role => role === "FINANCE" || role === "TEAM_LEAD") as RoleCode) || null;
     setActiveRole(primaryRole);
     setError("");
   }, [expireSession]);
@@ -153,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Onboarding route enforcement
   useEffect(() => {
-    if (isLoading || !user) return;
+    if (isLoading || !user || pathname === "/login") return;
     const onboarded = isOnboardingCompleted(user);
     const isInviteFlow =
       typeof window !== "undefined" &&

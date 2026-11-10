@@ -1,10 +1,12 @@
 import type { RoleCode } from "@/lib/types/database";
 
 export const roleLabels = {
+  FINANCE: "Finance",
   CLAIMANT: "Claimant",
   TEAM_LEAD: "Team Lead",
-  FINANCE_OFFICER: "Finance Officer",
-  SYSTEM_ADMIN: "System Administrator",
+  FINANCE_OFFICER: "Finance",
+  AUDITOR: "Auditor",
+  SYSTEM_ADMIN: "Finance",
 } satisfies Record<RoleCode, string>;
 
 export function formatRole(role: string): string {

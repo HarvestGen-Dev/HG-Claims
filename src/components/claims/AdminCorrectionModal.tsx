@@ -1,151 +1,248 @@
 "use client";
-
-import React, { useState } from "react";
-import { Edit3, AlertCircle } from "lucide-react";
-import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Claim } from "@/lib/types/database";
-
-interface AdminCorrectionModalProps {
+import { Select } from "@/components/ui/select";
+import { masterDataClient, workspaceStore } from "@/lib/domains";
+import { CONTEXT_LABELS, needsBeneficiary } from "@/lib/claims-v2";
+import type { Claim, DirectoryKind } from "@/lib/types/database";
+interface Props {
   open: boolean;
   claim: Claim | null;
-  onConfirm: (data: {
-    purpose?: string;
-    internal_reference?: string;
-    bank_name?: string;
-    bank_account_number?: string;
-    reason: string;
-  }) => Promise<void> | void;
+  onConfirm: (
+    data: Record<string, unknown> & { reason: string },
+  ) => Promise<void> | void;
   onCancel: () => void;
   loading?: boolean;
 }
-
 export function AdminCorrectionModal({
   open,
   claim,
   onConfirm,
   onCancel,
   loading = false,
-}: AdminCorrectionModalProps) {
-  const [internalRef, setInternalRef] = useState(claim?.internal_reference || "");
-  const [purpose, setPurpose] = useState(claim?.purpose || "");
-  const [bankName, setBankName] = useState(claim?.bank_name || "");
-  const [bankAccountNumber, setBankAccountNumber] = useState(claim?.bank_account_number || "");
+}: Props) {
+  const [team, setTeam] = useState(claim?.ministry_id || "");
+  const [kind, setKind] = useState<DirectoryKind | null>(
+    claim?.context_kind || null,
+  );
+  const [valueId, setValueId] = useState(claim?.context_value_id || "");
+  const [name, setName] = useState(claim?.context_name || "");
+  const [items, setItems] = useState(
+    (claim?.expenses || []).map((e) => ({
+      id: e.id,
+      expense_category_id: e.expense_category_id || "",
+      beneficiary_type: e.beneficiary_type || null,
+      description: e.description,
+    })),
+  );
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
-
   if (!claim) return null;
-
-  const handleConfirm = async () => {
-    if (!reason.trim() || reason.trim().length < 5) {
-      setError("Please provide a clear justification for this administrative update (required for audit trail).");
-      return;
-    }
-    setError("");
-    await onConfirm({
-      purpose: purpose.trim() || undefined,
-      internal_reference: internalRef.trim() || undefined,
-      bank_name: bankName.trim() || undefined,
-      bank_account_number: bankAccountNumber.trim() || undefined,
-      reason: reason.trim(),
-    });
-  };
-
+  const teams = masterDataClient.getMinistries(),
+    cats = masterDataClient.getCategories(),
+    values = workspaceStore.getState().managedClaimValues;
   return (
-    <Dialog open={open} onOpenChange={(val) => !val && onCancel()}>
+    <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
       <DialogHeader>
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-            <Edit3 className="w-5 h-5" />
-          </div>
-          <div>
-            <DialogTitle>Administrative Field Correction</DialogTitle>
-            <DialogDescription>
-              Update accounting reference for {claim.claim_number}. This action will be audited.
-            </DialogDescription>
-          </div>
-        </div>
+        <DialogTitle>Edit claim classifications</DialogTitle>
+        <DialogDescription>
+          Each changed field is audited. Return the claim to the submitter if
+          the amount or payee needs correction.
+        </DialogDescription>
       </DialogHeader>
-
-      <div className="space-y-4 my-2 text-xs">
-        <div className="space-y-1">
-          <label className="font-semibold text-zinc-700 dark:text-zinc-300">
-            Internal Accounting Reference Code
-          </label>
-          <Input
-            type="text"
-            placeholder="e.g. YC-2026-SETUP"
-            value={internalRef}
-            onChange={(e) => setInternalRef(e.target.value)}
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="font-semibold text-zinc-700 dark:text-zinc-300">
-            Ministry Purpose / Justification
-          </label>
-          <Textarea
-            rows={2}
-            value={purpose}
-            onChange={(e) => setPurpose(e.target.value)}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <div className="space-y-1">
-            <label className="font-semibold text-zinc-700 dark:text-zinc-300">
-              Claimant Bank Name
-            </label>
-            <Input
-              type="text"
-              placeholder="e.g. Maybank"
-              value={bankName}
-              onChange={(e) => setBankName(e.target.value)}
+      <div className="space-y-4 my-4">
+        <label className="block">
+          Team
+          <Select
+            className="w-full"
+            value={team}
+            onChange={(e) => {
+              setTeam(e.target.value);
+              setKind(
+                teams.find((t) => t.id === e.target.value)?.context_kind ||
+                  null,
+              );
+              setName("");
+              setValueId("");
+            }}
+          >
+            {teams
+              .filter((t) => t.is_active || t.id === team)
+              .map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+          </Select>
+        </label>
+        {!teams.find((t) => t.id === team)?.context_kind && (
+          <label className="flex gap-2">
+            <input
+              type="checkbox"
+              checked={kind === "EVENT"}
+              onChange={(e) => {
+                setKind(e.target.checked ? "EVENT" : null);
+                setName("");
+                setValueId("");
+              }}
             />
-          </div>
-          <div className="space-y-1">
-            <label className="font-semibold text-zinc-700 dark:text-zinc-300">
-              Claimant Bank Account Number
-            </label>
-            <Input
-              type="text"
-              placeholder="e.g. 514012345678"
-              value={bankAccountNumber}
-              onChange={(e) => setBankAccountNumber(e.target.value)}
-              className="font-mono"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          <label className="font-semibold text-zinc-700 dark:text-zinc-300">
-            Reason for Correction (Audited) *
+            This is for an event
           </label>
+        )}
+        {kind && (
+          <label className="block">
+            {CONTEXT_LABELS[kind]}
+            <Select
+              className="w-full"
+              value={valueId || "OTHER"}
+              onChange={(e) => {
+                const v = values.find((v) => v.id === e.target.value);
+                setValueId(v?.id || "");
+                setName(v?.name || "");
+              }}
+            >
+              <option value="OTHER">Other – type the name</option>
+              {values
+                .filter((v) => v.kind === kind && v.is_active)
+                .map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}
+                  </option>
+                ))}
+            </Select>
+            {!valueId && (
+              <Input
+                aria-label={CONTEXT_LABELS[kind]}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            )}
+          </label>
+        )}
+        {items.map((item, index) => (
+          <fieldset key={item.id} className="space-y-3 p-3 border rounded-lg">
+            <legend className="px-2">Item {index + 1}</legend>
+            <label className="block">
+              What was it?
+              <Select
+                className="w-full"
+                value={item.expense_category_id}
+                onChange={(e) =>
+                  setItems(
+                    items.map((x, i) =>
+                      i === index
+                        ? {
+                            ...x,
+                            expense_category_id: e.target.value,
+                            beneficiary_type: null,
+                          }
+                        : x,
+                    ),
+                  )
+                }
+              >
+                {cats
+                  .filter(
+                    (c) => c.is_active || c.id === item.expense_category_id,
+                  )
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+              </Select>
+            </label>
+            {needsBeneficiary(
+              cats.find((c) => c.id === item.expense_category_id),
+            ) && (
+              <label className="block">
+                Who was it for?
+                <Select
+                  className="w-full"
+                  value={item.beneficiary_type || ""}
+                  onChange={(e) =>
+                    setItems(
+                      items.map((x, i) =>
+                        i === index
+                          ? {
+                              ...x,
+                              beneficiary_type: e.target.value as
+                                | "INTERNAL"
+                                | "EXTERNAL",
+                            }
+                          : x,
+                      ),
+                    )
+                  }
+                >
+                  <option value="">Choose</option>
+                  <option value="INTERNAL">Internal</option>
+                  <option value="EXTERNAL">External</option>
+                </Select>
+              </label>
+            )}
+            <label className="block">
+              Description
+              <Textarea
+                value={item.description}
+                onChange={(e) =>
+                  setItems(
+                    items.map((x, i) =>
+                      i === index ? { ...x, description: e.target.value } : x,
+                    ),
+                  )
+                }
+              />
+            </label>
+          </fieldset>
+        ))}
+        <label className="block">
+          Reason for correction
           <Textarea
-            rows={3}
-            placeholder="e.g. Updated internal tracking code per finance reconciliation..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             required
           />
-        </div>
-
-        {error && <p className="text-xs text-rose-600 font-medium">{error}</p>}
+        </label>
+        {error && (
+          <p role="alert" className="text-red-700">
+            {error}
+          </p>
+        )}
       </div>
-
       <DialogFooter>
         <Button variant="outline" onClick={onCancel} disabled={loading}>
           Cancel
         </Button>
         <Button
-          onClick={handleConfirm}
           loading={loading}
-          disabled={loading || !reason.trim()}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          disabled={!reason.trim() || loading}
+          onClick={async () => {
+            if (kind && !name.trim()) {
+              setError(`${CONTEXT_LABELS[kind]} is required.`);
+              return;
+            }
+            setError("");
+            await onConfirm({
+              ministry_id: team,
+              context_kind: kind,
+              context_value_id: valueId || null,
+              context_name: name || null,
+              expenses: items,
+              reason: reason.trim(),
+            });
+          }}
         >
-          {loading ? "Saving..." : "Save Correction"}
+          Save classifications
         </Button>
       </DialogFooter>
     </Dialog>

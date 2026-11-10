@@ -117,13 +117,13 @@ export default function FinancialReportsPage() {
         {/* Filter Bar */}
         <div className="filter-bar grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           <div className="space-y-1">
-            <label htmlFor="reports-select-1" className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">Ministry</label>
+            <label htmlFor="reports-select-1" className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">Team</label>
             <Select id="reports-select-1"
               value={selectedMinistry}
               onChange={(e) => setSelectedMinistry(e.target.value)}
               className="w-full"
             >
-              <option value="ALL">All Ministries</option>
+              <option value="ALL">All Teams</option>
               {ministries.map((m) => (
                 <option key={m.id} value={m.id}>{m.name}</option>
               ))}
@@ -168,7 +168,7 @@ export default function FinancialReportsPage() {
           </div>
 
           <div className="p-3.5 rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-900/80 shadow-2xs">
-            <span className="text-[11px] font-medium text-zinc-500 block mb-1">Disbursed (Paid)</span>
+            <span className="text-[11px] font-medium text-zinc-500 block mb-1">Processed</span>
             <p className="text-xl font-bold font-mono tracking-tight text-emerald-800 dark:text-emerald-400 tabular-nums">{formatCurrency(totalPaid)}</p>
             <span className="text-[10px] text-zinc-400 block mt-0.5">{paidClaims.length} vouchers reimbursed</span>
           </div>
@@ -185,7 +185,7 @@ export default function FinancialReportsPage() {
           <Card className="min-w-0 lg:col-span-12 border-zinc-200/80 shadow-2xs">
             <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                Expenditure by Ministry
+                Expenditure by Team
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4">

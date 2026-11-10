@@ -41,6 +41,10 @@ export async function GET(
     );
   }
 
+  if (batch.payment_method === "JOMPAY") {
+    return NextResponse.json({ error: "The supplied Alliance Bank JomPAY template is unavailable. Bank export is disabled until the actual template is validated." }, { status: 409, headers: NO_STORE_HEADERS });
+  }
+
   if (batch.status === "VOIDED") {
     return NextResponse.json(
       { error: "Cannot export a voided reimbursement batch." },
@@ -62,7 +66,7 @@ export async function GET(
     const rows: BankPaymentInstructionRow[] = instructions.map((inst) => ({
       instructionId: inst.id,
       lineOrder: inst.line_order,
-      paymentMode: inst.payment_mode,
+      paymentMode: inst.payment_mode as "LIP" | "LGP",
       beneficiaryUserId: inst.beneficiary_user_id,
       beneficiaryName: inst.beneficiary_name,
       beneficiaryAccountNumber: inst.beneficiary_account_number,
@@ -87,12 +91,13 @@ export async function GET(
     const safeBatchNum = batch.batch_number.replace(/[^A-Za-z0-9_-]/g, "_");
     const filename = batch.exported_filename || `${safeBatchNum}.xls`;
 
-    await executeRpcCommand("record_batch_export", {
+    const recorded = await executeRpcCommand("record_batch_export", {
       batch_id: batch.id,
       file_hash_sha256: verified.sha256,
       filename,
     });
 
+    if (recorded.error) return NextResponse.json({ error: recorded.error }, { status: recorded.status, headers: NO_STORE_HEADERS });
     return new NextResponse(new Uint8Array(xlsBuffer), {
       status: 200,
       headers: {

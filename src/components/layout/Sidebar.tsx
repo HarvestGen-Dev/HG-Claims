@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   FileSpreadsheet
 } from "lucide-react";
+import { canUserApproveClaim } from "@/lib/auth/permissions";
 import { useAuth } from "@/lib/auth/context";
 import { canUserCreateClaim } from "@/lib/auth/permissions";
 import { claimsClient, workspaceStore } from "@/lib/domains";
@@ -40,16 +41,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
     const updateBadges = () => {
       const all = claimsClient.getClaims(user);
 
-      const pendingApprovals = all.filter(c => {
-        const isSubmitterOrClaimant = c.claimant_id === user.id || c.submitted_by_user_id === user.id;
-        const isFinanceOrAdmin = user.roles?.includes("SYSTEM_ADMIN") || user.roles?.includes("FINANCE_OFFICER");
-        if (isSubmitterOrClaimant && !isFinanceOrAdmin) return false;
-        const currentStep = c.workflow_steps?.find(s => s.status === "IN_PROGRESS");
-        if (!currentStep) return false;
-        if (user.roles?.includes("SYSTEM_ADMIN")) return true;
-        if (currentStep.approver_role === "FINANCE_OFFICER" && user.roles?.includes("FINANCE_OFFICER")) return true;
-        return false;
-      }).length;
+      const pendingApprovals = all.filter(c => canUserApproveClaim(user,c)).length;
       setApprovalsCount(pendingApprovals);
 
       const pendingFinance = all.filter(c =>
@@ -63,7 +55,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   }, [user]);
 
   const isFinance = hasRole("FINANCE_OFFICER") || hasRole("SYSTEM_ADMIN");
-  const isApprover = isFinance;
+  const isAuditor = hasRole("AUDITOR");
+  const isApprover = isFinance || hasRole("TEAM_LEAD");
   const isAdmin = hasRole("SYSTEM_ADMIN");
   const canCreate = canCreateClaim() || canUserCreateClaim(user);
 
@@ -161,15 +154,17 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           </div>
         )}
 
-        {/* Finance */}
-        {isFinance && (
+        {/* Finance / Auditing */}
+        {(isFinance || isAuditor) && (
           <div className="space-y-0.5">
             <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Finance
+              {isFinance ? "Finance" : "Auditing & Reports"}
             </div>
-            {navItem("/finance", "Finance Overview", <Wallet className="w-4 h-4" />, financeCount, true)}
+            {navItem("/finance", isFinance ? "Finance Overview" : "Overview", <Wallet className="w-4 h-4" />, isFinance ? financeCount : undefined, true)}
             {navItem("/finance/claims", "Reimbursements", <Layers className="w-4 h-4" />)}
-            {navItem("/finance/batches", "Bank Batches", <FileSpreadsheet className="w-4 h-4" />)}
+            {navItem("/finance/jompay", "JomPAY bills", <FileSpreadsheet className="w-4 h-4" />)}
+            {navItem("/finance/recurring", "Recurring payments", <FileSpreadsheet className="w-4 h-4" />)}
+            {navItem("/finance/batches", "Disbursement Batches", <FileSpreadsheet className="w-4 h-4" />)}
             {navItem("/finance/reports", "Reports", <BarChart3 className="w-4 h-4" />)}
           </div>
         )}
@@ -181,8 +176,11 @@ export function Sidebar({ onNavigate }: SidebarProps) {
               Admin
             </div>
             {navItem("/admin", "Overview", <ShieldCheck className="w-4 h-4" />, undefined, true)}
+            {navItem("/admin/suppliers", "Suppliers", <Users className="w-4 h-4" />)}
+            {navItem("/admin/categories", "Expense classifications", <Layers className="w-4 h-4" />)}
+            {navItem("/admin/dropdowns", "Dropdown lists", <Layers className="w-4 h-4" />)}
             {navItem("/admin/users", "Users & invitations", <Users className="w-4 h-4" />)}
-            {navItem("/admin/ministries", "Ministries", <Building2 className="w-4 h-4" />)}
+            {navItem("/admin/ministries", "Teams", <Building2 className="w-4 h-4" />)}
             {navItem("/admin/audit", "Audit Trail", <History className="w-4 h-4" />)}
             {navItem("/admin/settings", "Form & Settings", <Settings className="w-4 h-4" />)}
           </div>

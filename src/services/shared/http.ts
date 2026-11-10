@@ -29,9 +29,7 @@ export async function executeRpcCommand(
       console.error("Domain command failed", {
         action,
         code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
+
       });
     }
     return {

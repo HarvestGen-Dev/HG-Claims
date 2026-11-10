@@ -7,6 +7,8 @@ import {
 import type { Claim } from "@/lib/types/database";
 
 export const CLAIMS_ACTIONS = [
+  "attach_receipt",
+  "duplicate_claim",
   "save_draft",
   "submit_claim",
   "delete_claim",

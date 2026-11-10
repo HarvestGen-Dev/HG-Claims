@@ -50,6 +50,7 @@ export class MasterDataService {
     return {
       status: 200,
       data: {
+        managedClaimValues: snapshot.data.managedClaimValues ?? [],
         ministries: snapshot.data.ministries ?? [],
         categories: snapshot.data.categories ?? [],
         costCentres: snapshot.data.costCentres ?? [],

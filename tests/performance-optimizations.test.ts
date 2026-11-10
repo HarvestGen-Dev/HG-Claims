@@ -208,6 +208,8 @@ function buildSyntheticWorkspace(claimCount: number): WorkspaceState {
     auditLogs: [],
     signupInvitations: [],
     reimbursementBatches: [],
+    managedClaimValues: [],
+    recurringPayments: [],
   };
 }
 

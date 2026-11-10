@@ -8,31 +8,31 @@ import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { masterDataClient, iamClient, claimsClient, workspaceStore } from "@/lib/domains";
-import { Ministry, Profile, Claim } from "@/lib/types/database";
+import { Ministry as Team, Profile, Claim } from "@/lib/types/database";
 import { formatCurrency } from "@/lib/utils/formatters";
 import { Building2, Plus, Edit, Trash2, Users, DollarSign, CheckCircle2, AlertCircle } from "lucide-react";
 import { showToast } from "@/lib/utils/toast";
 
-export default function MinistryManagementPage() {
-  const [ministries, setMinistries] = useState<Ministry[]>(masterDataClient.getMinistries());
+export default function TeamManagementPage() {
+  const [ministries, setMinistries] = useState<Team[]>(masterDataClient.getMinistries());
   const [profiles, setProfiles] = useState<Profile[]>(iamClient.getProfiles());
   const [claims, setClaims] = useState<Claim[]>(claimsClient.getClaims());
 
-  const [editingMin, setEditingMin] = useState<Ministry | null>(null);
-  const [deletingMin, setDeletingMin] = useState<Ministry | null>(null);
+  const [editingMin, setEditingMin] = useState<Team | null>(null);
+  const [deletingMin, setDeletingMin] = useState<Team | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Team Leads Modal State
-  const [teamLeadMin, setTeamLeadMin] = useState<Ministry | null>(null);
+  const [teamLeadMin, setTeamLeadMin] = useState<Team | null>(null);
   const [selectedTeamLeadIds, setSelectedTeamLeadIds] = useState<string[]>([]);
   const [isSavingTeamLeads, setIsSavingTeamLeads] = useState(false);
   const [teamLeadSearch, setTeamLeadSearch] = useState("");
 
   // Budget Modal State
   const currentCalendarYear = new Date().getFullYear();
-  const [budgetMin, setBudgetMin] = useState<Ministry | null>(null);
+  const [budgetMin, setBudgetMin] = useState<Team | null>(null);
   const [budgetYear, setBudgetYear] = useState<number>(currentCalendarYear);
   const [budgetAmount, setBudgetAmount] = useState<string>("");
   const [budgetNotes, setBudgetNotes] = useState<string>("");
@@ -43,6 +43,8 @@ export default function MinistryManagementPage() {
     name: "",
     description: "",
     is_active: true,
+    require_team_lead_approval: false,
+    context_kind: "",
   });
   const [error, setError] = useState("");
 
@@ -66,7 +68,7 @@ export default function MinistryManagementPage() {
   }, [profiles]);
 
   // Calculate annual spending for a ministry in a calendar year
-  const getMinistrySpending = (ministryId: string, year: number) => {
+  const getTeamSpending = (ministryId: string, year: number) => {
     const ministryClaims = claims.filter((c) => {
       if (c.ministry_id !== ministryId) return false;
       if (c.status === "REJECTED" || c.status === "CANCELLED" || c.status === "DRAFT") return false;
@@ -88,29 +90,33 @@ export default function MinistryManagementPage() {
       name: "",
       description: "",
       is_active: true,
+    require_team_lead_approval: false,
+    context_kind: "",
     });
     setError("");
     setIsCreating(true);
   };
 
-  const handleOpenEdit = (m: Ministry) => {
+  const handleOpenEdit = (m: Team) => {
     setEditingMin(m);
     setFormData({
       code: m.code,
       name: m.name,
       description: m.description || "",
       is_active: m.is_active,
+      require_team_lead_approval: m.require_team_lead_approval || false,
+      context_kind: m.context_kind || "",
     });
     setError("");
   };
 
-  const handleOpenTeamLeads = (m: Ministry) => {
+  const handleOpenTeamLeads = (m: Team) => {
     setTeamLeadMin(m);
     setSelectedTeamLeadIds(m.team_lead_ids || []);
     setTeamLeadSearch("");
   };
 
-  const handleOpenBudget = (m: Ministry, year = currentCalendarYear) => {
+  const handleOpenBudget = (m: Team, year = currentCalendarYear) => {
     setBudgetMin(m);
     setBudgetYear(year);
     const existing = (m.budgets || []).find((b) => b.year === year);
@@ -121,7 +127,7 @@ export default function MinistryManagementPage() {
   const handleSave = async () => {
     try {
       if (!formData.name.trim() || !formData.code.trim()) {
-        setError("Ministry name and code are required.");
+        setError("Team name and code are required.");
         return;
       }
       setIsSaving(true);
@@ -132,18 +138,22 @@ export default function MinistryManagementPage() {
           name: formData.name.trim(),
           description: formData.description.trim(),
           is_active: formData.is_active,
+          require_team_lead_approval: formData.require_team_lead_approval,
+          context_kind: (formData.context_kind || null) as Team["context_kind"],
         });
         setIsCreating(false);
-        showToast.success("Ministry created successfully.", "Ministry Created");
+        showToast.success("Team created successfully.", "Team Created");
       } else if (editingMin) {
         await masterDataClient.updateMinistry(editingMin.id, {
           code: formData.code.trim().toUpperCase(),
           name: formData.name.trim(),
           description: formData.description.trim(),
           is_active: formData.is_active,
+          require_team_lead_approval: formData.require_team_lead_approval,
+          context_kind: (formData.context_kind || null) as Team["context_kind"],
         });
         setEditingMin(null);
-        showToast.success("Changes have been made.", "Ministry Updated");
+        showToast.success("Changes have been made.", "Team Updated");
       }
 
       refresh();
@@ -159,7 +169,7 @@ export default function MinistryManagementPage() {
     try {
       setIsSavingTeamLeads(true);
       await masterDataClient.setMinistryTeamLeads(teamLeadMin.id, selectedTeamLeadIds);
-      showToast.success("Ministry team leads assigned successfully.", "Team Leads Updated");
+      showToast.success("Team team leads assigned successfully.", "Team Leads Updated");
       setTeamLeadMin(null);
       refresh();
     } catch (err) {
@@ -189,11 +199,11 @@ export default function MinistryManagementPage() {
     }
   };
 
-  const handleToggleStatus = async (m: Ministry) => {
+  const handleToggleStatus = async (m: Team) => {
     try {
       await masterDataClient.updateMinistry(m.id, { is_active: !m.is_active });
       refresh();
-      showToast.info(`Ministry status changed to ${!m.is_active ? "Active" : "Inactive"}.`, "Status Updated");
+      showToast.info(`Team status changed to ${!m.is_active ? "Active" : "Inactive"}.`, "Status Updated");
     } catch (err) {
       showToast.error(err instanceof Error ? err.message : "Unable to update status.", "Error");
     }
@@ -204,7 +214,7 @@ export default function MinistryManagementPage() {
     try {
       setIsDeleting(true);
       await masterDataClient.deleteMinistry(deletingMin.id);
-      showToast.success(`Ministry "${deletingMin.name}" deleted successfully.`, "Ministry Deleted");
+      showToast.success(`Team "${deletingMin.name}" deleted successfully.`, "Team Deleted");
       setDeletingMin(null);
       refresh();
     } catch (err) {
@@ -219,12 +229,12 @@ export default function MinistryManagementPage() {
       <div className="space-y-5">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Ministries &amp; Budgets</h1>
-            <p className="text-sm text-muted-foreground">Configure church ministries, assign team leads, and manage annual budgets.</p>
+            <h1 className="text-xl font-bold tracking-tight">Teams</h1>
+            <p className="text-sm text-muted-foreground">Configure church teams and assign Team Leads.</p>
           </div>
           <Button onClick={handleOpenCreate} className="bg-zinc-900 hover:bg-zinc-800 text-white gap-1.5 h-9 text-xs">
             <Plus className="w-3.5 h-3.5" />
-            <span>New Ministry</span>
+            <span>New Team</span>
           </Button>
         </header>
 
@@ -238,7 +248,7 @@ export default function MinistryManagementPage() {
                   .map((id) => profilesById.get(id)?.full_name)
                   .filter(Boolean);
                 const currentBudget = (m.budgets || []).find((b) => b.year === currentCalendarYear);
-                const spending = getMinistrySpending(m.id, currentCalendarYear);
+                const spending = getTeamSpending(m.id, currentCalendarYear);
                 const pct = currentBudget && currentBudget.amount > 0
                   ? Math.min(100, Math.round((spending.totalAmount / currentBudget.amount) * 100))
                   : null;
@@ -349,7 +359,7 @@ export default function MinistryManagementPage() {
                 <thead>
                   <tr className="bg-muted/50 border-b border-border">
                     <th className="py-3 px-4">Code</th>
-                    <th className="py-3 px-4">Ministry</th>
+                    <th className="py-3 px-4">Team</th>
                     <th className="py-3 px-4">Team Leads</th>
                     <th className="py-3 px-4">{currentCalendarYear} Annual Budget & Spend</th>
                     <th className="py-3 px-4 text-center">Status</th>
@@ -362,7 +372,7 @@ export default function MinistryManagementPage() {
                       .map((id) => profilesById.get(id)?.full_name)
                       .filter(Boolean);
                     const currentBudget = (m.budgets || []).find((b) => b.year === currentCalendarYear);
-                    const spending = getMinistrySpending(m.id, currentCalendarYear);
+                    const spending = getTeamSpending(m.id, currentCalendarYear);
                     const pct = currentBudget && currentBudget.amount > 0
                       ? Math.min(100, Math.round((spending.totalAmount / currentBudget.amount) * 100))
                       : null;
@@ -472,7 +482,7 @@ export default function MinistryManagementPage() {
                               onClick={() => setDeletingMin(m)}
                               className="text-xs h-7 px-2 text-red-600 hover:bg-red-50"
                               aria-label={`Delete ${m.name}`}
-                              title="Delete Ministry"
+                              title="Delete Team"
                             >
                               <Trash2 className="w-3 h-3" />
                             </Button>
@@ -498,7 +508,7 @@ export default function MinistryManagementPage() {
           <div className="space-y-3 my-2 text-xs">
             <p className="text-zinc-500">
               Select 0 or more users to serve as Team Leads for <strong className="text-zinc-900">{teamLeadMin.name}</strong>.
-              Team Leads can submit claims on behalf of others and monitor the ministry&rsquo;s annual budget.
+              Team Leads can view team claims and budgets, and review claims when approval is enabled.
             </p>
 
             <Input
@@ -571,7 +581,7 @@ export default function MinistryManagementPage() {
       {budgetMin && (
         <Dialog open={true} onOpenChange={() => !isSavingBudget && setBudgetMin(null)}>
           <DialogHeader>
-            <DialogTitle>Set Ministry Budget: {budgetMin.name}</DialogTitle>
+            <DialogTitle>Set Team Budget: {budgetMin.name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 my-2 text-xs">
             <div className="grid grid-cols-2 gap-3">
@@ -610,7 +620,7 @@ export default function MinistryManagementPage() {
 
             {/* Real-time Spending Calculation Preview */}
             {(() => {
-              const sp = getMinistrySpending(budgetMin.id, budgetYear);
+              const sp = getTeamSpending(budgetMin.id, budgetYear);
               const bAmount = parseFloat(budgetAmount) || 0;
               const remaining = bAmount - sp.totalAmount;
               const pct = bAmount > 0 ? Math.round((sp.totalAmount / bAmount) * 100) : 0;
@@ -683,7 +693,7 @@ export default function MinistryManagementPage() {
       {(isCreating || editingMin) && (
         <Dialog open={true} onOpenChange={() => { setIsCreating(false); setEditingMin(null); }}>
           <DialogHeader>
-            <DialogTitle>{isCreating ? "Create New Ministry" : `Edit Ministry: ${editingMin?.name}`}</DialogTitle>
+            <DialogTitle>{isCreating ? "Create New Team" : `Edit Team: ${editingMin?.name}`}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 my-2 text-xs">
             <div className="grid grid-cols-3 gap-3">
@@ -698,11 +708,11 @@ export default function MinistryManagementPage() {
                 />
               </div>
               <div className="col-span-2 space-y-1">
-                <label className="font-semibold text-slate-700">Ministry Name *</label>
+                <label className="font-semibold text-slate-700">Team Name *</label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. Youth Ministry"
+                  placeholder="e.g. Youth Team"
                   required
                 />
               </div>
@@ -714,10 +724,16 @@ export default function MinistryManagementPage() {
                 rows={2}
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Ministry scope and focus area..."
+                placeholder="Team scope and focus area..."
               />
             </div>
 
+            <label className="block space-y-1">Required team field
+              <select className="w-full rounded-md border p-3 bg-background" value={formData.context_kind} onChange={e => setFormData({...formData,context_kind:e.target.value})}>
+                <option value="">Optional event only</option><option value="SPEAKER">Speaker name</option><option value="EVENT">Event name</option><option value="MISSION">Mission / outreach name</option><option value="MEETING">Meeting / conference name</option>
+              </select>
+            </label>
+            <label className="flex items-start gap-2 py-3"><input type="checkbox" checked={formData.require_team_lead_approval} onChange={e => setFormData({...formData,require_team_lead_approval:e.target.checked})} /><span>Require Team Lead approval<br /><span className="font-normal text-muted-foreground">Assign an active Team Lead first. Their own claims go directly to Finance.</span></span></label>
             <label className="flex items-center gap-2 pt-1 cursor-pointer">
               <input
                 type="checkbox"
@@ -725,7 +741,7 @@ export default function MinistryManagementPage() {
                 onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                 className="rounded text-zinc-900 focus:ring-zinc-900 accent-zinc-900"
               />
-              <span className="font-semibold text-foreground">Ministry Active & Available in Claim Forms</span>
+              <span className="font-semibold text-foreground">Team Active & Available in Claim Forms</span>
             </label>
 
             {error && <p className="text-xs text-red-600 font-medium">{error}</p>}
@@ -735,7 +751,7 @@ export default function MinistryManagementPage() {
               Cancel
             </Button>
             <Button onClick={handleSave} loading={isSaving} disabled={isSaving} className="bg-zinc-900 hover:bg-zinc-800 text-white">
-              {isSaving ? "Saving..." : isCreating ? "Create Ministry" : "Save Changes"}
+              {isSaving ? "Saving..." : isCreating ? "Create Team" : "Save Changes"}
             </Button>
           </DialogFooter>
         </Dialog>
@@ -745,7 +761,7 @@ export default function MinistryManagementPage() {
       {deletingMin && (
         <Dialog open={true} onOpenChange={() => !isDeleting && setDeletingMin(null)}>
           <DialogHeader>
-            <DialogTitle>Delete Ministry</DialogTitle>
+            <DialogTitle>Delete Team</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 my-2 text-xs">
             <p className="text-muted-foreground">
@@ -765,7 +781,7 @@ export default function MinistryManagementPage() {
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
-              {isDeleting ? "Deleting..." : "Delete Ministry"}
+              {isDeleting ? "Deleting..." : "Delete Team"}
             </Button>
           </DialogFooter>
         </Dialog>

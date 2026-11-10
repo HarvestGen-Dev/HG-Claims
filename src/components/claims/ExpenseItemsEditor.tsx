@@ -5,7 +5,9 @@ import dynamic from "next/dynamic";
 import { Plus, Trash2, Copy, UploadCloud, FileText, Image as ImageIcon, File, Eye, X, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ClaimAttachment } from "@/lib/types/database";
+import { needsBeneficiary } from "@/lib/claims-v2";
+import { Select } from "@/components/ui/select";
+import { ExpenseCategory, ClaimAttachment } from "@/lib/types/database";
 import { formatCurrency, formatFileSize } from "@/lib/utils/formatters";
 import { calculateTotalAmount } from "@/lib/utils/calculations";
 import { saveReceipt } from "@/lib/data/receipts";
@@ -33,6 +35,8 @@ export interface ExpenseItemDraft {
   expense_date: string;
   expense_category_id?: string | null;
   vendor?: string;
+  invoice_number?: string;
+  beneficiary_type?: "INTERNAL" | "EXTERNAL" | null;
   description: string;
   amount: number | string;
   notes?: string;
@@ -42,7 +46,7 @@ export interface ExpenseItemDraft {
 
 interface ExpenseItemsEditorProps {
   expenses: ExpenseItemDraft[];
-  categories?: any[];
+  categories?: ExpenseCategory[];
   userId: string;
   onChange: (items: ExpenseItemDraft[]) => void;
   disabled?: boolean;
@@ -50,6 +54,7 @@ interface ExpenseItemsEditorProps {
 }
 
 interface ExpenseReceiptCardProps {
+  categories: ExpenseCategory[];
   item: ExpenseItemDraft;
   index: number;
   canDelete: boolean;
@@ -79,6 +84,7 @@ function getFileIcon(mime: string, name: string) {
 
 const ExpenseReceiptCard = React.memo(function ExpenseReceiptCard({
   item,
+  categories,
   index,
   canDelete,
   disabled,
@@ -115,7 +121,7 @@ const ExpenseReceiptCard = React.memo(function ExpenseReceiptCard({
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-              Receipt required
+              Optional attachment
             </span>
           )}
         </div>
@@ -167,7 +173,7 @@ const ExpenseReceiptCard = React.memo(function ExpenseReceiptCard({
         {/* Description */}
         <div className="md:col-span-6 space-y-1">
           <label htmlFor={`receipt-${index}-description`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-            Item Description *
+            Description (required for Other)
           </label>
           <Input
             type="text"
@@ -177,7 +183,7 @@ const ExpenseReceiptCard = React.memo(function ExpenseReceiptCard({
             disabled={disabled}
             onChange={(e) => onUpdateField(index, "description", e.target.value)}
             className="h-8 text-xs bg-zinc-50/50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
-            required
+            required={categories.find(c => c.id === item.expense_category_id)?.code === "V2_OTHER"}
           />
         </div>
 
@@ -205,21 +211,21 @@ const ExpenseReceiptCard = React.memo(function ExpenseReceiptCard({
           </div>
         </div>
 
-        {/* Notes */}
-        <div className="md:col-span-12 space-y-1">
-          <label htmlFor={`receipt-${index}-notes`} className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
-            Notes
-          </label>
-          <Input
-            type="text"
-            placeholder="e.g. 12 setup volunteers"
-            id={`receipt-${index}-notes`}
-            value={item.notes || ""}
-            disabled={disabled}
-            onChange={(e) => onUpdateField(index, "notes", e.target.value)}
-            className="h-8 text-xs bg-zinc-50/50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
-          />
+        <div className="md:col-span-6 space-y-1">
+          <label htmlFor={`receipt-${index}-category`} className="block font-medium">What was it? *</label>
+          <Select id={`receipt-${index}-category`} value={item.expense_category_id || ""} disabled={disabled} onChange={e => onUpdateField(index, "expense_category_id", e.target.value)} required>
+            <option value="">Choose an expense type</option>
+            {categories.filter(c => (c.is_active && c.code.startsWith("V2_")) || c.id === item.expense_category_id).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </Select>
         </div>
+        {needsBeneficiary(categories.find(c => c.id === item.expense_category_id)) && <div className="md:col-span-6 space-y-1">
+          <label htmlFor={`receipt-${index}-beneficiary`} className="block font-medium">Who was it for? *</label>
+          <Select id={`receipt-${index}-beneficiary`} value={item.beneficiary_type || ""} disabled={disabled} onChange={e => onUpdateField(index,"beneficiary_type",e.target.value)} required>
+            <option value="">Choose</option><option value="INTERNAL">Internal</option><option value="EXTERNAL">External</option>
+          </Select>
+        </div>}
+        <div className="md:col-span-6 space-y-1"><label htmlFor={`receipt-${index}-vendor`}>Supplier / merchant (optional)</label><Input id={`receipt-${index}-vendor`} value={item.vendor || ""} disabled={disabled} onChange={e => onUpdateField(index,"vendor",e.target.value)} /></div>
+        <div className="md:col-span-6 space-y-1"><label htmlFor={`receipt-${index}-invoice`}>Receipt / invoice number (optional)</label><Input id={`receipt-${index}-invoice`} value={item.invoice_number || ""} disabled={disabled} onChange={e => onUpdateField(index,"invoice_number",e.target.value)} /></div>
       </div>
 
       {/* Embedded Receipt Uploader Section */}
@@ -339,7 +345,7 @@ const ExpenseReceiptCard = React.memo(function ExpenseReceiptCard({
 
 export function ExpenseItemsEditor({
   expenses,
-  categories: _categories,
+  categories = [],
   userId,
   onChange,
   disabled = false,
@@ -410,7 +416,7 @@ export function ExpenseItemsEditor({
     const existing = current[index];
     if (!existing || existing[field] === value) return;
     const updated = [...current];
-    updated[index] = { ...existing, [field]: value };
+    updated[index] = { ...existing, [field]: value, ...(field === "expense_category_id" ? { beneficiary_type: null } : {}) };
     onChangeRef.current(updated);
   }, []);
 
@@ -548,6 +554,7 @@ export function ExpenseItemsEditor({
           <ExpenseReceiptCard
             key={item.id || item.temp_id || idx}
             item={item}
+            categories={categories}
             index={idx}
             canDelete={canDelete}
             disabled={disabled}
