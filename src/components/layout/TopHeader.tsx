@@ -1,6 +1,6 @@
 "use client";
 
-import { formatRole } from "@/lib/auth/roles";
+import { currentUserRoles, formatRole } from "@/lib/auth/roles";
 
 import React, { useState, useRef, useEffect } from "react";
 import {
@@ -24,6 +24,7 @@ interface TopHeaderProps {
 
 export function TopHeader({ onToggleMobileMenu, mobileMenuOpen = false }: TopHeaderProps) {
   const { user, logout } = useAuth();
+  const displayedRoles = currentUserRoles(user?.roles);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -106,7 +107,7 @@ export function TopHeader({ onToggleMobileMenu, mobileMenuOpen = false }: TopHea
             </div>
             <div className="hidden md:flex flex-col text-left leading-tight">
               <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">{user?.full_name}</span>
-              <span className="text-[10px] text-zinc-400">{formatRole(user?.roles?.[0] || "")}</span>
+              <span className="text-[10px] text-zinc-400">{displayedRoles.length ? displayedRoles.map(formatRole).join(", ") : "Member"}</span>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-zinc-400 hidden sm:inline" />
           </button>
@@ -118,7 +119,7 @@ export function TopHeader({ onToggleMobileMenu, mobileMenuOpen = false }: TopHea
                 <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">{user?.full_name}</p>
                 <p className="text-[11px] text-zinc-400 truncate">{user?.email}</p>
                 <div className="mt-1.5 flex flex-wrap gap-1">
-                  {user?.roles?.map((role) => (
+                  {displayedRoles.map((role) => (
                     <span
                       key={role}
                       className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"

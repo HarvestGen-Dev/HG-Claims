@@ -277,3 +277,39 @@ test("JomPAY downloads the supplied B1 layout and records upload without complet
   expect(paid.data.claim.status).toBe("PAID");
   expect(paid.data.claim.payment.payment_method).toBe("JOMPAY");
 });
+
+test("Finance creates and edits a JomPAY supplier without bank-transfer details", async ({
+  page,
+}) => {
+  await login(page, "finance");
+  await page.goto("/admin/suppliers");
+  const name = `JomPAY supplier browser ${Date.now()}`;
+  await page.getByLabel("Supplier name", { exact: true }).fill(name);
+  await page
+    .getByLabel("Payment method", { exact: true })
+    .selectOption("JOMPAY");
+  await expect(page.getByLabel("Account number", { exact: true })).toHaveCount(
+    0,
+  );
+  await page
+    .getByLabel("Biller name", { exact: true })
+    .fill("Local test biller");
+  await page.getByLabel("Biller Code", { exact: true }).fill("000123");
+  await page.getByLabel("Reference 1", { exact: true }).fill("00000456");
+  await page.getByRole("button", { name: "Add supplier", exact: true }).click();
+  const supplier = page
+    .getByRole("listitem")
+    .filter({ has: page.getByText(name, { exact: true }) });
+  await expect(supplier).toBeVisible();
+  await expect(supplier.getByText("Unverified", { exact: true })).toBeVisible();
+  await supplier.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(page.getByLabel("Account number", { exact: true })).toHaveCount(
+    0,
+  );
+  await page.getByLabel("Reference 1", { exact: true }).fill("00000789");
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Add supplier", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/Enter a valid bank account/)).toHaveCount(0);
+});

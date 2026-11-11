@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { iamClient, workspaceStore } from "@/lib/domains";
-import { formatRole, roleLabels } from "@/lib/auth/roles";
+import { currentUserRoles, formatRole, roleLabels } from "@/lib/auth/roles";
 import type { Profile, RoleCode, SignupInvitation } from "@/lib/types/database";
 import { showToast } from "@/lib/utils/toast";
 
@@ -56,6 +56,7 @@ function UserList({ profiles, onEdit, onStatus }: {
       <ul className="divide-y divide-border">
         {profiles.map((profile) => {
           const active = profile.status === "ACTIVE";
+          const displayedRoles = currentUserRoles(profile.roles);
           return (
             <li key={profile.id} className={row}>
               <div className={rowIdentity}>
@@ -63,7 +64,7 @@ function UserList({ profiles, onEdit, onStatus }: {
                 <p className="mt-0.5 text-sm text-muted-foreground">{profile.email}</p>
               </div>
               <div className="text-sm">
-                <p>{profile.roles?.length ? profile.roles.map(formatRole).join(", ") : profile.is_payee_only ? "Saved payee" : "Member"}</p>
+                <p>{displayedRoles.length ? displayedRoles.map(formatRole).join(", ") : profile.is_payee_only ? "Saved payee" : "Member"}</p>
               </div>
               <div className={rowStatus}>
                 <Badge variant={active ? profile.onboarding_completed_at ? "success" : "warning" : "secondary"}>
@@ -150,7 +151,7 @@ export default function UserManagementPage() {
 
   function openEdit(profile: Profile) {
     setEditingUser(profile);
-    setSelectedRoles(roles.filter((role) => profile.roles?.includes(role)));
+    setSelectedRoles(currentUserRoles(profile.roles));
     openDialog("edit");
   }
 
