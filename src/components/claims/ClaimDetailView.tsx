@@ -219,7 +219,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
 
   return (
     <div className="space-y-5 max-w-5xl mx-auto pb-12">
-      {isFinanceUser && claim.payee_verification_required && <Alert variant="warning"><AlertTitle>Review bank details before approving.</AlertTitle><AlertDescription>
+      {isFinanceUser && claim.payee_payment_method !== "JOMPAY" && claim.payee_verification_required && <Alert variant="warning"><AlertTitle>Review bank details before approving.</AlertTitle><AlertDescription>
         New or changed payment details are Unverified. This does not block approval.
         <Button className="ml-2 mt-2" variant="outline" disabled={loadingAction} onClick={async () => {
           setLoadingAction(true);

@@ -22,7 +22,7 @@ export default function CategoriesPage() {
   );
   return (
     <AppLayout>
-      <div className="max-w-3xl space-y-5">
+      <div className="mx-auto w-full max-w-4xl space-y-6">
         <h1 className="text-xl font-semibold">Expense classifications</h1>
         <p className="text-sm text-muted-foreground">
           User-friendly What was it? labels. Historical classifications remain

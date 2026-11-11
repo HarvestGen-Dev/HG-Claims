@@ -1,7 +1,14 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { UploadCloud, File, FileText, Image as ImageIcon, Trash2, Eye } from "lucide-react";
+import {
+  UploadCloud,
+  File,
+  FileText,
+  Image as ImageIcon,
+  Trash2,
+  Eye,
+} from "lucide-react";
 import { ClaimAttachment } from "@/lib/types/database";
 import { formatFileSize } from "@/lib/utils/formatters";
 import { ReceiptViewerModal } from "./ReceiptViewerModal";
@@ -41,7 +48,10 @@ export function ReceiptUploader({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState({ complete: 0, total: 0 });
+  const [uploadProgress, setUploadProgress] = useState({
+    complete: 0,
+    total: 0,
+  });
   const uploadLock = useRef(false);
 
   const allowedTypes = [
@@ -78,7 +88,9 @@ export function ReceiptUploader({
       }
 
       // Check mime
-      const isAllowed = allowedTypes.includes(file.type) || file.name.match(/\.(pdf|jpg|jpeg|png|xlsx|xls|docx|doc)$/i);
+      const isAllowed =
+        allowedTypes.includes(file.type) ||
+        file.name.match(/\.(pdf|jpg|jpeg|png|xlsx|xls|docx|doc)$/i);
       if (!isAllowed) {
         errors.push(`${file.name}: use PDF, JPG, PNG, Excel or Word.`);
         continue;
@@ -90,7 +102,9 @@ export function ReceiptUploader({
         const uploadedPath = await saveReceipt(storagePath, file);
         if (uploadedPath) finalStoragePath = uploadedPath;
       } catch (err: any) {
-        errors.push(`${file.name}: ${err?.message || "Upload failed. Check connection and size."}`);
+        errors.push(
+          `${file.name}: ${err?.message || "Upload failed. Check connection and size."}`,
+        );
         continue;
       }
 
@@ -125,31 +139,57 @@ export function ReceiptUploader({
   };
 
   const getFileIcon = (mime: string, name: string) => {
-    if (mime.includes("pdf") || name.endsWith(".pdf")) return <FileText className="w-4 h-4 text-rose-600" />;
-    if (mime.startsWith("image/") || name.match(/\.(jpg|jpeg|png)$/i)) return <ImageIcon className="w-4 h-4 text-emerald-600" />;
+    if (mime.includes("pdf") || name.endsWith(".pdf"))
+      return <FileText className="w-4 h-4 text-rose-600" />;
+    if (mime.startsWith("image/") || name.match(/\.(jpg|jpeg|png)$/i))
+      return <ImageIcon className="w-4 h-4 text-emerald-600" />;
     return <File className="w-4 h-4 text-zinc-500" />;
   };
 
   return (
     <div className="space-y-3">
       <div>
-        <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
-          Receipts & Invoices ({attachments.length})
-        </h3>
         <p className="text-[11px] text-zinc-400">
-          {attachments.length} of {maxAttachments} files &middot; Up to {maxFileSizeMb} MB each
+          {attachments.length} of {maxAttachments} files &middot; Up to{" "}
+          {maxFileSizeMb} MB each
         </p>
       </div>
 
-      {!disabled && <div><input type="file" accept="image/*" capture="environment" ref={cameraRef} className="hidden" onChange={e=>handleFiles(e.target.files)} /><button type="button" onClick={()=>cameraRef.current?.click()} className="min-h-11 border rounded-lg px-4 text-sm">Take a photo</button></div>}
+      {!disabled && (
+        <div>
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            ref={cameraRef}
+            className="hidden"
+            onChange={(e) => handleFiles(e.target.files)}
+          />
+          <button
+            type="button"
+            onClick={() => cameraRef.current?.click()}
+            className="min-h-11 border rounded-lg px-4 text-sm"
+          >
+            Take a photo
+          </button>
+        </div>
+      )}
       {!disabled && (
         <div
           role="button"
           aria-busy={uploading}
           tabIndex={0}
           aria-label="Upload receipts"
-          onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); fileInputRef.current?.click(); } }}
-          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              fileInputRef.current?.click();
+            }
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
@@ -173,7 +213,9 @@ export function ReceiptUploader({
             </div>
             <div className="text-left">
               <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">
-                {uploading ? `Saving files (${uploadProgress.complete} of ${uploadProgress.total})...` : "Add receipts"}
+                {uploading
+                  ? `Saving files (${uploadProgress.complete} of ${uploadProgress.total})...`
+                  : "Add receipts"}
               </p>
               <p className="text-[10px] text-zinc-400">
                 PNG, JPG, PDF, Excel or Word
@@ -183,7 +225,11 @@ export function ReceiptUploader({
         </div>
       )}
 
-      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-red-700">
+          {error}
+        </p>
+      )}
 
       {/* Attachment List */}
       {(attachments || []).length > 0 && (

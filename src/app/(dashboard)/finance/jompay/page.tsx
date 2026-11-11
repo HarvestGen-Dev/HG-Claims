@@ -22,9 +22,15 @@ export default function JompayPage() {
     return workspaceStore.subscribeDomains(["claims", "finance"], sync);
   }, []);
   const eligible = claims.filter((c) => previewJompayClaims([c])[0].eligible);
+  const selectedClaims = eligible.filter((c) => selected.includes(c.id));
+  const selectedIds = selectedClaims.map((c) => c.id);
+  const selectedCents = previewJompayClaims(selectedClaims).reduce(
+    (sum, c) => sum + c.amountCents,
+    0,
+  );
   return (
     <AppLayout>
-      <div className="space-y-5 max-w-4xl">
+      <div className="mx-auto w-full max-w-4xl space-y-6">
         <header>
           <h1 className="text-xl font-semibold">JomPAY bills</h1>
           <p className="text-sm text-muted-foreground">
@@ -37,6 +43,11 @@ export default function JompayPage() {
         </Link>
         <fieldset className="divide-y border rounded-lg">
           <legend className="font-semibold px-2">Approved bills</legend>
+          {!eligible.length && (
+            <p className="p-4 text-sm text-muted-foreground">
+              No approved JomPAY bills are ready for batching.
+            </p>
+          )}
           {eligible.map((c) => (
             <label key={c.id} className="flex gap-3 p-4 items-center">
               <input
@@ -57,8 +68,12 @@ export default function JompayPage() {
             </label>
           ))}
         </fieldset>
+        <p className="text-sm text-muted-foreground" role="status">
+          {selectedIds.length} bill(s) selected ·{" "}
+          {formatCurrency(selectedCents / 100)}
+        </p>
         <Button
-          disabled={!selected.length || busy}
+          disabled={!selectedIds.length || busy}
           loading={busy}
           onClick={async () => {
             setBusy(true);
@@ -67,7 +82,7 @@ export default function JompayPage() {
               const r = await workspaceStore.dispatchDomainCommand(
                 "/api/v1/finance",
                 "finalize_jompay_batch",
-                { claim_ids: selected, request_key: crypto.randomUUID() },
+                { claim_ids: selectedIds, request_key: crypto.randomUUID() },
               );
               await workspaceStore.refreshDomain("/api/v1/claims");
               setSelected([]);
@@ -91,6 +106,11 @@ export default function JompayPage() {
         <section>
           <h2 className="font-semibold mb-3">JomPAY batches</h2>
           <ul className="border rounded-lg divide-y">
+            {!batches.some((b) => b.payment_method === "JOMPAY") && (
+              <li className="p-4 text-sm text-muted-foreground">
+                No JomPAY batches yet.
+              </li>
+            )}
             {batches
               .filter((b) => b.payment_method === "JOMPAY")
               .map((b) => (

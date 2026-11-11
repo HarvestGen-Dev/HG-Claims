@@ -86,7 +86,7 @@ function UserList({ profiles, onEdit, onStatus }: {
 }
 
 export default function UserManagementPage() {
-  const [profiles, setProfiles] = useState(() => iamClient.getProfiles());
+  const [profiles, setProfiles] = useState(() => iamClient.getProfiles().filter(p => !p.is_payee_only));
   const [invitations, setInvitations] = useState(() => iamClient.getSignupInvitations());
   const [activeTab, setActiveTab] = useState<"users" | "invitations">("users");
   const [dialog, setDialog] = useState<"email" | "link" | "edit" | "delete" | null>(null);
@@ -105,7 +105,7 @@ export default function UserManagementPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => workspaceStore.subscribeDomains(["iam"], () => {
-    setProfiles(iamClient.getProfiles());
+    setProfiles(iamClient.getProfiles().filter(p => !p.is_payee_only));
     setInvitations(iamClient.getSignupInvitations());
   }), []);
 

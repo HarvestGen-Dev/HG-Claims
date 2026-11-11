@@ -284,7 +284,12 @@ test("Finance creates and edits a JomPAY supplier without bank-transfer details"
   await login(page, "finance");
   await page.goto("/admin/suppliers");
   const name = `JomPAY supplier browser ${Date.now()}`;
-  await page.getByLabel("Supplier name", { exact: true }).fill(name);
+  await page.getByRole("button", { name: "Add supplier", exact: true }).click();
+  const editor = page.getByRole("dialog", {
+    name: "Add supplier",
+    exact: true,
+  });
+  await editor.getByLabel("Supplier name", { exact: true }).fill(name);
   await page
     .getByLabel("Payment method", { exact: true })
     .selectOption("JOMPAY");
@@ -296,20 +301,255 @@ test("Finance creates and edits a JomPAY supplier without bank-transfer details"
     .fill("Local test biller");
   await page.getByLabel("Biller Code", { exact: true }).fill("000123");
   await page.getByLabel("Reference 1", { exact: true }).fill("00000456");
-  await page.getByRole("button", { name: "Add supplier", exact: true }).click();
+  await editor
+    .getByRole("button", { name: "Add supplier", exact: true })
+    .click();
   const supplier = page
     .getByRole("listitem")
     .filter({ has: page.getByText(name, { exact: true }) });
   await expect(supplier).toBeVisible();
-  await expect(supplier.getByText("Unverified", { exact: true })).toBeVisible();
+  await expect(
+    supplier.getByText("Verification not required", { exact: true }),
+  ).toBeVisible();
+  await expect(supplier.getByText("Unverified", { exact: true })).toHaveCount(
+    0,
+  );
   await supplier.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(page.getByLabel("Account number", { exact: true })).toHaveCount(
     0,
   );
   await page.getByLabel("Reference 1", { exact: true }).fill("00000789");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "Add supplier", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByText(/Enter a valid bank account/)).toHaveCount(0);
+  await supplier.getByRole("button", { name: "Details", exact: true }).click();
+  await expect(
+    page
+      .getByRole("dialog")
+      .getByRole("button", { name: /Mark bank details verified/ }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Close", exact: true })
+    .click();
+  await page.goto("/admin/users");
+  await expect(page.getByText(name, { exact: true })).toHaveCount(0);
+});
+
+test("bank verification is a reviewed dialog action and payment changes clear it", async ({
+  page,
+}) => {
+  await login(page, "finance");
+  await page.goto("/admin/suppliers");
+  await page.getByRole("button", { name: "Add supplier", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  const name = "Bank review " + Date.now();
+  await dialog.getByLabel("Supplier name", { exact: true }).fill(name);
+  await dialog.getByLabel("Bank", { exact: true }).selectOption("MBBEMYKL");
+  await dialog
+    .getByLabel("Account holder name", { exact: true })
+    .fill("Local Supplier");
+  await dialog
+    .getByLabel("Account number", { exact: true })
+    .fill("000123456789");
+  await dialog
+    .getByRole("button", { name: "Add supplier", exact: true })
+    .click();
+  const row = page
+    .getByRole("listitem")
+    .filter({ has: page.getByText(name, { exact: true }) });
+  await row
+    .getByRole("button", { name: "Review bank details", exact: true })
+    .click();
+  await expect(
+    dialog.getByText("It does not approve claims or confirm payment.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  const verify = dialog.getByRole("button", {
+    name: "Mark bank details verified",
+    exact: true,
+  });
+  await expect(verify).toBeDisabled();
+  await dialog.getByRole("checkbox").check();
+  await verify.click();
+  await expect(row.getByText("Verified", { exact: true })).toBeVisible();
+  await row.getByRole("button", { name: "Edit", exact: true }).click();
+  await dialog
+    .getByLabel("Account number", { exact: true })
+    .fill("000987654321");
+  await dialog
+    .getByRole("button", { name: "Save changes", exact: true })
+    .click();
+  await expect(row.getByText("Unverified", { exact: true })).toBeVisible();
+  await row.getByRole("button", { name: "History", exact: true }).click();
+  await expect(dialog.getByText("****4321", { exact: false })).toBeVisible();
+  await expect(dialog.getByText("000987654321", { exact: true })).toHaveCount(
+    0,
+  );
+});
+
+test("claim supplier dialog does not submit its parent claim", async ({
+  page,
+}) => {
+  await login(page);
+  await page.goto("/claims/new");
+  await page.locator("#ministryId").selectOption(fixture.team);
+  await page
+    .locator('[id="receipt-0-category"]')
+    .selectOption({ label: "Utilities" });
+  await page.locator('[id="receipt-0-amount"]').fill("12.34");
+  await page.locator("#payTo").selectOption("SUPPLIER");
+  await page
+    .getByLabel("Supplier", { exact: true })
+    .selectOption("__ADD_NEW__");
+  const dialog = page.getByRole("dialog", {
+    name: "Add new supplier",
+    exact: true,
+  });
+  await dialog.locator("#newProfileName").fill("Claim supplier " + Date.now());
+  await dialog.locator("#newProfileAccountNumber").fill("000123456789");
+  await dialog
+    .getByRole("button", { name: "Save supplier", exact: true })
+    .click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page).toHaveURL(/claims\/new$/);
+  await expect(
+    page.getByText("Please check your submission", { exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Submit Claim", exact: true }).click();
+  await page.waitForURL(/\/claims\/[a-f0-9-]+$/);
+});
+
+test("new administration pages are centered and usable on narrow screens", async ({
+  page,
+}) => {
+  await login(page, "finance");
+  for (const route of [
+    "/admin/suppliers",
+    "/admin/dropdowns",
+    "/admin/categories",
+    "/finance/recurring",
+    "/finance/jompay",
+    "/claims/new",
+  ]) {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto(route);
+    const body = page
+      .locator("#main-content")
+      .locator(":scope > div, :scope > form")
+      .first();
+    await expect(body).toBeVisible();
+    const layout = await body.evaluate((el) => {
+      const a = el.getBoundingClientRect(),
+        b = document.querySelector("#main-content")!.getBoundingClientRect();
+      return {
+        difference: Math.abs(a.left + a.width / 2 - b.left - b.width / 2),
+        width: a.width,
+        available: b.width,
+      };
+    });
+    expect(layout.difference, route).toBeLessThan(3);
+    expect(layout.width).toBeLessThanOrEqual(layout.available);
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(
+      await page
+        .locator("body")
+        .evaluate((el) => el.scrollWidth <= window.innerWidth),
+      route,
+    ).toBe(true);
+    if (route === "/claims/new") {
+      await page.screenshot({path: "/private/tmp/hg-claim-form-mobile-v3.png", fullPage: true});
+      await page.getByRole("heading", {name:"Expense items", exact:true}).scrollIntoViewIfNeeded();
+      await page.screenshot({path:"/private/tmp/hg-claim-expenses-mobile-v3.png"});
+      await page.getByRole("button", {name:"Submit Claim", exact:true}).scrollIntoViewIfNeeded();
+      await page.screenshot({path:"/private/tmp/hg-claim-actions-mobile-v3.png"});
+    }
+  }
+  await page.goto("/finance/recurring");
+  await page
+    .getByRole("button", { name: "Add recurring bill", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(
+    dialog.getByRole("button", { name: "Cancel", exact: true }),
+  ).toBeVisible();
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+});
+
+test("recurring configuration distinguishes fixed and variable bills in a dialog", async ({
+  page,
+}) => {
+  await login(page, "finance");
+  const client = createClient(fixture.api, fixture.anon, {
+    auth: { persistSession: false },
+  });
+  await client.auth.signInWithPassword(fixture.users.finance);
+  const names = [
+    `Utility fixed ${Date.now()}`,
+    `Utility variable ${Date.now()}`,
+  ];
+  const ids = [];
+  for (const name of names) {
+    const r = await client.rpc("nlcc_command", {
+      action: "create_payee_profile",
+      payload: {
+        full_name: name,
+        payment_method: "JOMPAY",
+        jompay_biller_name: "Local utility",
+        jompay_biller_code: "000123",
+        jompay_reference_1: "0009",
+      },
+    });
+    expect(r.error).toBeNull();
+    ids.push(r.data.id);
+  }
+  await page.goto("/finance/recurring");
+  await page
+    .getByRole("button", { name: "Add recurring bill", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("JomPAY payee", { exact: true }).selectOption(ids[0]);
+  await dialog.getByLabel("Team", { exact: true }).selectOption(fixture.team);
+  await dialog.getByLabel("Start date", { exact: true }).fill("2099-01-01");
+  await dialog
+    .getByRole("button", { name: "Save recurring bill", exact: true })
+    .click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("Fixed amount (RM)", { exact: true }).fill("129.90");
+  await dialog
+    .getByRole("button", { name: "Save recurring bill", exact: true })
+    .click();
+  await expect(dialog).toHaveCount(0);
+  const fixedRow = page.getByRole("listitem").filter({ hasText: names[0] });
+  await fixedRow.getByRole("button", { name: "Edit", exact: true }).click();
+  await dialog.getByLabel("Fixed amount (RM)", { exact: true }).fill("139.90");
+  await dialog
+    .getByRole("button", { name: "Save recurring bill", exact: true })
+    .click();
+  await expect(fixedRow.getByText(/139.90/)).toBeVisible();
+  await page
+    .getByRole("button", { name: "Add recurring bill", exact: true })
+    .click();
+  await dialog.getByLabel("Utility", { exact: true }).selectOption("TNB");
+  await expect(
+    dialog.getByLabel("Fixed amount (RM)", { exact: true }),
+  ).toHaveCount(0);
+  await dialog.getByLabel("JomPAY payee", { exact: true }).selectOption(ids[1]);
+  await dialog.getByLabel("Team", { exact: true }).selectOption(fixture.team);
+  await dialog.getByLabel("Start date", { exact: true }).fill("2099-01-01");
+  await dialog
+    .getByRole("button", { name: "Save recurring bill", exact: true })
+    .click();
+  await expect(dialog).toHaveCount(0);
+  const variable = page.getByRole("listitem").filter({ hasText: names[1] });
+  await expect(variable.getByText(/Variable amount/)).toBeVisible();
+  await variable
+    .getByRole("button", { name: "Deactivate", exact: true })
+    .click();
+  await expect(
+    variable.getByText("TNB · Inactive", { exact: true }),
+  ).toBeVisible();
 });

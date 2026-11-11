@@ -82,7 +82,8 @@ See [SITE_AUDIT.md](SITE_AUDIT.md) for the latest functional audit, fixes, verif
 ## Claims workflow v2
 
 Apply `20261110070626_claims_workflow_v2.sql` and then
-`20261110164319_jompay_bulk_b1_template.sql` before deploying the v2 application.
+`20261110164319_jompay_bulk_b1_template.sql`, followed by
+`20261111100656_payment_management_validation.sql`, before deploying the v2 application.
 Review [the implementation report](docs/hg-claims-v2-implementation-report.md) and
 [workflow architecture](docs/hg-claims-v2-workflow.md) for deployment, migration,
 financial invariants and the persistent recurring billing job.
@@ -90,7 +91,7 @@ financial invariants and the persistent recurring billing job.
 The existing Alliance Bank BIFF8 XLS adapter is retained. JomPAY has separate frozen
 bill instructions and reconciliation. Its XLSX export now uses the supplied
 `JomPay_Bulk_Sample_B1.xlsx` template, preserving one row per bill and text identifiers.
-See [the JomPAY file contract](docs/hg-claims-jompay-b1-template.md). Bank-portal acceptance
+JomPAY payees have no user account or verification stage. See [the JomPAY file contract](docs/hg-claims-jompay-b1-template.md). Bank-portal acceptance
 remains an external verification step.
 
 `npm run test:backend` now exercises v2 against an isolated local Supabase stack on
