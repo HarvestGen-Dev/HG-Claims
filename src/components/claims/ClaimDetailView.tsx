@@ -7,7 +7,6 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  Printer,
   Edit,
   CheckCircle2,
   RotateCcw,
@@ -20,44 +19,62 @@ import {
   Clock,
   AlertCircle,
   UserCheck,
-  Trash2
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { ClaimStatusBadge } from "./ClaimStatusBadge";
+import { ClaimLink } from "./ClaimLink";
 import { ClaimTimeline } from "./ClaimTimeline";
 import { ClaimComments } from "./ClaimComments";
 
 const ReturnClarificationModal = dynamic(
-  () => import("./ReturnClarificationModal").then((m) => m.ReturnClarificationModal),
-  { ssr: false }
+  () =>
+    import("./ReturnClarificationModal").then(
+      (m) => m.ReturnClarificationModal,
+    ),
+  { ssr: false },
 );
 const RejectModal = dynamic(
   () => import("./RejectModal").then((m) => m.RejectModal),
-  { ssr: false }
+  { ssr: false },
 );
 const PaymentModal = dynamic(
   () => import("./PaymentModal").then((m) => m.PaymentModal),
-  { ssr: false }
+  { ssr: false },
 );
 const AdminCorrectionModal = dynamic(
   () => import("./AdminCorrectionModal").then((m) => m.AdminCorrectionModal),
-  { ssr: false }
+  { ssr: false },
 );
 const ReceiptViewerModal = dynamic(
   () => import("./ReceiptViewerModal").then((m) => m.ReceiptViewerModal),
-  { ssr: false }
+  { ssr: false },
 );
 
 import { useAuth } from "@/lib/auth/context";
-import { iamClient, claimsClient, financeClient, workspaceStore } from "@/lib/domains";
+import {
+  iamClient,
+  claimsClient,
+  financeClient,
+  workspaceStore,
+} from "@/lib/domains";
 import { Claim, ClaimAttachment } from "@/lib/types/database";
 import { showToast } from "@/lib/utils/toast";
 
-
-import { formatCurrency, formatDate, formatDateTime, formatFileSize } from "@/lib/utils/formatters";
+import {
+  formatCurrency,
+  formatDate,
+  formatDateTime,
+  formatFileSize,
+} from "@/lib/utils/formatters";
 
 interface ClaimDetailViewProps {
   claim: Claim;
@@ -70,11 +87,17 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
   useEffect(() => {
     setClaim(initialClaim);
   }, [initialClaim]);
-  useEffect(() => workspaceStore.subscribeDomains(["claims", "master-data", "iam"], () => {
-    const latest = claimsClient.getClaimById(initialClaim.id);
-    if (latest) setClaim(latest);
-  }), [initialClaim.id]);
-  const [activeTab, setActiveTab] = useState<"details" | "workflow" | "comments" | "audit">("details");
+  useEffect(
+    () =>
+      workspaceStore.subscribeDomains(["claims", "master-data", "iam"], () => {
+        const latest = claimsClient.getClaimById(initialClaim.id);
+        if (latest) setClaim(latest);
+      }),
+    [initialClaim.id],
+  );
+  const [activeTab, setActiveTab] = useState<
+    "details" | "workflow" | "comments" | "audit"
+  >("details");
 
   // Modals
   const [showReturnModal, setShowReturnModal] = useState(false);
@@ -82,10 +105,13 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [previewAttachment, setPreviewAttachment] = useState<ClaimAttachment | null>(null);
+  const [previewAttachment, setPreviewAttachment] =
+    useState<ClaimAttachment | null>(null);
 
   const [loadingAction, setLoadingAction] = useState(false);
-  const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
+  const [actionSuccessMessage, setActionSuccessMessage] = useState<
+    string | null
+  >(null);
 
   const handleDeleteClaim = async () => {
     if (!user) return;
@@ -104,11 +130,18 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
     if (!user || !canApprove(claim) || loadingAction) return;
     try {
       setLoadingAction(true);
-      const updated = await financeClient.approveStep(claim.id, user, "Approved in accordance with ministry guidelines.");
+      const updated = await financeClient.approveStep(
+        claim.id,
+        user,
+        "Approved in accordance with ministry guidelines.",
+      );
       setClaim(updated);
       showToast.success("Review approval recorded.", "Claim Approved");
     } catch (err: any) {
-      showToast.error(err.message || "Failed to approve claim", "Approval Error");
+      showToast.error(
+        err.message || "Failed to approve claim",
+        "Approval Error",
+      );
     } finally {
       setLoadingAction(false);
     }
@@ -118,10 +151,17 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
     if (!user) return;
     try {
       setLoadingAction(true);
-      const updated = await financeClient.returnForClarification(claim.id, user, reason);
+      const updated = await financeClient.returnForClarification(
+        claim.id,
+        user,
+        reason,
+      );
       setClaim(updated);
       setShowReturnModal(false);
-      showToast.info("Claim returned to submitter for clarification.", "Claim Returned");
+      showToast.info(
+        "Claim returned to submitter for clarification.",
+        "Claim Returned",
+      );
     } catch (err: any) {
       showToast.error(err.message || "Failed to return claim", "Return Error");
     } finally {
@@ -138,21 +178,37 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
       setShowRejectModal(false);
       showToast.warning("Claim has been marked as rejected.", "Claim Rejected");
     } catch (err: any) {
-      showToast.error(err.message || "Failed to reject claim", "Rejection Error");
+      showToast.error(
+        err.message || "Failed to reject claim",
+        "Rejection Error",
+      );
     } finally {
       setLoadingAction(false);
     }
   };
 
   const handleVerifyFinance = async () => {
-    if (!user || !canVerify(claim) || claim.finance_review?.receipts_verified || loadingAction) return;
+    if (
+      !user ||
+      !canVerify(claim) ||
+      claim.finance_review?.receipts_verified ||
+      loadingAction
+    )
+      return;
     try {
       setLoadingAction(true);
-      const updated = await financeClient.verifyClaim(claim.id, user, "All receipts verified.");
+      const updated = await financeClient.verifyClaim(
+        claim.id,
+        user,
+        "All receipts verified.",
+      );
       setClaim(updated);
       showToast.success("Finance verification recorded.", "Finance Verified");
     } catch (err: any) {
-      showToast.error(err.message || "Failed to verify claim", "Verification Error");
+      showToast.error(
+        err.message || "Failed to verify claim",
+        "Verification Error",
+      );
     } finally {
       setLoadingAction(false);
     }
@@ -169,9 +225,15 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
       });
       setClaim(updated);
       setShowPaymentModal(false);
-      showToast.success(`Payment recorded successfully (Ref: ${paymentData.payment_reference})`, "Payment Recorded");
+      showToast.success(
+        `Payment recorded successfully (Ref: ${paymentData.payment_reference})`,
+        "Payment Recorded",
+      );
     } catch (err: any) {
-      showToast.error(err.message || "Failed to record payment", "Payment Error");
+      showToast.error(
+        err.message || "Failed to record payment",
+        "Payment Error",
+      );
     } finally {
       setLoadingAction(false);
     }
@@ -188,22 +250,44 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
       });
       setClaim(updated);
       setShowCorrectionModal(false);
-      showToast.success("Changes have been made to administrative fields.", "Claim Updated");
+      showToast.success(
+        "Changes have been made to administrative fields.",
+        "Claim Updated",
+      );
     } catch (err: any) {
-      showToast.error(err.message || "Failed to save correction", "Update Error");
+      showToast.error(
+        err.message || "Failed to save correction",
+        "Update Error",
+      );
     } finally {
       setLoadingAction(false);
     }
   };
 
-  const handleAddComment = async (content: string, visibility: "PUBLIC_WORKFLOW" | "FINANCE_INTERNAL") => {
+  const handleAddComment = async (
+    content: string,
+    visibility: "PUBLIC_WORKFLOW" | "FINANCE_INTERNAL",
+  ) => {
     try {
       if (!user) return;
-      const updated = await claimsClient.addComment(claim.id, user, content, visibility);
+      const updated = await claimsClient.addComment(
+        claim.id,
+        user,
+        content,
+        visibility,
+      );
       setClaim(updated);
-      showToast.success(visibility === "FINANCE_INTERNAL" ? "Internal finance note added." : "Comment posted successfully.", "Comment Added");
+      showToast.success(
+        visibility === "FINANCE_INTERNAL"
+          ? "Internal finance note added."
+          : "Comment posted successfully.",
+        "Comment Added",
+      );
     } catch (error) {
-      showToast.error(error instanceof Error ? error.message : "Unable to save comment.", "Comment Error");
+      showToast.error(
+        error instanceof Error ? error.message : "Unable to save comment.",
+        "Comment Error",
+      );
     }
   };
 
@@ -214,244 +298,310 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
   const isApproverUser = canApprove(claim);
   const isEditable = canEdit(claim);
 
-  const claimantName = claim.claimant_name || claim.claimant?.full_name || "Unknown Claimant";
-  const submitterName = claim.submitted_by?.full_name || claim.claimant?.full_name || "Claimant";
+  const claimantName =
+    claim.claimant_name || claim.claimant?.full_name || "Unknown Claimant";
+  const submitterName =
+    claim.submitted_by?.full_name || claim.claimant?.full_name || "Claimant";
 
   return (
-    <div className="space-y-5 max-w-5xl mx-auto pb-12">
-      {isFinanceUser && claim.payee_payment_method !== "JOMPAY" && claim.payee_verification_required && <Alert variant="warning"><AlertTitle>Review bank details before approving.</AlertTitle><AlertDescription>
-        New or changed payment details are Unverified. This does not block approval.
-        <Button className="ml-2 mt-2" variant="outline" disabled={loadingAction} onClick={async () => {
-          setLoadingAction(true);
-          try { await workspaceStore.dispatchDomainCommand("/api/v1/finance", "verify_claim_payment", { claim_id: claim.id, version: claim.version }); await claimsClient.fetchClaimDetail(claim.id, { force: true }); }
-          catch(error) { showToast.error(error instanceof Error ? error.message : "Unable to verify."); }
-          finally { setLoadingAction(false); }
-        }}>Confirm details verified</Button>
-      </AlertDescription></Alert>}
-      {claim.context_name && <p className="text-sm">{claim.context_kind?.toLowerCase()}: <strong>{claim.context_name}</strong></p>}
-      {/* Top Banner & Actions */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-950 shadow-2xs">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <button
-              onClick={() => router.back()}
-              className="p-1 rounded-md text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-              title="Back"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <h1 className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100 tracking-tight">
-              {claim.claim_number || "Draft Claim"}
-            </h1>
-            <ClaimStatusBadge
-              status={claim.status}
-              reimbursementStatus={claim.reimbursement_status}
-            />
+    <div className="claim-page mx-auto w-full max-w-5xl space-y-6 pb-8">
+      <section
+        aria-label="Claim summary"
+        className="space-y-5 rounded-xl border border-border bg-card p-4 sm:p-6"
+      >
+        <div className="flex items-start gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => router.back()}
+            aria-label="Back to claims"
+            className="w-11 shrink-0"
+          >
+            <ArrowLeft className="size-5" />
+          </Button>
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <h1>{claim.claim_number || "Draft claim"}</h1>
+              <ClaimStatusBadge
+                status={claim.status}
+                reimbursementStatus={claim.reimbursement_status}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {claimantName} · {claim.ministry?.name || "Team not selected"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Submitted by {submitterName} ·{" "}
+              {formatDate(claim.submitted_at || claim.created_at)}
+            </p>
+            {claim.context_name && (
+              <p className="text-sm">
+                {claim.context_kind?.toLowerCase()}:{" "}
+                <strong>{claim.context_name}</strong>
+              </p>
+            )}
           </div>
-          <p className="text-[11px] text-zinc-500 flex items-center gap-x-3 gap-y-0.5 flex-wrap">
-            <span>Claimant: <strong className="text-zinc-700 dark:text-zinc-300 font-medium">{claimantName}</strong></span>
-            <span>&bull;</span>
-            <span>Submitted By: <strong className="text-zinc-700 dark:text-zinc-300 font-medium">{submitterName}</strong></span>
-            <span>&bull;</span>
-            <span>Team: <strong className="text-zinc-700 dark:text-zinc-300 font-medium">{claim.ministry?.name}</strong></span>
-            <span>&bull;</span>
-            <span>Date: <strong className="text-zinc-700 dark:text-zinc-300 font-medium font-mono">{formatDate(claim.submitted_at || claim.created_at)}</strong></span>
-          </p>
         </div>
 
-        {/* Action Button Bar */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {(isSubmitter || isFinanceUser) && <Button variant="outline" disabled={loadingAction} onClick={async () => {
-            setLoadingAction(true);
-            try { const duplicate = await claimsClient.duplicateClaim(claim.id, crypto.randomUUID()); router.push(`/claims/${duplicate.id}/edit`); }
-            catch (error) { showToast.error(error instanceof Error ? error.message : "Unable to duplicate claim."); }
-            finally { setLoadingAction(false); }
-          }}>Duplicate Claim</Button>}
-          {/* Printable Voucher */}
-          <Link href={`/claims/${claim.id}/print`} target="_blank">
-            <Button variant="outline" size="sm" className="h-7 text-xs border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 gap-1.5">
-              <Printer className="w-3.5 h-3.5 text-zinc-400" />
-              <span>Print</span>
-            </Button>
-          </Link>
-
-          {/* Submitter Edit / Resubmit */}
+        <div
+          className="flex flex-wrap items-center gap-2 border-t border-border pt-4"
+          aria-label="Claim actions"
+        >
           {isEditable && (
-            <Link href={`/claims/${claim.id}/edit`}>
-              <Button size="sm" className="h-7 text-xs bg-zinc-900 hover:bg-zinc-800 text-white gap-1.5 shadow-2xs font-medium">
-                <Edit className="w-3.5 h-3.5" />
-                <span>{claim.status === "RETURNED_FOR_CLARIFICATION" ? "Fix & Resubmit" : "Edit Draft"}</span>
-              </Button>
-            </Link>
+            <ClaimLink
+              href={`/claims/${claim.id}/edit`}
+              variant="default"
+              className="w-full sm:w-auto"
+            >
+              <Edit className="size-4" />
+              {claim.status === "RETURNED_FOR_CLARIFICATION"
+                ? "Fix & Resubmit"
+                : "Edit Draft"}
+            </ClaimLink>
           )}
-
-          {/* Delete Draft/Cancelled Claim */}
-          {!claim.recurring_schedule_id && (claim.status === "DRAFT" || claim.status === "CANCELLED") && (isSubmitter || hasRole("SYSTEM_ADMIN")) && (
+          {(isSubmitter || isFinanceUser) && (
             <Button
               variant="outline"
-              size="sm"
-              onClick={() => setShowDeleteModal(true)}
               disabled={loadingAction}
-              className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 gap-1.5"
+              className="gap-2"
+              onClick={async () => {
+                setLoadingAction(true);
+                try {
+                  const duplicate = await claimsClient.duplicateClaim(
+                    claim.id,
+                    crypto.randomUUID(),
+                  );
+                  router.push(`/claims/${duplicate.id}/edit`);
+                } catch (error) {
+                  showToast.error(
+                    error instanceof Error
+                      ? error.message
+                      : "Unable to duplicate claim.",
+                  );
+                } finally {
+                  setLoadingAction(false);
+                }
+              }}
             >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Delete {claim.status === "DRAFT" ? "Draft" : "Claim"}</span>
+              Duplicate Claim
             </Button>
           )}
-
-          {isFinanceUser && claim.status === "APPROVED_FOR_PAYMENT" && !claim.active_batch_id && !claim.payment && <Button variant="outline" disabled={loadingAction} onClick={() => setShowReturnModal(true)}>Return for correction</Button>}
-          {/* Approver Controls */}
-          {isApproverUser && (
-            <>
-              <Button
-                size="sm"
-                onClick={handleApprove}
-                loading={loadingAction}
-                disabled={loadingAction}
-                title="Approve this review stage"
-                className="h-7 text-xs bg-zinc-900 hover:bg-zinc-800 text-white gap-1.5 shadow-2xs font-medium"
-              >
-                {!loadingAction && <CheckCircle2 className="w-3.5 h-3.5" />}
-                <span>Approve Claim</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowReturnModal(true)}
-                disabled={loadingAction}
-                className="h-7 text-xs border-amber-200 text-amber-800 hover:bg-amber-50 gap-1"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Return</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowRejectModal(true)}
-                disabled={loadingAction}
-                className="h-7 text-xs border-rose-200 text-rose-800 hover:bg-rose-50 gap-1"
-              >
-                <XCircle className="w-3.5 h-3.5" />
-                <span>Reject</span>
-              </Button>
-            </>
+          {isFinanceUser && claim.status !== "DRAFT" && (
+            <Button
+              variant="outline"
+              onClick={() => setShowCorrectionModal(true)}
+              disabled={loadingAction}
+            >
+              Edit classifications
+            </Button>
           )}
+          {!claim.recurring_schedule_id &&
+            (claim.status === "DRAFT" || claim.status === "CANCELLED") &&
+            (isSubmitter || hasRole("SYSTEM_ADMIN")) && (
+              <Button
+                variant="ghost"
+                onClick={() => setShowDeleteModal(true)}
+                disabled={loadingAction}
+                className="gap-2 text-red-700 hover:bg-red-50 sm:ml-auto"
+              >
+                <Trash2 className="size-4" />
+                Delete {claim.status === "DRAFT" ? "Draft" : "Claim"}
+              </Button>
+            )}
+        </div>
+      </section>
 
-          {/* Finance Controls */}
-          {isFinanceUser && (
-            <>
-              {canVerify(claim) && !claim.finance_review?.receipts_verified && (
+      {isFinanceUser &&
+        claim.payee_payment_method !== "JOMPAY" &&
+        claim.payee_verification_required && (
+          <Alert variant="warning">
+            <AlertTitle>Review bank details before approving.</AlertTitle>
+            <AlertDescription>
+              New or changed payment details are Unverified. This does not block
+              approval.
+              <Button
+                className="ml-2 mt-2"
+                variant="outline"
+                disabled={loadingAction}
+                onClick={async () => {
+                  setLoadingAction(true);
+                  try {
+                    await workspaceStore.dispatchDomainCommand(
+                      "/api/v1/finance",
+                      "verify_claim_payment",
+                      { claim_id: claim.id, version: claim.version },
+                    );
+                    await claimsClient.fetchClaimDetail(claim.id, {
+                      force: true,
+                    });
+                  } catch (error) {
+                    showToast.error(
+                      error instanceof Error
+                        ? error.message
+                        : "Unable to verify.",
+                    );
+                  } finally {
+                    setLoadingAction(false);
+                  }
+                }}
+              >
+                Confirm details verified
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+      {(isApproverUser ||
+        (isFinanceUser &&
+          (canPay(claim) ||
+            (canVerify(claim) && !claim.finance_review?.receipts_verified) ||
+            (claim.status === "APPROVED_FOR_PAYMENT" &&
+              !claim.active_batch_id &&
+              !claim.payment)))) && (
+        <section
+          aria-label="Review actions"
+          className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5"
+        >
+          <div>
+            <h2 className="text-base font-semibold">
+              {isApproverUser ? "Review claim" : "Finance actions"}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isApproverUser
+                ? "Check the claim details before recording your decision."
+                : "Review receipts or record a completed payment."}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 [&>button]:flex-auto sm:[&>button]:flex-none">
+            {isApproverUser && (
+              <>
                 <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleVerifyFinance}
+                  onClick={handleApprove}
                   loading={loadingAction}
                   disabled={loadingAction}
-                  className="h-7 text-xs border-violet-200 text-violet-800 hover:bg-violet-50 gap-1.5"
+                  className="gap-2"
                 >
-                  {!loadingAction && <ShieldCheck className="w-3.5 h-3.5" />}
-                  <span>Verify Receipts</span>
+                  {!loadingAction && <CheckCircle2 className="size-4" />}Approve
+                  Claim
                 </Button>
-              )}
-
-              {canPay(claim) && (
                 <Button
-                  size="sm"
-                  onClick={() => setShowPaymentModal(true)}
+                  variant="outline"
+                  onClick={() => setShowReturnModal(true)}
                   disabled={loadingAction}
-                  className="h-7 text-xs bg-zinc-900 hover:bg-zinc-800 text-white gap-1.5 shadow-2xs font-medium"
+                  className="gap-2"
                 >
-                  <Banknote className="w-3.5 h-3.5" />
-                  <span>Record Payment</span>
+                  <RotateCcw className="size-4" />
+                  Return
                 </Button>
-              )}
-
-              {claim.status !== "DRAFT" && (
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowCorrectionModal(true)}
+                  variant="outline"
+                  onClick={() => setShowRejectModal(true)}
                   disabled={loadingAction}
-                  className="h-7 text-zinc-500 hover:text-zinc-900 text-xs px-2"
+                  className="gap-2 text-red-700"
                 >
-                  Edit classifications
+                  <XCircle className="size-4" />
+                  Reject
                 </Button>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+              </>
+            )}
+            {isFinanceUser && (
+              <>
+                {canPay(claim) && (
+                  <Button
+                    onClick={() => setShowPaymentModal(true)}
+                    disabled={loadingAction}
+                    className="gap-2"
+                  >
+                    <Banknote className="size-4" />
+                    Record Payment
+                  </Button>
+                )}
+                {canVerify(claim) &&
+                  !claim.finance_review?.receipts_verified && (
+                    <Button
+                      variant="outline"
+                      onClick={handleVerifyFinance}
+                      loading={loadingAction}
+                      disabled={loadingAction}
+                      className="gap-2"
+                    >
+                      {!loadingAction && <ShieldCheck className="size-4" />}
+                      Verify Receipts
+                    </Button>
+                  )}
+                {claim.status === "APPROVED_FOR_PAYMENT" &&
+                  !claim.active_batch_id &&
+                  !claim.payment && (
+                    <Button
+                      variant="outline"
+                      disabled={loadingAction}
+                      onClick={() => setShowReturnModal(true)}
+                    >
+                      Return for correction
+                    </Button>
+                  )}
+              </>
+            )}
+          </div>
+        </section>
+      )}
 
       {actionSuccessMessage && (
         <Alert variant="success" className="text-xs">
           <CheckCircle2 className="w-4 h-4" />
           <AlertTitle className="text-xs font-semibold">Success</AlertTitle>
-          <AlertDescription className="text-xs">{actionSuccessMessage}</AlertDescription>
+          <AlertDescription className="text-xs">
+            {actionSuccessMessage}
+          </AlertDescription>
         </Alert>
       )}
 
       {/* Return for Clarification Notice */}
       {claim.status === "RETURNED_FOR_CLARIFICATION" && (
-        <Alert variant="destructive" className="text-xs bg-rose-50/80 border-rose-200 text-rose-950">
+        <Alert
+          variant="destructive"
+          className="text-xs bg-rose-50/80 border-rose-200 text-rose-950"
+        >
           <RotateCcw className="w-4 h-4 text-rose-600" />
-          <AlertTitle className="font-semibold text-xs text-rose-900">Clarification Requested by Approver</AlertTitle>
+          <AlertTitle className="font-semibold text-xs text-rose-900">
+            Returned for clarification
+          </AlertTitle>
           <AlertDescription className="text-xs text-rose-800">
-            <p className="mt-1">{claim.clarification_reason || "Approver requested additional information or receipts."}</p>
-            {isSubmitter && (
-              <div className="mt-2.5">
-                <Link href={`/claims/${claim.id}/edit`}>
-                  <Button size="sm" className="h-7 text-xs bg-rose-700 hover:bg-rose-800 text-white">
-                    Update & Resubmit Claim
-                  </Button>
-                </Link>
-              </div>
-            )}
+            <p className="mt-1">
+              {claim.clarification_reason ||
+                "Approver requested additional information or receipts."}
+            </p>
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Navigation Tabs */}
-      <div className="flex border-b border-zinc-200/80 dark:border-zinc-800 space-x-6 text-xs font-medium overflow-x-auto no-scrollbar whitespace-nowrap pb-px">
+      <div className="claim-tabs" role="group" aria-label="Claim sections">
         <button
+          type="button"
+          aria-pressed={activeTab === "details"}
           onClick={() => setActiveTab("details")}
-          className={`pb-2.5 border-b-2 transition-colors shrink-0 ${
-            activeTab === "details"
-              ? "border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold"
-              : "border-transparent text-zinc-400 hover:text-zinc-700"
-          }`}
         >
           Claim Overview
         </button>
         <button
+          type="button"
+          aria-pressed={activeTab === "workflow"}
           onClick={() => setActiveTab("workflow")}
-          className={`pb-2.5 border-b-2 transition-colors shrink-0 ${
-            activeTab === "workflow"
-              ? "border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold"
-              : "border-transparent text-zinc-400 hover:text-zinc-700"
-          }`}
         >
           Workflow & Timeline
         </button>
         <button
+          type="button"
+          aria-pressed={activeTab === "comments"}
           onClick={() => setActiveTab("comments")}
-          className={`pb-2.5 border-b-2 transition-colors shrink-0 ${
-            activeTab === "comments"
-              ? "border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold"
-              : "border-transparent text-zinc-400 hover:text-zinc-700"
-          }`}
         >
           Comments ({claim.comments?.length || 0})
         </button>
         {isSystemAdmin && (
           <button
+            type="button"
+            aria-pressed={activeTab === "audit"}
             onClick={() => setActiveTab("audit")}
-            className={`pb-2.5 border-b-2 transition-colors shrink-0 ${
-              activeTab === "audit"
-                ? "border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold"
-                : "border-transparent text-zinc-400 hover:text-zinc-700"
-            }`}
           >
             Audit History
           </button>
@@ -462,51 +612,82 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
       {activeTab === "details" && (
         <div className="space-y-4">
           {/* Metadata Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* Claimant & Submitter Card */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Payee & Submitter Card */}
             <Card className="border-zinc-200/80 shadow-2xs">
-              <CardContent className="p-3.5 space-y-2 text-xs">
+              <CardContent className="p-4 space-y-3 text-sm">
                 <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">
-                  Claimant & Submitter
+                  Payee & Submitter
                 </span>
                 <div>
-                  <p className="text-[10px] text-zinc-400">Claimant (Payee)</p>
-                  <p className="font-semibold text-zinc-900 dark:text-zinc-100">{claimantName}</p>
-                  <p className="text-[11px] text-zinc-500 font-mono">{claim.claimant_email || "-"}</p>
-                  <p className="text-[11px] text-zinc-500 font-mono">{claim.claimant_phone || "-"}</p>
-                  {claim.jompay_details && <div className="space-y-1 border-t pt-2"><p className="font-medium">JomPAY · {claim.jompay_details.biller_name}</p><p>Biller Code: {claim.jompay_details.biller_code}</p><p>Reference 1: {claim.jompay_details.reference_1}</p>{claim.jompay_details.reference_2 && <p>Reference 2: {claim.jompay_details.reference_2}</p>}</div>}
+                  <p className="text-[10px] text-zinc-400">Pay to</p>
+                  <p className="font-semibold text-zinc-900 dark:text-zinc-100">
+                    {claimantName}
+                  </p>
+                  <p className="text-[11px] text-zinc-500 font-mono">
+                    {claim.claimant_email || "-"}
+                  </p>
+                  <p className="text-[11px] text-zinc-500 font-mono">
+                    {claim.claimant_phone || "-"}
+                  </p>
+                  {claim.jompay_details && (
+                    <div className="space-y-1 border-t pt-2">
+                      <p className="font-medium">
+                        JomPAY · {claim.jompay_details.biller_name}
+                      </p>
+                      <p>Biller Code: {claim.jompay_details.biller_code}</p>
+                      <p>Reference 1: {claim.jompay_details.reference_1}</p>
+                      {claim.jompay_details.reference_2 && (
+                        <p>Reference 2: {claim.jompay_details.reference_2}</p>
+                      )}
+                    </div>
+                  )}
                   {(claim.bank_name || claim.bank_account_number) && (
                     <div className="mt-1.5 pt-1.5 border-t border-zinc-100 dark:border-zinc-800">
-                      <span className="text-[10px] text-zinc-400 block">Bank Account:</span>
-                      <p className="font-medium text-zinc-800 dark:text-zinc-200">{claim.bank_name || "Bank unspecified"}</p>
-                      <p className="font-mono text-emerald-700 dark:text-emerald-400 font-semibold">{claim.bank_account_number || "-"}</p>
+                      <span className="text-[10px] text-zinc-400 block">
+                        Bank Account:
+                      </span>
+                      <p className="font-medium text-zinc-800 dark:text-zinc-200">
+                        {claim.bank_name || "Bank unspecified"}
+                      </p>
+                      <p className="font-mono text-emerald-700 dark:text-emerald-400 font-semibold">
+                        {claim.bank_account_number || "-"}
+                      </p>
                     </div>
                   )}
                 </div>
                 <div className="pt-1.5 border-t border-zinc-100 dark:border-zinc-800">
                   <p className="text-[10px] text-zinc-400">Submitted by</p>
-                  <p className="font-medium text-zinc-800 dark:text-zinc-200">{submitterName}</p>
+                  <p className="font-medium text-zinc-800 dark:text-zinc-200">
+                    {submitterName}
+                  </p>
                 </div>
               </CardContent>
             </Card>
 
             {/* Ministry Context Card */}
             <Card className="border-zinc-200/80 shadow-2xs">
-              <CardContent className="p-3.5 space-y-2 text-xs">
+              <CardContent className="p-4 space-y-3 text-sm">
                 <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">
                   Team & Reference
                 </span>
                 <div>
                   <p className="text-[10px] text-zinc-400">Team</p>
-                  <p className="font-medium text-zinc-900 dark:text-zinc-100">{claim.ministry?.name}</p>
+                  <p className="font-medium text-zinc-900 dark:text-zinc-100">
+                    {claim.ministry?.name}
+                  </p>
                 </div>
                 <div>
                   <p className="text-[10px] text-zinc-400">Submission Date</p>
-                  <p className="font-mono text-zinc-800 dark:text-zinc-200">{formatDate(claim.claim_date)}</p>
+                  <p className="font-mono text-zinc-800 dark:text-zinc-200">
+                    {formatDate(claim.claim_date)}
+                  </p>
                 </div>
                 {claim.disbursement_voucher && (
                   <div>
-                    <p className="text-[10px] text-zinc-400">Disbursement Voucher</p>
+                    <p className="text-[10px] text-zinc-400">
+                      Disbursement Voucher
+                    </p>
                     <p className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
                       {claim.disbursement_voucher}
                     </p>
@@ -514,17 +695,19 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                 )}
                 {claim.batch_number && (
                   <div>
-                    <p className="text-[10px] text-zinc-400">Bank Disbursement File (.xls)</p>
+                    <p className="text-[10px] text-zinc-400">
+                      Bank payment file
+                    </p>
                     <p className="font-mono text-zinc-800 dark:text-zinc-200">
                       {claim.active_batch_id ? (
                         <Link
                           href={`/finance/batches/${claim.active_batch_id}`}
                           className="text-primary hover:underline font-semibold"
                         >
-                          {claim.batch_number}.xls
+                          {claim.batch_number}
                         </Link>
                       ) : (
-                        `${claim.batch_number}.xls`
+                        `${claim.batch_number}`
                       )}
                     </p>
                   </div>
@@ -532,14 +715,19 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                 {claim.internal_reference && (
                   <div>
                     <p className="text-[10px] text-zinc-400">Reference Code</p>
-                    <p className="font-mono text-zinc-800 dark:text-zinc-200">{claim.internal_reference}</p>
+                    <p className="font-mono text-zinc-800 dark:text-zinc-200">
+                      {claim.internal_reference}
+                    </p>
                   </div>
                 )}
                 {claim.payment && (
                   <div className="pt-1.5 border-t border-zinc-100 dark:border-zinc-800">
-                    <p className="text-emerald-700 text-[10px] font-semibold">Payment Settled</p>
+                    <p className="text-emerald-700 text-[10px] font-semibold">
+                      Payment Settled
+                    </p>
                     <p className="font-mono text-zinc-900 dark:text-zinc-100 text-[11px]">
-                      Ref: {claim.payment.payment_reference} ({formatDate(claim.payment.payment_date)})
+                      Ref: {claim.payment.payment_reference} (
+                      {formatDate(claim.payment.payment_date)})
                     </p>
                   </div>
                 )}
@@ -547,40 +735,43 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
             </Card>
 
             {/* Total Banner */}
-            <Card className="bg-zinc-900 text-white flex flex-col justify-between border-zinc-800 shadow-2xs">
+            <Card className="border-border bg-muted/40 shadow-none">
               <CardContent className="p-4">
                 <span className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold block">
                   Total Claim Amount
                 </span>
-                <p className="text-2xl font-bold font-mono text-emerald-400 mt-1.5 tabular-nums">
+                <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">
                   {formatCurrency(claim.total_amount)}
                 </p>
                 <p className="text-[10px] text-zinc-400 mt-1">
-                  {claim.expenses?.length || 0} receipt{(claim.expenses?.length || 0) > 1 ? "s" : ""}
+                  {claim.expenses?.length || 0} expense{" "}
+                  {claim.expenses?.length === 1 ? "item" : "items"}
                 </p>
               </CardContent>
             </Card>
           </div>
 
           {/* Ministry Purpose */}
-          <Card className="border-zinc-200/80 shadow-2xs">
-            <CardHeader className="py-2.5 px-4 border-b border-zinc-100 dark:border-zinc-800">
-              <CardTitle className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">
-                Ministry Purpose / Justification
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-3.5">
-              <p className="text-xs text-zinc-800 dark:text-zinc-200 leading-relaxed">
-                {claim.purpose}
-              </p>
-            </CardContent>
-          </Card>
+          {claim.purpose && (
+            <Card className="border-zinc-200/80 shadow-2xs">
+              <CardHeader className="py-2.5 px-4 border-b border-zinc-100 dark:border-zinc-800">
+                <CardTitle className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">
+                  Claim purpose
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3.5">
+                <p className="text-xs text-zinc-800 dark:text-zinc-200 leading-relaxed">
+                  {claim.purpose}
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Expense Breakdown Table */}
           <Card className="border-zinc-200/80 shadow-2xs overflow-hidden">
-            <CardHeader className="py-2.5 px-4 border-b border-zinc-100 dark:border-zinc-800 flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                Itemized Receipts
+                Expense items
               </CardTitle>
               <span className="text-xs font-mono font-semibold text-zinc-900 dark:text-zinc-100">
                 Subtotal: {formatCurrency(claim.total_amount)}
@@ -588,32 +779,51 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
             </CardHeader>
             <CardContent className="p-0">
               {/* Mobile Card List for Receipts */}
-              <div className="sm:hidden divide-y divide-zinc-200/80 dark:divide-zinc-800">
+              <div className="md:hidden divide-y divide-zinc-200/80 dark:divide-zinc-800">
                 {(claim.expenses || []).map((exp, idx) => {
-                  const expAttachment = (claim.attachments || []).find((a) => a.expense_id === exp.id);
+                  const expAttachment = (claim.attachments || []).find(
+                    (a) => a.expense_id === exp.id,
+                  );
                   return (
                     <div key={exp.id || idx} className="p-3.5 space-y-2">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex min-w-0 items-start gap-2">
                           <span className="h-5 w-5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center text-[10px] font-bold font-mono">
                             {idx + 1}
                           </span>
                           <div>
                             <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                              {exp.description}
+                              {exp.description ||
+                                exp.expense_category?.name ||
+                                "Expense item"}
                             </p>
+                            {exp.expense_category?.name && (
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {exp.expense_category.name}
+                                {exp.beneficiary_type
+                                  ? ` · ${exp.beneficiary_type === "INTERNAL" ? "Internal" : "External"}`
+                                  : ""}
+                              </p>
+                            )}
                             <p className="text-[11px] text-zinc-500 font-mono">
                               {formatDate(exp.expense_date)}
                             </p>
                           </div>
                         </div>
-                        <span className="font-mono font-bold text-sm text-zinc-900 dark:text-zinc-100 tabular-nums">
+                        <span className="shrink-0 whitespace-nowrap text-sm font-semibold tabular-nums">
                           RM {Number(exp.amount).toFixed(2)}
                         </span>
                       </div>
 
                       <div className="flex items-center justify-between text-[11px] text-zinc-500 pt-1">
-                        {exp.vendor && <span>Merchant: <strong className="text-zinc-700 dark:text-zinc-300">{exp.vendor}</strong></span>}
+                        {exp.vendor && (
+                          <span>
+                            Merchant:{" "}
+                            <strong className="text-zinc-700 dark:text-zinc-300">
+                              {exp.vendor}
+                            </strong>
+                          </span>
+                        )}
                       </div>
 
                       {expAttachment && (
@@ -621,10 +831,12 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                           <button
                             type="button"
                             onClick={() => setPreviewAttachment(expAttachment)}
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-md"
+                            className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-lg border border-input px-3 py-2 text-left text-sm font-medium hover:bg-muted"
                           >
                             <Eye className="w-3.5 h-3.5" />
-                            <span>View Attached Receipt ({expAttachment.original_filename})</span>
+                            <span className="min-w-0 break-all">
+                              View receipt: {expAttachment.original_filename}
+                            </span>
                           </button>
                         </div>
                       )}
@@ -634,7 +846,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
               </div>
 
               {/* Desktop Table View */}
-              <div className="hidden sm:block overflow-x-auto">
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-zinc-50/50 border-b border-zinc-100 dark:bg-zinc-900/50 dark:border-zinc-800 text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">
@@ -648,31 +860,55 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                   </thead>
                   <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
                     {(claim.expenses || []).map((exp, idx) => {
-                      const expAttachment = (claim.attachments || []).find(a => a.expense_id === exp.id);
+                      const expAttachment = (claim.attachments || []).find(
+                        (a) => a.expense_id === exp.id,
+                      );
                       return (
-                        <tr key={exp.id || idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/40">
-                          <td className="py-2.5 px-4 text-zinc-400 font-mono text-[11px]">{idx + 1}</td>
-                          <td className="py-2.5 px-4 text-zinc-500 font-mono text-[11px]">{formatDate(exp.expense_date)}</td>
+                        <tr
+                          key={exp.id || idx}
+                          className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/40"
+                        >
+                          <td className="py-2.5 px-4 text-zinc-400 font-mono text-[11px]">
+                            {idx + 1}
+                          </td>
+                          <td className="py-2.5 px-4 text-zinc-500 font-mono text-[11px]">
+                            {formatDate(exp.expense_date)}
+                          </td>
                           <td className="py-2.5 px-4 text-zinc-900 dark:text-zinc-100">
                             <span>{exp.description}</span>
-                            {exp.expense_category?.name && <span className="block text-xs">{exp.expense_category.name}{exp.beneficiary_type ? ` · ${exp.beneficiary_type === "INTERNAL" ? "Internal" : "External"}` : ""}</span>}
+                            {exp.expense_category?.name && (
+                              <span className="block text-xs">
+                                {exp.expense_category.name}
+                                {exp.beneficiary_type
+                                  ? ` · ${exp.beneficiary_type === "INTERNAL" ? "Internal" : "External"}`
+                                  : ""}
+                              </span>
+                            )}
                             {exp.notes && (
-                              <span className="text-[10px] text-zinc-400 block">{exp.notes}</span>
+                              <span className="text-[10px] text-zinc-400 block">
+                                {exp.notes}
+                              </span>
                             )}
                           </td>
-                          <td className="py-2.5 px-4 text-zinc-500">{exp.vendor || "-"}</td>
+                          <td className="py-2.5 px-4 text-zinc-500">
+                            {exp.vendor || "-"}
+                          </td>
                           <td className="py-2.5 px-4 text-center">
                             {expAttachment ? (
                               <button
                                 type="button"
-                                onClick={() => setPreviewAttachment(expAttachment)}
-                                className="inline-flex items-center gap-1 text-[11px] text-emerald-700 hover:text-emerald-800 hover:underline dark:text-emerald-400 font-medium"
+                                onClick={() =>
+                                  setPreviewAttachment(expAttachment)
+                                }
+                                className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
                               >
                                 <Eye className="w-3 h-3" />
                                 <span>View</span>
                               </button>
                             ) : (
-                              <span className="text-[10px] text-zinc-400">-</span>
+                              <span className="text-[10px] text-zinc-400">
+                                -
+                              </span>
                             )}
                           </td>
                           <td className="py-2.5 px-4 text-right font-mono font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">
@@ -684,7 +920,10 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                   </tbody>
                   <tfoot>
                     <tr className="border-t border-zinc-200 dark:border-zinc-800 font-semibold bg-zinc-50/50 dark:bg-zinc-900/50">
-                      <td colSpan={5} className="py-2.5 px-4 text-right text-[10px] uppercase tracking-wider text-zinc-500">
+                      <td
+                        colSpan={5}
+                        className="py-2.5 px-4 text-right text-[10px] uppercase tracking-wider text-zinc-500"
+                      >
                         Total Amount:
                       </td>
                       <td className="py-2.5 px-4 text-right font-mono text-xs text-zinc-900 dark:text-zinc-100">
@@ -705,17 +944,19 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-3.5">
-              {(!claim.attachments || claim.attachments.length === 0) ? (
+              {!claim.attachments || claim.attachments.length === 0 ? (
                 <div className="py-6 text-center text-xs text-zinc-400">
                   No receipts attached.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                   {claim.attachments.map((att) => (
-                    <div
+                    <button
+                      type="button"
+                      aria-label={`View ${att.original_filename}`}
                       key={att.id}
                       onClick={() => setPreviewAttachment(att)}
-                      className="group flex items-center justify-between p-2.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-400 cursor-pointer transition-all shadow-2xs"
+                      className="group flex min-w-0 items-center justify-between p-3 text-left focus-visible:ring-2 focus-visible:ring-ring rounded-lg border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-400 cursor-pointer transition-all shadow-2xs"
                     >
                       <div className="flex items-center gap-2.5 truncate pr-2">
                         <div className="h-7 w-7 rounded bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
@@ -731,7 +972,7 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                         </div>
                       </div>
                       <Eye className="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-900 shrink-0" />
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
@@ -773,7 +1014,28 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
       )}
 
       {/* TAB 4: AUDIT HISTORY (System Admin Only) */}
-      {activeTab === "audit" && isSystemAdmin && <section className="space-y-3"><h2 className="font-semibold">Classification changes</h2>{(claim.classification_changes || []).map(change => <div className="border rounded-lg p-3 text-sm break-words" key={change.id}><p>{formatDateTime(change.created_at)} · {iamClient.getProfileById(change.editor_id)?.full_name || change.editor_id}</p><p className="font-medium">{change.field}</p><p>{JSON.stringify(change.old_value)} → {JSON.stringify(change.new_value)}</p></div>)}</section>}
+      {activeTab === "audit" && isSystemAdmin && (
+        <section className="space-y-3">
+          <h2 className="font-semibold">Classification changes</h2>
+          {(claim.classification_changes || []).map((change) => (
+            <div
+              className="border rounded-lg p-3 text-sm break-words"
+              key={change.id}
+            >
+              <p>
+                {formatDateTime(change.created_at)} ·{" "}
+                {iamClient.getProfileById(change.editor_id)?.full_name ||
+                  change.editor_id}
+              </p>
+              <p className="font-medium">{change.field}</p>
+              <p>
+                {JSON.stringify(change.old_value)} →{" "}
+                {JSON.stringify(change.new_value)}
+              </p>
+            </div>
+          ))}
+        </section>
+      )}
       {activeTab === "audit" && isSystemAdmin && (
         <Card className="border-zinc-200/80 shadow-2xs overflow-hidden">
           <CardHeader className="py-3 px-4 border-b border-zinc-100 dark:border-zinc-800">
@@ -795,12 +1057,19 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
                   {(claim.approval_actions || []).map((act) => (
                     <tr key={act.id} className="hover:bg-zinc-50/50">
-                      <td className="py-2.5 px-4 text-zinc-500 font-mono text-[11px]">{formatDateTime(act.created_at)}</td>
-                      <td className="py-2.5 px-4 font-medium text-zinc-800 dark:text-zinc-200">
-                        {act.actor?.full_name || "User"} ({formatRole(act.actor_role)})
+                      <td className="py-2.5 px-4 text-zinc-500 font-mono text-[11px]">
+                        {formatDateTime(act.created_at)}
                       </td>
-                      <td className="py-2.5 px-4 font-mono text-zinc-900 dark:text-zinc-100 font-semibold text-[11px]">{act.action}</td>
-                      <td className="py-2.5 px-4 text-zinc-500">{act.comment || "-"}</td>
+                      <td className="py-2.5 px-4 font-medium text-zinc-800 dark:text-zinc-200">
+                        {act.actor?.full_name || "User"} (
+                        {formatRole(act.actor_role)})
+                      </td>
+                      <td className="py-2.5 px-4 font-mono text-zinc-900 dark:text-zinc-100 font-semibold text-[11px]">
+                        {act.action}
+                      </td>
+                      <td className="py-2.5 px-4 text-zinc-500">
+                        {act.comment || "-"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -859,7 +1128,12 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
       )}
 
       {/* Delete Claim Confirmation Modal */}
-      <Dialog open={showDeleteModal} onOpenChange={(open) => !open && !loadingAction && setShowDeleteModal(false)}>
+      <Dialog
+        open={showDeleteModal}
+        onOpenChange={(open) =>
+          !open && !loadingAction && setShowDeleteModal(false)
+        }
+      >
         <DialogHeader>
           <DialogTitle className="text-red-700 flex items-center gap-2">
             <Trash2 className="w-5 h-5 text-red-600" />
@@ -868,14 +1142,27 @@ export function ClaimDetailView({ claim: initialClaim }: ClaimDetailViewProps) {
         </DialogHeader>
         <div className="space-y-3 my-2 text-sm text-slate-600">
           <p>
-            Are you sure you want to permanently delete {claim.claim_number ? <strong className="font-mono text-slate-900">{claim.claim_number}</strong> : "this draft"}?
+            Are you sure you want to permanently delete{" "}
+            {claim.claim_number ? (
+              <strong className="font-mono text-slate-900">
+                {claim.claim_number}
+              </strong>
+            ) : (
+              "this draft"
+            )}
+            ?
           </p>
           <p className="text-xs text-red-600 bg-red-50 p-2.5 rounded border border-red-200">
-            This action cannot be undone. All expense items, receipts, and history attached to this claim will be permanently removed.
+            This action cannot be undone. All expense items, receipts, and
+            history attached to this claim will be permanently removed.
           </p>
         </div>
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={() => setShowDeleteModal(false)} disabled={loadingAction}>
+          <Button
+            variant="outline"
+            onClick={() => setShowDeleteModal(false)}
+            disabled={loadingAction}
+          >
             Cancel
           </Button>
           <Button

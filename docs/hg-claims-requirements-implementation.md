@@ -63,3 +63,9 @@ On 2026-11-11 the user supplied `JomPay_Bulk_Sample_B1.xlsx`. The initial missin
 ## Follow-up: interface consistency and JomPAY clarification
 
 The user clarified that JomPAY payees need neither verification nor a user account. The payment-management migration applies that exception while retaining bank-transfer verification. Saved payees are excluded from user management and role assignment. The redesigned claim form, centered management pages, edit/review dialogs, recurring validation and regression evidence are documented in [the UI/payment review](hg-claims-ui-payment-review.md).
+
+## 2026-11-12 follow-up audit and implementation
+
+The claim pages mixed compact 28px and standard actions, nested buttons inside links, crowded desktop tables on tablets and reviewer decisions alongside utility actions. Reimbursements only exposed bank-transfer batching; its separate JomPAY page made creation/download difficult to find. Existing template-based JomPAY export passed the real local HTTP download regression, and the provided workbook still matches the embedded template's original formatting.
+
+Implemented consistent claim controls/layouts, accessible receipt and note actions, removal of per-claim Print, and payment-method tabs within Reimbursements. Both methods expose Claims and Bank files views, with method-specific eligibility/commands, mobile selection and visible downloads/retry errors. Existing JomPAY/print URLs remain valid via redirects. No migration or financial-record rewrite is needed. Tests cover creation through actual download, separate JomPAY rows, leading zeros, unchanged Approved status, download failure/retry, tablet/mobile layouts, keyboard previews and review dialogs. See the implementation report for final commands/results.

@@ -720,7 +720,7 @@ export function ClaimForm({
           <Link
             href="/claims"
             aria-label="Back to claims"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg hover:bg-muted"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg hover:bg-muted"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>

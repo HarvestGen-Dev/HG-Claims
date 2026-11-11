@@ -1,8 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { RotateCcw, AlertTriangle } from "lucide-react";
-import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { RotateCcw } from "lucide-react";
+import {
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -44,7 +50,8 @@ export function ReturnClarificationModal({
           <div>
             <DialogTitle>Return Claim for Clarification</DialogTitle>
             <DialogDescription>
-              Claim {claimNumber || ""} will be returned to the claimant for edits.
+              Claim {claimNumber || ""} will be returned to the claimant for
+              edits.
             </DialogDescription>
           </div>
         </div>
@@ -52,34 +59,52 @@ export function ReturnClarificationModal({
 
       <div className="space-y-4 my-2">
         <div className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900 border border-amber-200">
-          The claimant will be notified immediately and invited to update missing receipts, fix expense breakdowns, or clarify details before resubmitting.
+          The claimant will be notified immediately and invited to update
+          missing receipts, fix expense breakdowns, or clarify details before
+          resubmitting.
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+          <label htmlFor="return-claim-reason" className="text-sm font-medium">
             Clarification Instructions / Missing Information *
           </label>
           <Textarea
+            id="return-claim-reason"
+            aria-invalid={!!error}
+            aria-describedby={error ? "return-claim-error" : undefined}
             rows={4}
-            placeholder="e.g. Please upload the official tax invoice itemising the items, or verify the budget allocation..."
+            placeholder="Explain what needs to be corrected before resubmission."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             className="text-sm"
             required
           />
-          {error && <p className="text-xs text-red-600 font-medium">{error}</p>}
+          {error && (
+            <p
+              id="return-claim-error"
+              role="alert"
+              className="text-sm text-red-600"
+            >
+              {error}
+            </p>
+          )}
         </div>
       </div>
 
       <DialogFooter>
-        <Button variant="outline" onClick={onCancel} disabled={loading}>
+        <Button
+          variant="outline"
+          className="min-h-11"
+          onClick={onCancel}
+          disabled={loading}
+        >
           Cancel
         </Button>
         <Button
           onClick={handleConfirm}
           loading={loading}
           disabled={loading || !reason.trim()}
-          className="bg-amber-600 hover:bg-amber-700 text-white"
+          className="min-h-11 bg-amber-600 hover:bg-amber-700 text-white"
         >
           {loading ? "Returning..." : "Return to Claimant"}
         </Button>

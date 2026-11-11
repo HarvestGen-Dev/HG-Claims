@@ -459,11 +459,22 @@ test("new administration pages are centered and usable on narrow screens", async
       route,
     ).toBe(true);
     if (route === "/claims/new") {
-      await page.screenshot({path: "/private/tmp/hg-claim-form-mobile-v3.png", fullPage: true});
-      await page.getByRole("heading", {name:"Expense items", exact:true}).scrollIntoViewIfNeeded();
-      await page.screenshot({path:"/private/tmp/hg-claim-expenses-mobile-v3.png"});
-      await page.getByRole("button", {name:"Submit Claim", exact:true}).scrollIntoViewIfNeeded();
-      await page.screenshot({path:"/private/tmp/hg-claim-actions-mobile-v3.png"});
+      await page.screenshot({
+        path: "/private/tmp/hg-claim-form-mobile-v3.png",
+        fullPage: true,
+      });
+      await page
+        .getByRole("heading", { name: "Expense items", exact: true })
+        .scrollIntoViewIfNeeded();
+      await page.screenshot({
+        path: "/private/tmp/hg-claim-expenses-mobile-v3.png",
+      });
+      await page
+        .getByRole("button", { name: "Submit Claim", exact: true })
+        .scrollIntoViewIfNeeded();
+      await page.screenshot({
+        path: "/private/tmp/hg-claim-actions-mobile-v3.png",
+      });
     }
   }
   await page.goto("/finance/recurring");
@@ -552,4 +563,329 @@ test("recurring configuration distinguishes fixed and variable bills in a dialog
   await expect(
     variable.getByText("TNB · Inactive", { exact: true }),
   ).toBeVisible();
+});
+
+test("Reimbursements separates Bank Transfer and JomPAY and creates a downloadable B1 file on mobile", async ({
+  page,
+}) => {
+  const client = createClient(fixture.api, fixture.anon, {
+    auth: { persistSession: false },
+  });
+  await client.auth.signInWithPassword(fixture.users.finance);
+  const command = async (action: string, payload: unknown) => {
+    const result = await client.rpc("nlcc_command", { action, payload });
+    expect(result.error).toBeNull();
+    return result.data;
+  };
+  const unique = `JomPAY UI ${Date.now()}`;
+  const team = await command("master_save", {
+    table: "ministries",
+    data: { code: `UI-${Date.now()}`, name: unique },
+  });
+  const payee = await command("create_payee_profile", {
+    full_name: unique,
+    payment_method: "JOMPAY",
+    jompay_biller_name: "Utility B1",
+    jompay_biller_code: "0000123",
+    jompay_reference_1: "0000987654321",
+  });
+  const snapshot = await client.rpc("nlcc_snapshot");
+  const category = snapshot.data.categories.find(
+    (c: { code: string }) => c.code === "V2_UTILITIES",
+  );
+  const claims = [];
+  for (const amount of [11.25, 22.5]) {
+    const claim = await command("submit_claim", {
+      request_key: crypto.randomUUID(),
+      payee_profile_id: payee.id,
+      ministry_id: team.id,
+      claim_date: "2026-11-12",
+      purpose: unique,
+      expenses: [
+        {
+          temp_id: "bill",
+          expense_date: "2026-11-12",
+          expense_category_id: category.id,
+          amount,
+          description: "",
+          sort_order: 1,
+        },
+      ],
+      attachments: [],
+    });
+    const detail = await client.rpc("nlcc_claim_detail", {
+      p_claim_id: claim.id,
+    });
+    await command("approve", {
+      claim_id: claim.id,
+      version: detail.data.claim.version,
+    });
+    claims.push(detail.data.claim);
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await login(page, "finance");
+  await page.goto("/finance/claims");
+  const methods = page.getByRole("navigation", { name: "Payment method" });
+  await expect(
+    methods.getByRole("link", { name: "Bank Transfer", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
+  for (const claim of claims)
+    await expect(
+      page.locator(`#main-content a[href="/finance/claims/${claim.id}"]`),
+    ).toHaveCount(0);
+  await methods.getByRole("link", { name: "JomPAY", exact: true }).click();
+  await expect(page).toHaveURL(/method=JOMPAY/);
+  await expect(
+    methods.getByRole("link", { name: "JomPAY", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
+  await page.locator("#finance-search").fill(unique);
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const claim of claims)
+    await page
+      .getByRole("checkbox", {
+        name: `Select ${claim.claim_number} for JomPAY batch`,
+        exact: true,
+      })
+      .check();
+  const responseEvent = page.waitForResponse(
+    (r) =>
+      r.request().method() === "POST" &&
+      r.url().endsWith("/api/v1/finance") &&
+      r.request().postDataJSON().action === "finalize_jompay_batch",
+  );
+  await page
+    .getByRole("button", { name: "Create JomPAY batch (2)", exact: true })
+    .click();
+  const created = await responseEvent;
+  expect(created.status()).toBe(200);
+  const batch = await created.json();
+  await page.waitForURL(`**/finance/batches/${batch.id}`);
+  const downloadButton = page.getByRole("button", {
+    name: "Download JomPAY XLSX",
+    exact: true,
+  });
+  await expect(downloadButton).toBeVisible();
+  // Failed downloads show the actionable error beside the control and allow retry.
+  const exportUrl = `**/api/v1/finance/batches/${batch.id}/export`;
+  await page.route(
+    exportUrl,
+    (route) =>
+      route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Temporary export failure. Try again." }),
+      }),
+    { times: 1 },
+  );
+  await downloadButton.click();
+  await expect(
+    page
+      .getByRole("alert")
+      .filter({ hasText: "Temporary export failure. Try again." }),
+  ).toBeVisible();
+  const event = page.waitForEvent("download");
+  await downloadButton.click();
+  const download = await event;
+  expect(download.suggestedFilename()).toBe(`${batch.batch_number}.xlsx`);
+  const bytes = readFileSync((await download.path())!);
+  const wb = XLSX.read(bytes, { type: "buffer", cellNF: true });
+  expect(wb.SheetNames).toEqual(["Sheet1"]);
+  expect(wb.Sheets.Sheet1["!ref"]).toBe("A1:G3");
+  expect(wb.Sheets.Sheet1.A2).toMatchObject({ t: "s", v: "0000123", z: "@" });
+  expect(wb.Sheets.Sheet1.B2.v).toBe("0000987654321");
+  expect([wb.Sheets.Sheet1.D2.v, wb.Sheets.Sheet1.D3.v].sort()).toEqual([
+    "11.25",
+    "22.50",
+  ]);
+  const saved = (
+    await client.rpc("nlcc_snapshot")
+  ).data.reimbursementBatches.find((b: { id: string }) => b.id === batch.id);
+  expect(saved.payment_method).toBe("JOMPAY");
+  expect(saved.claim_count).toBe(2);
+  expect(saved.transfer_count).toBe(2);
+  expect(saved.exported_file_hash_sha256).toBe(
+    createHash("sha256").update(bytes).digest("hex"),
+  );
+  for (const claim of claims)
+    expect(
+      (await client.rpc("nlcc_claim_detail", { p_claim_id: claim.id })).data
+        .claim.status,
+    ).toBe("APPROVED_FOR_PAYMENT");
+  await page
+    .getByRole("link", { name: "JomPAY reimbursements", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/finance\/claims\?method=JOMPAY/);
+  const batchRow = page
+    .getByRole("listitem")
+    .filter({ hasText: batch.batch_number });
+  await expect(
+    batchRow.getByRole("button", { name: "Download JomPAY XLSX", exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "/private/tmp/hg-jompay-reimbursements-mobile.png",
+  });
+  expect(
+    await page
+      .locator("body")
+      .evaluate((el) => el.scrollWidth <= window.innerWidth),
+  ).toBe(true);
+});
+
+test("claim pages have accessible actions and independent mobile layouts without Print", async ({
+  page,
+}) => {
+  await login(page);
+  for (const width of [390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 1000 });
+    for (const path of ["/claims", `/claims/${fixture.claim}`, "/claims/new"]) {
+      await page.goto(path);
+      const content = page.locator(".claim-page, .claim-form").first();
+      await expect(content).toBeVisible();
+      expect(
+        await page
+          .locator("body")
+          .evaluate((el) => el.scrollWidth <= window.innerWidth),
+        `${path} at ${width}`,
+      ).toBe(true);
+      expect(await content.locator("a button, button a").count()).toBe(0);
+      const layout = await content.evaluate((el) => {
+        const a = el.getBoundingClientRect(),
+          b = document.querySelector("#main-content")!.getBoundingClientRect();
+        return Math.abs(a.left + a.width / 2 - b.left - b.width / 2);
+      });
+      expect(layout, `${path} at ${width}`).toBeLessThan(3);
+      await expect(content.getByRole("link", { name: /print/i })).toHaveCount(
+        0,
+      );
+      const smallButtons = await content
+        .locator("button")
+        .evaluateAll((buttons) =>
+          buttons
+            .filter(
+              (b) =>
+                b.getClientRects().length &&
+                b.getBoundingClientRect().height < 44,
+            )
+            .map((b) => b.textContent),
+        );
+      expect(smallButtons).toEqual([]);
+      if (path === `/claims/${fixture.claim}`) {
+        const attachment = page.getByRole("button", {
+          name: "View receipt-0.png",
+          exact: true,
+        });
+        await attachment.focus();
+        await page.keyboard.press("Enter");
+        await expect(page.getByRole("dialog")).toBeVisible();
+        await page.keyboard.press("Escape");
+        await expect(page.getByRole("dialog")).toHaveCount(0);
+        await page
+          .getByRole("button", { name: "Workflow & Timeline", exact: true })
+          .click();
+        await expect(
+          page.getByRole("button", {
+            name: "Workflow & Timeline",
+            exact: true,
+          }),
+        ).toHaveAttribute("aria-pressed", "true");
+      }
+    }
+  }
+  await page.goto(`/claims/${fixture.claim}/print`);
+  await expect(page).toHaveURL(new RegExp(`/claims/${fixture.claim}$`));
+  await page.screenshot({
+    path: "/private/tmp/hg-claim-detail-desktop-v4.png",
+  });
+});
+
+test("Finance and Team Lead claim screens keep review actions distinct and dialogs usable", async ({
+  page,
+}) => {
+  const client = createClient(fixture.api, fixture.anon, {
+    auth: { persistSession: false },
+  });
+  await client.auth.signInWithPassword(fixture.users.finance);
+  const snapshot = await client.rpc("nlcc_snapshot");
+  const pending = snapshot.data.claims.find(
+    (c: { status: string }) => c.status === "PENDING_FINANCE_REVIEW",
+  );
+  expect(pending).toBeTruthy();
+  await login(page, "finance");
+  for (const width of [390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 1000 });
+    for (const path of [
+      "/approvals",
+      "/finance/claims",
+      "/finance/claims?method=JOMPAY",
+      `/finance/claims/${pending.id}`,
+    ]) {
+      await page.goto(path);
+      const content = page.locator(".claim-page").first();
+      await expect(content).toBeVisible();
+      expect(
+        await page
+          .locator("body")
+          .evaluate((el) => el.scrollWidth <= window.innerWidth),
+        `${path} at ${width}`,
+      ).toBe(true);
+      expect(await content.locator("a button, button a").count()).toBe(0);
+      const smallButtons = await content
+        .locator("button")
+        .evaluateAll((buttons) =>
+          buttons
+            .filter(
+              (b) =>
+                b.getClientRects().length &&
+                b.getBoundingClientRect().height < 44,
+            )
+            .map((b) => b.textContent),
+        );
+      expect(smallButtons, `${path} at ${width}`).toEqual([]);
+      if (path === "/approvals") {
+        await page
+          .getByRole("button", { name: "Team claims", exact: true })
+          .click();
+        await expect(
+          page.getByRole("button", { name: "Team claims", exact: true }),
+        ).toHaveAttribute("aria-pressed", "true");
+      }
+    }
+    const review = page.getByRole("region", {
+      name: "Review actions",
+      exact: true,
+    });
+    await expect(
+      review.getByRole("button", { name: "Approve Claim", exact: true }),
+    ).toBeVisible();
+    await expect(
+      review.getByRole("button", { name: "Duplicate Claim", exact: true }),
+    ).toHaveCount(0);
+    await review.getByRole("button", { name: "Return", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(
+      dialog.getByLabel("Clarification Instructions / Missing Information *", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      dialog.getByRole("button", { name: "Return to Claimant", exact: true }),
+    ).toBeDisabled();
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await review.getByRole("button", { name: "Reject", exact: true }).click();
+    await expect(
+      dialog.getByLabel("Reason for Rejection *", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      dialog.getByRole("button", { name: "Confirm Rejection", exact: true }),
+    ).toBeDisabled();
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await page.screenshot({
+      path: `/private/tmp/hg-finance-review-${width}.png`,
+    });
+  }
+  const unchanged = await client.rpc("nlcc_claim_detail", {
+    p_claim_id: pending.id,
+  });
+  expect(unchanged.data.claim.status).toBe("PENDING_FINANCE_REVIEW");
+  expect(unchanged.data.claim.version).toBe(pending.version);
 });

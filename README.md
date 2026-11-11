@@ -98,3 +98,7 @@ remains an external verification step.
 port 58321. It never reads production env files and refuses a non-local target.
 `npm run test:e2e` uses the local fixtures written by that suite and an app on port
 3100 configured to the same isolated backend. See the report for reproducible setup.
+
+## Finance reimbursement files
+
+Open **Reimbursements**, then choose **Bank Transfer** or **JomPAY**. Under **Claims**, select approved items and create a batch. Download its file from the batch details or the **Bank files** view. Bank Transfer uses the existing Alliance BIFF8 `.xls`; JomPAY follows the supplied `JomPay_Bulk_Sample_B1.xlsx` and keeps each bill as a separate row. Exporting a file never confirms payment completion. The former `/finance/jompay` address redirects to the JomPAY tab. Per-claim Print has been removed; old print links open claim details.
