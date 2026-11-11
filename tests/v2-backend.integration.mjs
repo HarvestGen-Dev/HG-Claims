@@ -483,8 +483,15 @@ const payee = await cmd(finance, "create_payee_profile", {
   jompay_reference_2: "0007",
 });
 let prof = (await snap(finance)).profiles.find((p) => p.id === payee.id);
-check(prof.verified_payment_revision == null, "new JomPAY payee Unverified");
-await cmd(finance, "verify_payee", {
+check(
+  prof.is_payee_only && prof.payment_method === "JOMPAY",
+  "JomPAY is a directory payee, not an app user",
+);
+check(
+  Number(sql(`SELECT count(*) FROM auth.users WHERE id='${payee.id}'`)) === 0,
+  "JomPAY payee creates no Auth user",
+);
+await denied(finance, "verify_payee", {
   id: payee.id,
   payment_revision: prof.payment_revision,
 });
@@ -505,6 +512,10 @@ for (let i = 0; i < 2; i++) {
   });
   await transition(lead, "approve", b.id);
   await transition(finance, "approve", b.id);
+  check(
+    !(await detail(finance, b.id)).payee_verification_required,
+    "JomPAY claim has no verification requirement",
+  );
   bills.push(b.id);
 }
 await denied(finance, "finalize_reimbursement_batch", {
@@ -608,7 +619,7 @@ await cmd(finance, "create_payee_profile", {
 check(
   (await snap(finance)).profiles.find((p) => p.id === payee.id)
     .verified_payment_revision == null,
-  "changed JomPAY details return to Unverified",
+  "JomPAY revisions remain auditable without a verification stage",
 );
 check(
   (await snap(finance)).reimbursementBatches.find((x) => x.id === jb.id)
@@ -774,6 +785,7 @@ check(
 // Bank detail revisions, verification races and scheduler invocation permissions.
 const supplier = await cmd(member, "create_payee_profile", {
   full_name: "Bank supplier " + suffix,
+  phone: "+60123456789",
   bank_code: "MBBEMYKL",
   bank_account_holder_name: "Supplier",
   bank_account_number: "000123456789",
@@ -1012,6 +1024,151 @@ const browserJompayBatch = await cmd(finance, "finalize_jompay_batch", {
   claim_ids: browserJompayClaims,
   request_key: randomUUID(),
 });
+// Payment management: directory-only payees, concurrency, audit privacy and recurring validation.
+const hist = await cmd(finance, "payment_detail_history", { id: supplier.id });
+check(
+  hist.changes.some(
+    (h) =>
+      h.changed_fields.includes("account") &&
+      h.new_value.account === "****4321",
+  ),
+  "supplier history shows a masked, field-level account change",
+);
+check(
+  !JSON.stringify(hist).includes("enc:") &&
+    !JSON.stringify(hist).includes("000987654321"),
+  "supplier history exposes no encrypted blobs or full account numbers",
+);
+await denied(member, "payment_detail_history", { id: supplier.id });
+const refreshedSupplier = (await snap(finance)).profiles.find(
+  (p) => p.id === supplier.id,
+);
+check(
+  refreshedSupplier.phone === "+60123456789",
+  "editing payment details preserves omitted supplier contact details",
+);
+await denied(finance, "create_payee_profile", {
+  id: supplier.id,
+  expected_payment_revision: supplierProfile.payment_revision,
+  full_name: refreshedSupplier.full_name,
+  payment_method: "BANK_TRANSFER",
+  bank_code: "MBBEMYKL",
+  bank_account_holder_name: "Supplier",
+  bank_account_number: "000987654321",
+});
+const financeRole = await service
+  .from("roles")
+  .select("id")
+  .eq("code", "FINANCE")
+  .single();
+check(
+  !!(
+    await service
+      .from("user_roles")
+      .insert({ user_id: payee.id, role_id: financeRole.data.id })
+  ).error,
+  "saved payees cannot receive a user role",
+);
+for (const badAmount of [null, "", "0", "1.234"])
+  await denied(finance, "save_recurring_payment", {
+    utility: "Unifi",
+    payee_id: unifi.id,
+    ministry_id: otherTeam.id,
+    amount_mode: "FIXED",
+    fixed_amount: badAmount,
+    due_day: 1,
+    start_date: "2099-01-01",
+  });
+await denied(finance, "save_recurring_payment", {
+  utility: "Rent",
+  payee_id: unifi.id,
+  ministry_id: otherTeam.id,
+  amount_mode: "FIXED",
+  fixed_amount: "1",
+  due_day: 1,
+  start_date: "2099-01-01",
+});
+await denied(finance, "save_recurring_payment", {
+  utility: "TNB",
+  payee_id: payee.id,
+  ministry_id: otherTeam.id,
+  amount_mode: "VARIABLE",
+  fixed_amount: "5",
+  due_day: 1,
+  start_date: "2099-01-01",
+});
+await denied(finance, "save_recurring_payment", {
+  utility: "TNB",
+  payee_id: payee.id,
+  ministry_id: otherTeam.id,
+  amount_mode: "VARIABLE",
+  due_day: 32,
+  start_date: "2099-01-01",
+});
+const lifePayee = await cmd(finance, "create_payee_profile", {
+  full_name: "Utility account " + suffix,
+  payment_method: "JOMPAY",
+  jompay_biller_name: "TNB",
+  jompay_biller_code: "000123",
+  jompay_reference_1: "0009",
+});
+const lifeSchedule = await cmd(finance, "save_recurring_payment", {
+  utility: "TNB",
+  payee_id: lifePayee.id,
+  ministry_id: otherTeam.id,
+  amount_mode: "VARIABLE",
+  due_day: 1,
+  start_date: "2099-01-01",
+});
+check(
+  !!lifeSchedule.id,
+  "recurring bill binds an active JomPAY payee by stable ID, independent of display name",
+);
+await denied(finance, "profile", {
+  id: lifePayee.id,
+  data: { status: "INACTIVE" },
+});
+await denied(finance, "create_payee_profile", {
+  id: lifePayee.id,
+  full_name: "Utility account " + suffix,
+  payment_method: "BANK_TRANSFER",
+  bank_code: "MBBEMYKL",
+  bank_account_holder_name: "Supplier",
+  bank_account_number: "000123456789",
+});
+await denied(finance, "save_recurring_payment", {
+  utility: "TNB",
+  payee_id: lifePayee.id,
+  ministry_id: otherTeam.id,
+  amount_mode: "VARIABLE",
+  due_day: 2,
+  start_date: "2099-01-01",
+});
+await cmd(finance, "deactivate_recurring_payment", { id: lifeSchedule.id });
+await cmd(finance, "profile", {
+  id: lifePayee.id,
+  data: { status: "INACTIVE" },
+});
+check(
+  (await snap(finance)).profiles.find((p) => p.id === lifePayee.id).status ===
+    "INACTIVE",
+  "payee can be deactivated after its recurring schedule is stopped",
+);
+await cmd(finance, "save_recurring_payment", {
+  id: fixed.id,
+  utility: "Unifi",
+  payee_id: unifi.id,
+  ministry_id: otherTeam.id,
+  amount_mode: "FIXED",
+  fixed_amount: 139.9,
+  due_day: 1,
+  start_date: "2027-06-01",
+  end_date: "2027-07-01",
+});
+check(
+  (await detail(finance, fixedId)).total_amount === 129.9,
+  "recurring edits do not rewrite previously generated bill amounts",
+);
 // Save local fixture credentials solely for browser QA, outside repository.
 writeFileSync(
   "/private/tmp/hg-v2-browser-fixtures.json",

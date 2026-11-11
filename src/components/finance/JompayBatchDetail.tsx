@@ -29,7 +29,7 @@ export function JompayBatchDetail({ batch }: { batch: ReimbursementBatch }) {
   const rows = getJompayReviewRows(batch);
   return (
     <AppLayout>
-      <div className="space-y-5">
+      <div className="mx-auto w-full max-w-6xl space-y-6">
         <Link href="/finance/jompay" className="underline text-sm">
           JomPAY bills
         </Link>

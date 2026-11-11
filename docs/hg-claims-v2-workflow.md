@@ -19,7 +19,7 @@ flowchart TD
     Finance -- Reject with reason --> Rejected
     Finance -- Approve, including own claims --> Approved[Approved<br/>Freeze approved amount and receiving payee]
     Finance -. Classification edits, old and new values audited .-> Finance
-    Finance -. Unverified payee warning<br/>Verification does not block approval .-> Finance
+    Finance -. Unverified Bank Transfer payee warning<br/>Verification does not block approval .-> Finance
     Approved -- Unreserved claim needs correction --> Returned
     Approved --> Method{Payment method}
     Method -- Bank Transfer --> SBP[Reserve claims atomically<br/>Aggregate by receiving payee and exact bank destination]
@@ -36,7 +36,7 @@ flowchart TD
     Jompay -- Void unpaid batch with reason --> Release
 ```
 
-The six primary display statuses are Draft, Submitted, Returned, Rejected, Approved and Processed. Historical Cancelled records retain a separate label. Internal stored statuses (`PENDING_MINISTRY_APPROVAL`, `PENDING_FINANCE_REVIEW`, `APPROVED_FOR_PAYMENT`, `PAID`) and distinct banking states remain intact. A Team Lead decision is recorded in workflow history and leaves the claim Submitted for Finance. Exporting or recording an upload never sets Processed.
+The six primary display statuses are Draft, Submitted, Returned, Rejected, Approved and Processed. Historical Cancelled records retain a separate label. Internal stored statuses (`PENDING_MINISTRY_APPROVAL`, `PENDING_FINANCE_REVIEW`, `APPROVED_FOR_PAYMENT`, `PAID`) and distinct banking states remain intact. A Team Lead decision is recorded in workflow history and leaves the claim Submitted for Finance. Exporting or recording an upload never sets Processed. JomPAY payees are supplier-directory records with no Auth account, user role or verification stage.
 
 Team assignments are checked for every Team Lead action. Merely choosing a Team does not grant membership or visibility. In-flight workflow snapshots retain their Team Lead review if the configuration is later disabled; an active reviewer must remain assigned until those claims progress. Finance classification changes to a pending claim's Team rebuild its review workflow. Approval histories are retained.
 

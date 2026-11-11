@@ -59,3 +59,7 @@ Test baseline users with empty and absent roles, combined roles, team scope, lea
 ## Follow-up: supplied JomPAY template
 
 On 2026-11-11 the user supplied `JomPay_Bulk_Sample_B1.xlsx`. The initial missing-asset blocker is resolved by the additive `20261110164319_jompay_bulk_b1_template.sql` migration and a template-preserving XLSX adapter. The original audit above records the repository state before that file was supplied. See [the measured B1 contract](hg-claims-jompay-b1-template.md) and updated implementation report. Live bank-portal acceptance remains externally unverified.
+
+## Follow-up: interface consistency and JomPAY clarification
+
+The user clarified that JomPAY payees need neither verification nor a user account. The payment-management migration applies that exception while retaining bank-transfer verification. Saved payees are excluded from user management and role assignment. The redesigned claim form, centered management pages, edit/review dialogs, recurring validation and regression evidence are documented in [the UI/payment review](hg-claims-ui-payment-review.md).

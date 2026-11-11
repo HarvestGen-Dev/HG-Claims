@@ -68,7 +68,7 @@ export default function DropdownsPage() {
   }
   return (
     <AppLayout>
-      <div className="space-y-5 max-w-3xl">
+      <div className="mx-auto w-full max-w-4xl space-y-6">
         <header>
           <h1 className="text-xl font-semibold">Dropdown lists</h1>
           <p className="text-sm text-muted-foreground">
@@ -82,6 +82,7 @@ export default function DropdownsPage() {
               <label className="block">
                 List
                 <Select
+                  aria-label="List"
                   className="w-full"
                   value={kind}
                   disabled={!!editing}
