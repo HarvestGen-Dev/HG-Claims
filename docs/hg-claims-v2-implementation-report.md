@@ -43,7 +43,7 @@ The generated encryption key and retained historical key must be included in pro
 
 ## Verification evidence
 
-Only isolated local Supabase projects were mutated. Production data, environment variables and live bank integrations were not changed.
+The initial release and template implementation were verified on isolated local Supabase projects. On 2026-11-11, the user then explicitly requested updating the live Supabase role assignments and fixing JomPAY supplier saves. Both tested v2 migrations were applied atomically to the linked HG-Claims database, with a protected application backup and financial-preservation guards. Existing financial records and Auth accounts were preserved; no live banking operation or production environment-variable change was performed. See [the live correction record](hg-claims-live-role-jompay-fix.md).
 
 | Command/check | Result |
 | --- | --- |
@@ -51,20 +51,23 @@ Only isolated local Supabase projects were mutated. Production data, environment
 | Baseline `npm run build` | PASS — pre-existing lint warnings |
 | Final `npm run typecheck` | PASS |
 | Final `npm run lint` | PASS — 0 errors, 99 warnings |
-| Final `npm test` | PASS — 176 tests, 19 files |
+| Final `npm test` | PASS — 177 tests, 19 files |
 | `node tests/v2-backend.integration.mjs` | PASS — 99 assertions against actual isolated local Supabase |
-| `npx playwright test` | PASS — 4 scenarios, production-mode app, Chromium |
+| `npx playwright test` | PASS — 5 scenarios, production-mode app, Chromium |
 | Final `npm run build` | PASS — isolated local configuration and `.next-v2-test` output |
 | `supabase db advisors --workdir /private/tmp/hg-claims-v2-clean --type security --level warn` | PASS — no warning/error issues found, local database port 59322 |
 | Complete migration replay on fresh local backend with pre-v2 fixtures | PASS |
 | Historical migration assertions | PASS — role conversion, baseline access, original claim amount/status, frozen snapshot, encrypted bank destination, batch fingerprint/status and reservation retained |
-| Persistent Cron installation | PASS locally — `hg-claims-recurring-drafts`, `5 17 * * *`, active |
+| Persistent Cron installation | PASS locally — `hg-claims-recurring-drafts`, `5 17 * * *`, active; live job not activated |
+| Requested live role correction | PASS — 5 FINANCE grants, no assigned legacy roles, 0 duplicate Finance aliases; previous access retained |
+| Live JomPAY supplier handler | PASS — create/edit without bank details in a rolled-back probe; no test supplier retained |
+| Live financial preservation | PASS — before/after fingerprints and counts unchanged for existing financial records |
 | Actual Alliance bank portal acceptance | Not externally verified |
 | JomPAY supplied B1 workbook contract | PASS locally — original layout/styles, exact text values, frozen rows, stable file SHA-256 and actual HTTP/UI download/upload; bank portal not externally verified |
 
 Backend coverage includes roleless access, role combinations, team/budget scope, self-lead bypass, conditional fields, Other explanation, Finance financial-field rejection, classification audits, returns/resubmission, verification revisions, same-payee aggregation, duplicate reservations, frozen JomPAY rows, void/failure releases, processed confirmation, duplication independence/multiple receipts, recurring boundary/retry/reminder/reference behavior and session expiry.
 
-Browser coverage uses 390×844 and 1440×1000 viewports, verifies no horizontal overflow on the main member flow, conditionally required beneficiaries, submission without receipts, independent duplication, management screens, actual HTTP BIFF8 download/re-download equality, an upload that finishes after submission, and template-based JomPAY download/upload/completion. JomPAY tests verify that export and upload keep claims Approved, and only explicit completion produces a JomPAY payment record. Local screenshots are stored outside the repository under `/private/tmp/hg-v2-*.png`.
+Browser coverage uses 390×844 and 1440×1000 viewports, verifies no horizontal overflow on the main member flow, conditionally required beneficiaries, submission without receipts, independent duplication, management screens, actual HTTP BIFF8 download/re-download equality, an upload that finishes after submission, template-based JomPAY download/upload/completion, and JomPAY supplier creation/editing without bank details. JomPAY tests verify that export and upload keep claims Approved, and only explicit completion produces a JomPAY payment record. Local screenshots are stored outside the repository under `/private/tmp/hg-v2-*.png`.
 
 The static/mock tests remain useful regression checks, but bank acceptance is not claimed from them. Failed intermediate test runs were corrected and rerun; the table above records the final outcomes. Production-mode browser testing found simultaneous post-login redirects; login now navigates once to the correct dashboard/onboarding destination. Sandbox-restricted browser/network attempts were rerun with permission against the same isolated targets.
 
@@ -94,6 +97,8 @@ The static/mock tests remain useful regression checks, but bank acceptance is no
 Pause the recurring job with `supabase/operations/pause-recurring-job.sql` during maintenance. This preserves schedules and generated bills.
 
 No destructive automatic down migration is supplied. A pre-v2 application cannot safely process the new Finance role/JomPAY/recurring records. Before any v2 writes, rollback may restore the reviewed pre-deployment database/application backup together. After v2 writes, prefer a forward fix; retain the new tables, encryption keys, audit records, billing periods and frozen instructions. A compatibility rollback requires a reviewed role/function bridge and must prevent the old app from treating JomPAY as SBP transfers. Never drop new financial data or regenerate historical batch references as a rollback shortcut.
+
+The live role/JomPAY follow-up applied the two existing migrations after the user requested the Supabase correction. Role-display normalization and a supplier create/edit browser regression were added to the branch.
 
 Repository local changes were present at task start. They were preserved; overlapping claim/role/batch modules were extended for the confirmed requirements. No force push or automatic merge is part of this release.
 
@@ -153,6 +158,7 @@ Branch: [feat/claims-workflow-v2](https://github.com/HarvestGen-Dev/HG-Claims/tr
 - `src/components/layout/AppLayout.tsx`
 - `src/components/layout/BottomNav.tsx`
 - `src/components/layout/Sidebar.tsx`
+- `src/components/layout/TopHeader.tsx`
 - `src/lib/auth/context.tsx`
 - `src/lib/auth/permissions.ts`
 - `src/lib/auth/roles.ts`
@@ -184,6 +190,7 @@ Branch: [feat/claims-workflow-v2](https://github.com/HarvestGen-Dev/HG-Claims/tr
 - `docs/hg-claims-v2-implementation-report.md`
 - `docs/hg-claims-v2-workflow.md`
 - `docs/hg-claims-jompay-b1-template.md`
+- `docs/hg-claims-live-role-jompay-fix.md`
 
 ### Tests and tooling
 

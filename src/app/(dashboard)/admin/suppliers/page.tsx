@@ -96,9 +96,10 @@ export default function SuppliersPage() {
               </h2>
               <div className="grid sm:grid-cols-2 gap-4">
                 {field("full_name", "Supplier name")}
-                <label>
-                  Payment method
+                <div>
+                  <label htmlFor="supplier-payment-method">Payment method</label>
                   <Select
+                    id="supplier-payment-method"
                     className="w-full"
                     value={data.payment_method}
                     onChange={(e) =>
@@ -111,12 +112,13 @@ export default function SuppliersPage() {
                     <option value="BANK_TRANSFER">Bank Transfer</option>
                     <option value="JOMPAY">JomPAY</option>
                   </Select>
-                </label>
+                </div>
                 {data.payment_method === "BANK_TRANSFER" ? (
                   <>
-                    <label>
-                      Bank
+                    <div>
+                      <label htmlFor="supplier-bank">Bank</label>
                       <Select
+                        id="supplier-bank"
                         className="w-full"
                         value={data.bank_code}
                         onChange={(e) =>
@@ -129,7 +131,7 @@ export default function SuppliersPage() {
                           </option>
                         ))}
                       </Select>
-                    </label>
+                    </div>
                     {field("bank_account_holder_name", "Account holder name")}
                     {field("bank_account_number", "Account number")}
                   </>

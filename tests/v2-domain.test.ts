@@ -12,6 +12,7 @@ import {
   needsBeneficiary,
 } from "@/lib/claims-v2";
 import { STATUS_MAP } from "@/lib/utils/formatters";
+import { currentUserRoles } from "@/lib/auth/roles";
 import { getJompayReviewRows, previewJompayClaims } from "@/lib/banking/jompay";
 import { previewReimbursementSelection } from "@/lib/banking/reimbursement-preview";
 import type {
@@ -56,6 +57,18 @@ const cats = EXPENSE_CLASSIFICATIONS.map(([code, name], index) => ({
   is_active: true,
 })) as ExpenseCategory[];
 describe("v2 authenticated baseline and privileged scope", () => {
+  it("displays legacy Finance aliases once while retaining a separate Team Lead role", () => {
+    expect(
+      currentUserRoles([
+        "SYSTEM_ADMIN",
+        "FINANCE_OFFICER",
+        "FINANCE",
+        "TEAM_LEAD",
+      ]),
+    ).toEqual(["FINANCE", "TEAM_LEAD"]);
+    expect(currentUserRoles(["CLAIMANT"])).toEqual([]);
+    expect(currentUserRoles(undefined)).toEqual([]);
+  });
   it.each([undefined, []])(
     "allows baseline access when roles are %s",
     (roles) => {
