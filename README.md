@@ -23,6 +23,14 @@ npm run test:backend
 Backend tests require running local Supabase and create synthetic users and claims.
 They refuse a non-local API URL. Set `NLCC_TEST_WORKDIR` to test a separate CLI workspace.
 
+## Pull requests
+
+Use the [pull request template](.github/pull_request_template.md) to describe the
+problem, changes, actual validation results, deployment/rollback steps, and known
+limitations. Include mobile and desktop evidence for UI changes where relevant.
+Keep descriptions current with the final implementation and mark checks as not
+run when they were skipped. Remove optional sections that do not apply.
+
 ## Deploy to Vercel
 
 Import this repository with the Next.js framework preset. Use `npm ci` and
