@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
-import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { ClaimLink } from "@/components/claims/ClaimLink";
+import { BatchFileDownloadButton } from "./BatchFileDownloadButton";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +21,10 @@ export function JompayBatchDetail({ batch }: { batch: ReimbursementBatch }) {
     setError("");
     try {
       await work();
-      await workspaceStore.refreshDomain("/api/v1/claims");
+      await Promise.all([
+        workspaceStore.refreshDomain("/api/v1/claims"),
+        workspaceStore.refreshDomain("/api/v1/finance"),
+      ]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to update batch.");
     } finally {
@@ -29,10 +34,23 @@ export function JompayBatchDetail({ batch }: { batch: ReimbursementBatch }) {
   const rows = getJompayReviewRows(batch);
   return (
     <AppLayout>
-      <div className="mx-auto w-full max-w-6xl space-y-6">
-        <Link href="/finance/jompay" className="underline text-sm">
-          JomPAY bills
-        </Link>
+      <div className="claim-page mx-auto w-full max-w-5xl space-y-6">
+        <ClaimLink
+          href="/finance/claims?method=JOMPAY&view=files"
+          variant="ghost"
+          className="w-fit"
+        >
+          <ArrowLeft className="size-4" />
+          JomPAY reimbursements
+        </ClaimLink>
+        {error && (
+          <p
+            role="alert"
+            className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+          >
+            {error}
+          </p>
+        )}
         <header>
           <h1 className="text-xl font-semibold">{batch.batch_number}</h1>
           <p className="text-sm text-muted-foreground">
@@ -47,32 +65,11 @@ export function JompayBatchDetail({ batch }: { batch: ReimbursementBatch }) {
             record the upload here. Exporting or recording an upload keeps
             claims Approved until payment completion is confirmed.
           </p>
+          <p className="text-sm text-muted-foreground">
+            Alliance Bank B1 template (.xlsx)
+          </p>
           {batch.status !== "VOIDED" && (
-            <Button
-              disabled={busy}
-              onClick={() =>
-                void run(async () => {
-                  const response = await fetch(
-                    `/api/v1/finance/batches/${batch.id}/export`,
-                  );
-                  if (!response.ok) {
-                    const result = await response.json();
-                    throw new Error(
-                      result.error || "Unable to download JomPAY file.",
-                    );
-                  }
-                  const url = URL.createObjectURL(await response.blob());
-                  const link = document.createElement("a");
-                  link.href = url;
-                  link.download = `${batch.batch_number}.xlsx`;
-                  link.click();
-                  setTimeout(() => URL.revokeObjectURL(url), 1000);
-                  await workspaceStore.refreshDomain("/api/v1/finance");
-                })
-              }
-            >
-              Download JomPAY XLSX
-            </Button>
+            <BatchFileDownloadButton batch={batch} />
           )}
           <p className="text-xs break-all text-muted-foreground">
             {batch.exported_file_hash_sha256
@@ -142,7 +139,7 @@ export function JompayBatchDetail({ batch }: { batch: ReimbursementBatch }) {
         <div className="text-xs text-muted-foreground break-all">
           Snapshot SHA-256: {batch.content_digest_sha256}
         </div>
-        <section className="space-y-3">
+        <section className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5">
           <h2 className="font-semibold">Bill reconciliation</h2>
           <p className="text-sm text-muted-foreground">
             Confirm Processed only after payment has completed. A failed bill is
@@ -176,7 +173,7 @@ export function JompayBatchDetail({ batch }: { batch: ReimbursementBatch }) {
                 </div>
                 {!["PAID", "FAILED", "VOIDED"].includes(i.status) &&
                   batch.status !== "VOIDED" && (
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2 [&>button]:flex-1 sm:[&>button]:flex-none">
                       <Button
                         disabled={busy || !reference.trim()}
                         onClick={() =>
@@ -228,11 +225,6 @@ export function JompayBatchDetail({ batch }: { batch: ReimbursementBatch }) {
                 Void &amp; Release Claims
               </Button>
             )}
-          {error && (
-            <p role="alert" className="text-red-700">
-              {error}
-            </p>
-          )}
         </section>
       </div>
     </AppLayout>

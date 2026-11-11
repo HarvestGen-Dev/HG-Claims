@@ -34,7 +34,7 @@ const REIMBURSEMENT_BADGE_MAP: Record<
     classes: "bg-emerald-50 text-emerald-800 border-emerald-200",
   },
   FAILED: {
-    label: "Bank Transfer Failed",
+    label: "Transfer failed",
     classes: "bg-rose-50 text-rose-800 border-rose-200",
   },
   RELEASED: {
@@ -61,8 +61,6 @@ export function ClaimStatusBadge({
     reimbursementStatus &&
     reimbursementStatus !== "ELIGIBLE"
       ? REIMBURSEMENT_BADGE_MAP[reimbursementStatus]
-      : status === "PAID" && reimbursementStatus === "PAID"
-      ? REIMBURSEMENT_BADGE_MAP.PAID
       : null;
 
   return (
@@ -73,7 +71,7 @@ export function ClaimStatusBadge({
           config.bgClass,
           config.textClass,
           config.borderClass,
-          className
+          className,
         )}
       >
         <span
@@ -85,7 +83,7 @@ export function ClaimStatusBadge({
         <span
           className={cn(
             "inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-tight whitespace-nowrap",
-            reimbConfig.classes
+            reimbConfig.classes,
           )}
         >
           {reimbConfig.label}

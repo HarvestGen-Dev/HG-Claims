@@ -202,3 +202,11 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="h
 .workspace-content h2, .workspace-content h3 { color: rgb(var(--foreground)); }
 
 .claim-summary > a > div :is(p, span) { color: rgb(var(--foreground)); }
+
+/* Claim controls share a readable size and a 44px touch target at every viewport. */
+.claim-page button, .claim-form button { min-height: 44px; }
+.claim-page :is(p, dd, td) { overflow-wrap: anywhere; }
+.claim-page .claim-tabs { display: flex; gap: 1.5rem; overflow-x: auto; border-bottom: 1px solid rgb(var(--border)); }
+.claim-page .claim-tabs button { flex-shrink: 0; border-bottom: 2px solid transparent; padding: .5rem .125rem; color: rgb(var(--muted-foreground)); font-size: .875rem; }
+.claim-page .claim-tabs button[aria-pressed="true"] { border-color: rgb(var(--primary)); color: rgb(var(--foreground)); font-weight: 600; }
+.claim-page .claim-tabs button:focus-visible { outline: 2px solid rgb(var(--ring)); outline-offset: -2px; }

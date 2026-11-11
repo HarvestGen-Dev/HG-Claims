@@ -1,8 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { XCircle, AlertOctagon } from "lucide-react";
-import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { XCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -26,7 +32,9 @@ export function RejectModal({
 
   const handleConfirm = async () => {
     if (!reason.trim() || reason.trim().length < 3) {
-      setError("Please provide a mandatory explanation for rejecting this claim.");
+      setError(
+        "Please provide a mandatory explanation for rejecting this claim.",
+      );
       return;
     }
     setError("");
@@ -52,34 +60,52 @@ export function RejectModal({
 
       <div className="space-y-4 my-2">
         <div className="rounded-lg bg-red-50 p-3 text-xs text-red-900 border border-red-200">
-          Rejecting a claim stops the approval workflow and renders it read-only. Provide a clear reason so the claimant understands the church policy decision.
+          Rejecting a claim stops the approval workflow and renders it
+          read-only. Provide a clear reason so the claimant understands the
+          church policy decision.
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+          <label htmlFor="reject-claim-reason" className="text-sm font-medium">
             Reason for Rejection *
           </label>
           <Textarea
+            id="reject-claim-reason"
+            aria-invalid={!!error}
+            aria-describedby={error ? "reject-claim-error" : undefined}
             rows={4}
-            placeholder="e.g. Outside approved church ministry budget guidelines..."
+            placeholder="Explain why this claim cannot be approved."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             className="text-sm"
             required
           />
-          {error && <p className="text-xs text-red-600 font-medium">{error}</p>}
+          {error && (
+            <p
+              id="reject-claim-error"
+              role="alert"
+              className="text-sm text-red-600"
+            >
+              {error}
+            </p>
+          )}
         </div>
       </div>
 
       <DialogFooter>
-        <Button variant="outline" onClick={onCancel} disabled={loading}>
+        <Button
+          variant="outline"
+          className="min-h-11"
+          onClick={onCancel}
+          disabled={loading}
+        >
           Cancel
         </Button>
         <Button
           onClick={handleConfirm}
           loading={loading}
           disabled={loading || !reason.trim()}
-          className="bg-red-600 hover:bg-red-700 text-white"
+          className="min-h-11 bg-red-600 hover:bg-red-700 text-white"
         >
           {loading ? "Rejecting..." : "Confirm Rejection"}
         </Button>

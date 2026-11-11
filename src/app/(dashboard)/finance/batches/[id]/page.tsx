@@ -41,6 +41,8 @@ export default function FinanceBatchDetailPage() {
   const canView = isFinanceOrAdmin || isAuditor;
 
   const [batch, setBatch] = useState<ReimbursementBatch | null>(null);
+  const [batchLoading, setBatchLoading] = useState(true);
+  const [batchLoadError, setBatchLoadError] = useState("");
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [bankUploadRef, setBankUploadRef] = useState("");
   const [voidModalOpen, setVoidModalOpen] = useState(false);
@@ -61,13 +63,37 @@ export default function FinanceBatchDetailPage() {
   const [instructionSearch, setInstructionSearch] = useState("");
 
   useEffect(() => {
-    if (!user || !batchId) return;
+    if (!user || !batchId || !canView) return;
+    let active = true;
     const sync = () => {
-      setBatch(financeClient.getReimbursementBatchById(batchId));
+      if (active) setBatch(financeClient.getReimbursementBatchById(batchId));
     };
+    setBatchLoading(true);
+    setBatchLoadError("");
     sync();
-    return workspaceStore.subscribeDomains(["finance", "claims", "iam"], sync);
-  }, [user, batchId]);
+    const unsubscribe = workspaceStore.subscribeDomains(
+      ["finance", "claims", "iam"],
+      sync,
+    );
+    void workspaceStore
+      .refreshDomain("/api/v1/finance")
+      .then(sync)
+      .catch((error) => {
+        if (active)
+          setBatchLoadError(
+            error instanceof Error
+              ? error.message
+              : "Unable to load batch details.",
+          );
+      })
+      .finally(() => {
+        if (active) setBatchLoading(false);
+      });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [user, batchId, canView]);
 
   const handleDownloadXls = async () => {
     if (!batch) return;
@@ -190,7 +216,7 @@ export default function FinanceBatchDetailPage() {
   };
 
   if (!isLoading && !canView) return <AppLayout><p role="alert">Finance access required.</p></AppLayout>;
-  if (!batch) return <AppLayout><p role="status">Loading batch details...</p></AppLayout>;
+  if (!batch) return <AppLayout>{batchLoading ? <p role="status">Loading batch details...</p> : <div className="space-y-4"><p role="alert">{batchLoadError || "Batch not found or access denied."}</p><Link href="/finance/claims" className="underline">Back to Reimbursements</Link></div>}</AppLayout>;
 
   const hasPaidRows = (batch.instructions || []).some(
     (inst) => inst.status === "PAID"

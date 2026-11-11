@@ -48,3 +48,29 @@ WHERE amount_mode = 'FIXED' AND (fixed_amount IS NULL OR fixed_amount <= 0);
 ```
 
 Rollback must restore matching dispatcher/helper definitions with the application. Keep all existing records, payment revisions, history and keys. Do not delete generated bills, reverse completed payments or rewrite frozen batches to roll back interface changes.
+
+## Claim actions and reimbursement navigation — 2026-11-12
+
+The claim list, approval inbox, shared claim detail and Finance queue now use consistent button heights, readable controls, centered content and tablet/mobile card lists. Review actions are separated from duplicate, classification editing and delete actions. Optional empty purpose sections and duplicate Processed badges are removed. Receipt previews are keyboard accessible. Return/reject dialogs have associated labels and retain mandatory notes. Per-claim Print is removed; existing print URLs redirect to claim details.
+
+Reimbursements now contains Bank Transfer and JomPAY tabs. Each has Claims and Bank files views. Finance can select approved bills on a phone, create a separate JomPAY batch, download the supplied B1 `.xlsx`, and find previously created files under Bank files. Active, processed and all file filters preserve payment history access. Old JomPAY URLs redirect to the same destination. The existing bank-transfer generator, JomPAY template renderer and server reservations remain unchanged.
+
+A shared download control shows errors at the action and allows retry. A successful creation/download is not reported as failed merely because a subsequent state refresh fails. Batch details refresh their Finance domain when opened. Selection is validated against the current payment method and eligibility; the selected count and amount use the same eligible claims as the command.
+
+The source template was checked again against the embedded template: SHA-256 `2cd25ce33c219a898354471021ae204ce96d2ff504ce91d86ae4a30c27a98cc2`, exact header, style XML, widths, margins and page setup. The export retains `.xlsx` because that is the supplied format. The template and SBP BIFF8 renderer require no changes.
+
+No new database migration or production operation is included in this follow-up. Deploy the frontend/application after the existing three migrations. Previously created batches and immutable financial data remain authoritative on rollback.
+
+Final follow-up verification:
+
+- `npm run typecheck`: passed.
+- `npm run lint`: passed, 0 errors and 93 existing warnings.
+- `npm test`: 183 tests in 21 files passed.
+- `node tests/v2-backend.integration.mjs`: 122 assertions passed with fresh isolated local fixtures.
+- `npx playwright test`: all 12 scenarios passed against the production build. The added end-to-end case creates two same-payee JomPAY bills, selects them in Reimbursements on a 390px viewport, creates the actual database batch, tests a temporary download failure/retry, downloads/parses the real file, checks separate rows/leading zeros/amounts/hash and confirms both claims remain Approved. It also verifies download discovery after returning to Bank files.
+- The two additional UI scenarios check claimant and Finance/review screens at 390, 768 and 1440px, action hit heights, absence of nested interactive controls/Print, keyboard receipt previews, dialog validation, active navigation states, page centering and horizontal overflow. Review-dialog cancellation leaves the claim version/status unchanged.
+- `npm run build`: passed in production mode using only isolated local Supabase settings. Screenshots of the updated claim detail, mobile Finance review and JomPAY Bank files view were visually reviewed.
+
+The three new browser scenarios were rerun against the final production build after the last navigation refinement: 3 passed. The follow-up is on `fix/claims-ui-jompay-tabs`, based on current main.
+
+These are application/template and local database checks. They do not establish actual Alliance Bank portal acceptance.

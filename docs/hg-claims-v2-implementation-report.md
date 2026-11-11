@@ -25,9 +25,21 @@ Branch: `feat/claims-workflow-v2`. Baseline commit: `c66f7ca1718f527d3f92d283747
 
 See [complete claim and scheduler diagrams](hg-claims-v2-workflow.md).
 
-Existing screens updated: claimant dashboard, creation/editing, details/history/print, Team Lead queue and assigned-team view, Finance queue/dashboard/reports, Teams, users/invitations, categories, batch queue/detail, settings and navigation. Added supplier management, managed context lists, JomPAY bill queue/detail and recurring utility configuration/generated bills. The follow-up centers these pages, uses dialogs for supplier and recurring edits, removes saved payees from users, and simplifies the claim form. See [the UI/payment review](hg-claims-ui-payment-review.md). The existing brand, UI primitives and design tokens are reused.
+Existing screens updated: claimant dashboard, creation/editing, details/history, Team Lead queue and assigned-team view, Finance queue/dashboard/reports, Teams, users/invitations, categories, batch queue/detail, settings and navigation. Added supplier management, managed context lists, JomPAY bill queue/detail and recurring utility configuration/generated bills. The follow-up centers these pages, uses dialogs for supplier and recurring edits, removes saved payees from users, and simplifies the claim form. See [the UI/payment review](hg-claims-ui-payment-review.md). The existing brand, UI primitives and design tokens are reused.
 
 Domain layering remains browser clients/store → authenticated Next API services → transactional PostgreSQL commands. The latest repository migration had replaced the central command handler with an incomplete variant; v2 restores the complete existing bank command engine behind an allowlisted dispatcher. Scoped Finance refresh now returns updated authorized claims so successful review actions do not clear the claim store.
+
+## Claim actions and JomPAY reimbursement follow-up — 2026-11-12
+
+Follow-up branch: `fix/claims-ui-jompay-tabs`, based on the merged v2 release in `main`. The final three new browser scenarios were rerun after the last navigation refinement and all passed.
+
+- Claim lists, claimant details, Finance details and review queues use centered containers, shared 44px action targets, readable filter controls and mobile cards through tablet widths. Navigation actions are links without nested buttons. Details separate claim utilities from reviewer decisions; required return/rejection notes have associated accessible labels. Receipt previews work with keyboard activation. Empty optional purpose cards are omitted, and Processed is displayed once.
+- The per-claim Print feature is removed at the user's request. Its component is deleted; old `/claims/:id/print` bookmarks redirect to the existing authorized claim detail page.
+- Reimbursements contains **Bank Transfer** and **JomPAY** payment-method tabs. Each has a **Claims** view for review/selection/batch creation and a **Bank files** view for downloads and payment processing, including active/processed/all filters. Existing `/finance/jompay` URLs redirect to the JomPAY tab. The duplicate sidebar destination is removed.
+- The reported JomPAY problem was a missing creation/download path inside Reimbursements. Its prior selection logic only accepted bank transfers. The JomPAY tab now uses JomPAY eligibility and `finalize_jompay_batch`; the Bank Transfer tab keeps the existing banking command. Bills and batch lists are separated by payment method, including mobile selection. The selected claim count and total are visible. Request keys survive uncertain retries, and selection is revalidated before creation.
+- The Bank Transfer management shortcut is shown only on the Bank Transfer tab. A successful batch creation opens its detail page with the correct file download. The shared download control displays errors next to the action and supports retry, retains the recorded filename, and does not treat a failed state refresh as a failed download. Batch detail loading refreshes Finance state so a newly created batch can be found without relying on stale cache.
+- The original supplied `/Users/jaedenting/Downloads/JomPay_Bulk_Sample_B1.xlsx` was inspected again. Its SHA-256, original header row, full styles XML, column widths, page margins and page setup match the embedded sanitized template. The existing JomPAY renderer remains unchanged; output is `.xlsx`, matching that source. Ordinary transfers remain BIFF8 `.xls`. No new workbook layout or bank library was introduced.
+- No schema migration, production data change or environment-variable change is required for this follow-up. Deploy the application after the three previously documented v2 migrations. Roll back this UI follow-up by redeploying the prior application; retain all created batches, snapshots, export hashes, reservations and audit records. No live bank upload/payment was attempted. Bank-portal acceptance remains external.
 
 ## Database migration
 
@@ -50,10 +62,10 @@ The initial release and template implementation were verified on isolated local 
 | Baseline `npm test` | PASS — 135 tests, 17 files |
 | Baseline `npm run build` | PASS — pre-existing lint warnings |
 | Final `npm run typecheck` | PASS |
-| Final `npm run lint` | PASS — 0 errors, 99 warnings |
-| Final `npm test` | PASS — 180 tests, 20 files |
+| Final `npm run lint` | PASS — 0 errors, 93 warnings |
+| Final `npm test` | PASS — 183 tests, 21 files |
 | `node tests/v2-backend.integration.mjs` | PASS — 122 assertions against actual isolated local Supabase |
-| `npx playwright test` | PASS — 9 scenarios, production-mode app, Chromium; focused centering/mobile check rerun after final header refinement |
+| `npx playwright test` | PASS — 12 scenarios against the production-mode app in Chromium, including JomPAY creation through download and 390/768/1440px claim layouts |
 | Final `npm run build` | PASS — isolated local configuration and `.next-v2-test` output |
 | `supabase db advisors --workdir /private/tmp/hg-claims-v2-clean --type security --level warn` | PASS — no warning/error issues found, local database port 59322 |
 | Complete migration replay on fresh local backend with pre-v2 fixtures | PASS |
@@ -153,7 +165,13 @@ Branch: [feat/claims-workflow-v2](https://github.com/HarvestGen-Dev/HG-Claims/tr
 - `src/components/claims/ClaimStatusBadge.tsx`
 - `src/components/claims/ExpenseItemsEditor.tsx`
 - `src/components/claims/PaymentModal.tsx`
-- `src/components/claims/PrintClaimView.tsx`
+- `src/components/claims/PrintClaimView.tsx` (removed at user request; old print URLs redirect to claim details)
+- `src/app/(dashboard)/claims/[id]/print/page.tsx`
+- `src/components/claims/ClaimLink.tsx`
+- `src/components/claims/MobileClaimList.tsx`
+- `src/components/claims/ReturnClarificationModal.tsx`
+- `src/components/claims/RejectModal.tsx`
+- `src/components/finance/BatchFileDownloadButton.tsx`
 - `src/components/claims/ReceiptUploader.tsx`
 - `src/components/finance/JompayBatchDetail.tsx`
 - `src/components/finance/PayeeDetails.tsx`
@@ -210,6 +228,7 @@ Branch: [feat/claims-workflow-v2](https://github.com/HarvestGen-Dev/HG-Claims/tr
 - `tests/simplified-roles-and-invitations.test.ts`
 - `tests/v2-backend.integration.mjs`
 - `tests/v2-domain.test.ts`
+- `tests/claim-status-presentation.test.ts`
 - `tests/jompay-export.test.ts`
 - `tests/payee-management.test.ts`
 - `tools/bootstrap-admin.mjs`

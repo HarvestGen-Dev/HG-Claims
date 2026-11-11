@@ -23,6 +23,14 @@ npm run test:backend
 Backend tests require running local Supabase and create synthetic users and claims.
 They refuse a non-local API URL. Set `NLCC_TEST_WORKDIR` to test a separate CLI workspace.
 
+## Pull requests
+
+Use the [pull request template](.github/pull_request_template.md) to describe the
+problem, changes, actual validation results, deployment/rollback steps, and known
+limitations. Include mobile and desktop evidence for UI changes where relevant.
+Keep descriptions current with the final implementation and mark checks as not
+run when they were skipped. Remove optional sections that do not apply.
+
 ## Deploy to Vercel
 
 Import this repository with the Next.js framework preset. Use `npm ci` and
@@ -98,3 +106,7 @@ remains an external verification step.
 port 58321. It never reads production env files and refuses a non-local target.
 `npm run test:e2e` uses the local fixtures written by that suite and an app on port
 3100 configured to the same isolated backend. See the report for reproducible setup.
+
+## Finance reimbursement files
+
+Open **Reimbursements**, then choose **Bank Transfer** or **JomPAY**. Under **Claims**, select approved items and create a batch. Download its file from the batch details or the **Bank files** view. Bank Transfer uses the existing Alliance BIFF8 `.xls`; JomPAY follows the supplied `JomPay_Bulk_Sample_B1.xlsx` and keeps each bill as a separate row. Exporting a file never confirms payment completion. The former `/finance/jompay` address redirects to the JomPAY tab. Per-claim Print has been removed; old print links open claim details.

@@ -162,7 +162,6 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             </div>
             {navItem("/finance", isFinance ? "Finance Overview" : "Overview", <Wallet className="w-4 h-4" />, isFinance ? financeCount : undefined, true)}
             {navItem("/finance/claims", "Reimbursements", <Layers className="w-4 h-4" />)}
-            {navItem("/finance/jompay", "JomPAY bills", <FileSpreadsheet className="w-4 h-4" />)}
             {navItem("/finance/recurring", "Recurring payments", <FileSpreadsheet className="w-4 h-4" />)}
             {navItem("/finance/batches", "Disbursement Batches", <FileSpreadsheet className="w-4 h-4" />)}
             {navItem("/finance/reports", "Reports", <BarChart3 className="w-4 h-4" />)}
