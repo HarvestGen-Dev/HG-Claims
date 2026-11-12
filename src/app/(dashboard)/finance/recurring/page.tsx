@@ -20,6 +20,7 @@ import {
 } from "@/lib/domains";
 import { formatCurrency } from "@/lib/utils/formatters";
 import type { RecurringPayment } from "@/lib/types/database";
+import { maskBankAccountNumber } from "@/lib/constants/banks";
 const initial = {
   utility: "Unifi" as RecurringPayment["utility"],
   payee_id: "",
@@ -204,9 +205,9 @@ export default function RecurringPage() {
                 </Select>
               </label>
               <label>
-                JomPAY payee
+                Payee (Bank Transfer or JomPAY)
                 <Select
-                  aria-label="JomPAY payee"
+                  aria-label="Payee"
                   className="w-full"
                   value={data.payee_id}
                   onChange={(e) =>
@@ -214,24 +215,45 @@ export default function RecurringPage() {
                   }
                   required
                 >
-                  <option value="">Choose {data.utility}</option>
+                  <option value="">Choose payee</option>
                   {profiles
                     .filter(
                       (p) =>
                         p.is_payee_only &&
-                        p.payment_method === "JOMPAY" &&
+                        (p.payment_method === "JOMPAY" ||
+                          p.payment_method === "BANK_TRANSFER") &&
                         p.status === "ACTIVE",
                     )
                     .map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.full_name}
+                        {p.full_name} ({p.payment_method === "BANK_TRANSFER" ? "Bank Transfer" : "JomPAY"})
                       </option>
                     ))}
                 </Select>
                 <Link className="text-sm underline" href="/admin/suppliers">
-                  Manage utility payees
+                  Manage payees
                 </Link>
               </label>
+              {data.payee_id && (() => {
+                const p = profiles.find((prof) => prof.id === data.payee_id);
+                if (!p) return null;
+                return (
+                  <div className="sm:col-span-2 rounded-lg bg-muted/40 p-3 text-xs space-y-1">
+                    <p className="font-semibold text-zinc-900 dark:text-zinc-100">
+                      Payment method: {p.payment_method === "BANK_TRANSFER" ? "Bank Account Transfer" : "JomPAY"}
+                    </p>
+                    {p.payment_method === "BANK_TRANSFER" ? (
+                      <p className="text-muted-foreground">
+                        {p.bank_name || p.bank_code} · {p.bank_account_holder_name} · {maskBankAccountNumber(p.bank_account_number || "")}
+                      </p>
+                    ) : (
+                      <p className="text-muted-foreground">
+                        Biller: {p.jompay_biller_name} ({p.jompay_biller_code}) · Ref 1: {p.jompay_reference_1}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
               <label>
                 Team
                 <Select
@@ -392,8 +414,11 @@ export default function RecurringPage() {
                   · Due day {s.due_day}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {profiles.find((p) => p.id === s.payee_id)?.full_name ||
-                    "Saved payee"}{" "}
+                  {(() => {
+                    const prof = profiles.find((p) => p.id === s.payee_id);
+                    const method = prof?.payment_method === "BANK_TRANSFER" ? "Bank Transfer" : "JomPAY";
+                    return `${prof?.full_name || "Saved payee"} (${method})`;
+                  })()}{" "}
                   · {teams.find((t) => t.id === s.ministry_id)?.name || "Team"}
                 </p>
               </div>

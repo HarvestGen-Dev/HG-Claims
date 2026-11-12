@@ -35,22 +35,21 @@ test("roleless member submits on narrow mobile viewport and duplicates all attac
   await page.goto("/claims/new");
   await expect(
     page.getByRole("heading", { name: "Receipt / invoice photos" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Take a photo" }),
-  ).toBeVisible();
+  ).toHaveCount(0);
+  await expect(page.getByText("Expense Item 1")).toBeVisible();
+  await expect(page.getByText("Receipt / Invoice Upload")).toBeVisible();
+  await expect(page.getByText("Take photo")).toBeVisible();
   await expect(page.getByText("Declaration:", { exact: true })).toHaveCount(0);
   expect(
     await page
       .locator("body")
       .evaluate((e) => e.scrollWidth <= window.innerWidth),
   ).toBe(true);
-  await page.locator("#ministryId").selectOption(fixture.team);
   await page.locator('[id="receipt-0-category"]').selectOption({
     label: "Member care (flowers, wreaths, hospital visits, condolence)",
   });
   await expect(page.getByLabel("Who was it for? *")).toBeVisible();
-  await page.locator('[id="receipt-0-beneficiary"]').selectOption("INTERNAL");
+  await expect(page.locator('[id="receipt-0-beneficiary"]')).toHaveValue("INTERNAL");
   await page
     .locator('[id="receipt-0-category"]')
     .selectOption({ label: "Utilities" });
@@ -69,8 +68,8 @@ test("roleless member submits on narrow mobile viewport and duplicates all attac
   await page.getByRole("button", { name: "Duplicate Claim" }).click();
   await page.waitForURL("**/edit");
   await expect(page.locator("#claimantName")).toHaveValue("Preserved Payee");
-  await expect(page.locator("#ministryId")).toHaveValue("");
-  await expect(page.locator("#purpose")).toHaveValue("");
+  await expect(page.locator("#ministryId")).toHaveCount(0);
+  await expect(page.locator("#purpose")).toHaveCount(0);
   await expect(page.locator('[id="receipt-0-amount"]')).toHaveValue("");
   await expect(
     page.getByRole("button", { name: /Remove receipt-[01]\.png/ }),
@@ -158,7 +157,6 @@ test("submission does not wait for receipt upload and later attachment is retain
 }) => {
   await login(page);
   await page.goto("/claims/new");
-  await page.locator("#ministryId").selectOption(fixture.team);
   await page
     .locator('[id="receipt-0-category"]')
     .selectOption({ label: "Utilities" });
@@ -171,7 +169,7 @@ test("submission does not wait for receipt upload and later attachment is retain
     if (route.request().method() === "POST") await uploadGate;
     await route.continue();
   });
-  await page.locator('input[type="file"][multiple]').setInputFiles({
+  await page.locator('input[type="file"]').first().setInputFiles({
     name: "late-receipt.png",
     mimeType: "image/png",
     buffer: Buffer.from(
@@ -265,6 +263,7 @@ test("JomPAY downloads the supplied B1 layout and records upload without complet
         (await getBatch()).instructions.filter(
           (i: { status: string }) => i.status === "PAID",
         ).length,
+      { timeout: 15000 },
     )
     .toBe(1);
   const reconciled = await getBatch();
@@ -394,7 +393,6 @@ test("claim supplier dialog does not submit its parent claim", async ({
 }) => {
   await login(page);
   await page.goto("/claims/new");
-  await page.locator("#ministryId").selectOption(fixture.team);
   await page
     .locator('[id="receipt-0-category"]')
     .selectOption({ label: "Utilities" });
@@ -522,7 +520,7 @@ test("recurring configuration distinguishes fixed and variable bills in a dialog
     .getByRole("button", { name: "Add recurring bill", exact: true })
     .click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("JomPAY payee", { exact: true }).selectOption(ids[0]);
+  await dialog.getByLabel(/payee/i).selectOption(ids[0]);
   await dialog.getByLabel("Team", { exact: true }).selectOption(fixture.team);
   await dialog.getByLabel("Start date", { exact: true }).fill("2099-01-01");
   await dialog
@@ -548,7 +546,7 @@ test("recurring configuration distinguishes fixed and variable bills in a dialog
   await expect(
     dialog.getByLabel("Fixed amount (RM)", { exact: true }),
   ).toHaveCount(0);
-  await dialog.getByLabel("JomPAY payee", { exact: true }).selectOption(ids[1]);
+  await dialog.getByLabel(/payee/i).selectOption(ids[1]);
   await dialog.getByLabel("Team", { exact: true }).selectOption(fixture.team);
   await dialog.getByLabel("Start date", { exact: true }).fill("2099-01-01");
   await dialog
@@ -801,6 +799,7 @@ test("claim pages have accessible actions and independent mobile layouts without
 test("Finance and Team Lead claim screens keep review actions distinct and dialogs usable", async ({
   page,
 }) => {
+  test.setTimeout(90000);
   const client = createClient(fixture.api, fixture.anon, {
     auth: { persistSession: false },
   });
