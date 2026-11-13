@@ -210,3 +210,9 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="h
 .claim-page .claim-tabs button { flex-shrink: 0; border-bottom: 2px solid transparent; padding: .5rem .125rem; color: rgb(var(--muted-foreground)); font-size: .875rem; }
 .claim-page .claim-tabs button[aria-pressed="true"] { border-color: rgb(var(--primary)); color: rgb(var(--foreground)); font-weight: 600; }
 .claim-page .claim-tabs button:focus-visible { outline: 2px solid rgb(var(--ring)); outline-offset: -2px; }
+
+/* Keep the native picker while making WebKit's date value fit a narrow column. */
+.date-input::-webkit-date-and-time-value {
+  min-height: 1.25em;
+  text-align: start;
+}

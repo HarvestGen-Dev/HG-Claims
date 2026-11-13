@@ -88,7 +88,7 @@ test("Finance sees new management screens and bank export preserves binary snaps
     ["/admin/suppliers", "Suppliers and payment details"],
     ["/admin/dropdowns", "Dropdown lists"],
     ["/admin/categories", "Expense classifications"],
-    ["/finance/recurring", "Recurring utility bills"],
+    ["/finance/recurring", "Recurring payments"],
     ["/finance/jompay", "JomPAY bills"],
   ] as const) {
     await page.goto(url);
@@ -98,7 +98,7 @@ test("Finance sees new management screens and bank export preserves binary snaps
   }
   await page.goto("/finance/recurring");
   await expect(
-    page.getByRole("heading", { name: "Recurring utility bills", exact: true }),
+    page.getByRole("heading", { name: "Recurring payments", exact: true }),
   ).toBeVisible();
   await page.screenshot({
     path: "/private/tmp/hg-v2-desktop-recurring.png",

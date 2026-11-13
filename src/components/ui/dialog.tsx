@@ -46,7 +46,7 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
         className="fixed inset-0 bg-zinc-950/45 transition-opacity"
         onClick={() => onOpenChange(false)}
       />
-      <div ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative z-50 w-full max-w-lg max-h-[88dvh] overflow-y-auto rounded-xl border border-border bg-card p-5 text-card-foreground shadow-xl sm:p-6">
+      <div ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative z-50 w-full max-w-lg max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain rounded-xl border border-border bg-card p-4 sm:max-h-[88dvh] text-card-foreground shadow-xl sm:p-6">
         <button
           type="button"
           onClick={() => onOpenChange(false)}

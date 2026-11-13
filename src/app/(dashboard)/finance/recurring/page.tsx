@@ -20,9 +20,13 @@ import {
   claimsClient,
   workspaceStore,
 } from "@/lib/domains";
-import { formatCurrency } from "@/lib/utils/formatters";
+import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 import type { RecurringPayment } from "@/lib/types/database";
-import { maskBankAccountNumber } from "@/lib/constants/banks";
+import {
+  maskBankAccountNumber,
+  resolveCanonicalBank,
+  validateBankAccountString,
+} from "@/lib/constants/banks";
 import { cn } from "@/lib/utils/cn";
 import {
   User,
@@ -70,7 +74,10 @@ export default function RecurringPage() {
       .catch(() =>
         setError("Unable to refresh recurring bills. Please reload the page."),
       );
-    return workspaceStore.subscribeDomains(["finance", "claims"], sync);
+    return workspaceStore.subscribeDomains(
+      ["finance", "claims", "iam", "master-data"],
+      sync,
+    );
   }, []);
 
   const profiles = iamClient.getProfiles();
@@ -78,6 +85,14 @@ export default function RecurringPage() {
   const categories = masterDataClient.getCategories();
 
   const selectedPayee = profiles.find((p) => p.id === data.payee_id);
+  const missingBankDetails =
+    selectedPayee?.payment_method === "BANK_TRANSFER" &&
+    (!resolveCanonicalBank(
+      selectedPayee.bank_code || selectedPayee.bank_name,
+    ) ||
+      !selectedPayee.bank_account_holder_name?.trim() ||
+      !validateBankAccountString(selectedPayee.bank_account_number || "")
+        .valid);
 
   async function run(action: string, payload: Record<string, unknown>) {
     setBusy(true);
@@ -87,8 +102,16 @@ export default function RecurringPage() {
         "/api/v1/finance",
         action,
         payload,
+        { skipRefresh: true },
       );
-      await workspaceStore.refreshDomain("/api/v1/claims");
+      // The command already succeeded. A refresh failure must not invite a second save.
+      void workspaceStore
+        .refreshDomain("/api/v1/finance", { forceFresh: true })
+        .catch(() =>
+          setError(
+            "Changes were saved, but the list could not refresh. Reload to see them.",
+          ),
+        );
       return r;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to save.");
@@ -134,15 +157,19 @@ export default function RecurringPage() {
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold text-foreground">
-              Recurring utility bills
+              Recurring payments
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Automate monthly claims for member bank transfers (stipends, allowances) and utility bills.
-              Drafts appear 14 days before due date and route through Team Lead and Finance approval.
+              Automate monthly claims for member bank transfers (stipends,
+              allowances) and utility bills. Drafts appear 14 days before they
+              are due and follow the assigned team’s approval rules after
+              submission.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={openNewForm}>Add recurring bill</Button>
+          <div className="grid w-full gap-2 sm:w-auto sm:grid-flow-col">
+            <Button disabled={busy} onClick={openNewForm}>
+              Add recurring bill
+            </Button>
             <Button
               variant="outline"
               disabled={busy}
@@ -150,7 +177,7 @@ export default function RecurringPage() {
                 const r = await run("run_recurring_payments", {});
                 if (r) {
                   setResult(
-                    `Generated ${r.generated} draft(s); ${r.reminded} reminder(s).`,
+                    `Generated ${r.generated} draft(s) and sent ${r.reminded} reminder(s).${r.skipped_invalid_payees ? ` ${r.skipped_invalid_payees} schedule(s) need updated payment details.` : ""}`,
                   );
                 }
               }}
@@ -163,7 +190,8 @@ export default function RecurringPage() {
         <p className="text-xs text-muted-foreground bg-muted/40 p-3 rounded-lg border border-border">
           Scheduling uses Asia/Kuala_Lumpur dates. Variable bills show last
           month’s amount and receive one reminder if still blank 7 days before
-          due. Claims follow your church team&apos;s approval rules (Team Lead &amp; Finance).
+          due. Claims follow your church team&apos;s approval rules (Team Lead
+          &amp; Finance).
         </p>
 
         {result && (
@@ -187,8 +215,9 @@ export default function RecurringPage() {
               {id ? "Edit recurring bill" : "Configure recurring bill"}
             </DialogTitle>
             <DialogDescription>
-              Configure recurring claims for church members (bank transfer) or utility providers.
-              Each period automatically generates a claim subjected to team lead &amp; finance approval.
+              Configure recurring claims for church members (bank transfer) or
+              utility providers. Each period automatically generates a claim
+              subjected to team lead &amp; finance approval.
             </DialogDescription>
           </DialogHeader>
 
@@ -196,6 +225,7 @@ export default function RecurringPage() {
             className="space-y-5"
             onSubmit={async (e) => {
               e.preventDefault();
+              if (busy || missingBankDetails) return;
               const r = await run("save_recurring_payment", {
                 id,
                 ...data,
@@ -215,12 +245,13 @@ export default function RecurringPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Recipient / Payee Selection (Full Width) */}
               <div className="space-y-1.5 sm:col-span-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                   <label
                     htmlFor="recurring-payee"
                     className="text-sm font-medium text-foreground"
                   >
-                    Payee (Member or Supplier) <span className="text-red-500">*</span>
+                    Payee (Member or Supplier){" "}
+                    <span className="text-red-500">*</span>
                   </label>
                   <Link
                     className="text-xs text-primary hover:underline"
@@ -237,23 +268,26 @@ export default function RecurringPage() {
                   onChange={(e) => {
                     const payeeId = e.target.value;
                     const p = profiles.find((prof) => prof.id === payeeId);
+                    const utilities = [
+                      "Unifi",
+                      "Indah Water",
+                      "TNB",
+                      "Air Selangor",
+                    ];
                     if (p?.payment_method === "JOMPAY") {
+                      const utility = utilities.includes(data.utility)
+                        ? data.utility
+                        : "Unifi";
+                      const fixed = ["Unifi", "Indah Water"].includes(utility);
                       setData({
                         ...data,
                         payee_id: payeeId,
-                        utility: ["Unifi", "Indah Water", "TNB", "Air Selangor"].includes(data.utility)
-                          ? data.utility
-                          : "Unifi",
-                        amount_mode: ["Unifi", "Indah Water"].includes(data.utility)
-                          ? "FIXED"
-                          : "VARIABLE",
+                        utility,
+                        amount_mode: fixed ? "FIXED" : "VARIABLE",
+                        fixed_amount: fixed ? data.fixed_amount : "",
                       });
                     } else {
-                      setData({
-                        ...data,
-                        payee_id: payeeId,
-                        utility: data.utility === "Unifi" ? "Monthly Allowance" : data.utility,
-                      });
+                      setData({ ...data, payee_id: payeeId });
                     }
                   }}
                   required
@@ -292,15 +326,21 @@ export default function RecurringPage() {
               {selectedPayee && (
                 <div className="sm:col-span-2 rounded-lg border border-border bg-muted/40 p-3 text-xs space-y-1.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                    <div className="flex min-w-0 flex-wrap items-center gap-1.5 break-words font-semibold text-foreground">
                       {selectedPayee.is_payee_only ? (
                         <Building2 className="size-3.5 text-muted-foreground" />
                       ) : (
                         <User className="size-3.5 text-muted-foreground" />
                       )}
-                      <span>{selectedPayee.full_name}</span>
+                      <span className="min-w-0 [overflow-wrap:anywhere]">
+                        {selectedPayee.full_name}
+                      </span>
                       <span className="text-[11px] font-normal text-muted-foreground">
-                        ({selectedPayee.is_payee_only ? "Directory Payee" : "Church Member / Staff"})
+                        (
+                        {selectedPayee.is_payee_only
+                          ? "Directory Payee"
+                          : "Church Member / Staff"}
+                        )
                       </span>
                     </div>
                     <span
@@ -321,31 +361,46 @@ export default function RecurringPage() {
                     <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 pt-0.5">
                       <span>
                         <strong>Bank:</strong>{" "}
-                        {selectedPayee.bank_name || selectedPayee.bank_code || "Not set"}
+                        {selectedPayee.bank_name ||
+                          selectedPayee.bank_code ||
+                          "Not set"}
                       </span>
                       <span>
                         <strong>Account Holder:</strong>{" "}
-                        {selectedPayee.bank_account_holder_name || selectedPayee.full_name}
+                        {selectedPayee.bank_account_holder_name ||
+                          selectedPayee.full_name}
                       </span>
                       <span>
                         <strong>Account No:</strong>{" "}
-                        {maskBankAccountNumber(selectedPayee.bank_account_number || "")}
+                        {maskBankAccountNumber(
+                          selectedPayee.bank_account_number || "",
+                        )}
                       </span>
                     </div>
                   ) : (
                     <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 pt-0.5">
                       <span>
-                        <strong>Biller:</strong> {selectedPayee.jompay_biller_name} ({selectedPayee.jompay_biller_code})
+                        <strong>Biller:</strong>{" "}
+                        {selectedPayee.jompay_biller_name} (
+                        {selectedPayee.jompay_biller_code})
                       </span>
                       <span>
-                        <strong>Ref 1:</strong> {selectedPayee.jompay_reference_1}
+                        <strong>Ref 1:</strong>{" "}
+                        {selectedPayee.jompay_reference_1}
                       </span>
                       {selectedPayee.jompay_reference_2 && (
                         <span>
-                          <strong>Ref 2:</strong> {selectedPayee.jompay_reference_2}
+                          <strong>Ref 2:</strong>{" "}
+                          {selectedPayee.jompay_reference_2}
                         </span>
                       )}
                     </div>
+                  )}
+                  {missingBankDetails && (
+                    <p className="text-sm text-destructive">
+                      Ask this payee to complete their bank, account number and
+                      account holder details before saving.
+                    </p>
                   )}
                 </div>
               )}
@@ -378,11 +433,13 @@ export default function RecurringPage() {
                       });
                     }}
                   >
-                    {["Unifi", "Indah Water", "TNB", "Air Selangor"].map((u) => (
-                      <option key={u} value={u}>
-                        {u}
-                      </option>
-                    ))}
+                    {["Unifi", "Indah Water", "TNB", "Air Selangor"].map(
+                      (u) => (
+                        <option key={u} value={u}>
+                          {u}
+                        </option>
+                      ),
+                    )}
                   </Select>
                 ) : (
                   <div>
@@ -420,15 +477,14 @@ export default function RecurringPage() {
                   <button
                     type="button"
                     disabled={selectedPayee?.payment_method === "JOMPAY"}
-                    onClick={() =>
-                      setData({ ...data, amount_mode: "FIXED" })
-                    }
+                    onClick={() => setData({ ...data, amount_mode: "FIXED" })}
                     className={cn(
                       "flex-1 h-11 px-3 text-xs font-medium rounded-lg border transition-colors",
                       data.amount_mode === "FIXED"
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-muted/50 text-muted-foreground border-border hover:bg-muted",
-                      selectedPayee?.payment_method === "JOMPAY" && "opacity-60 cursor-not-allowed",
+                      selectedPayee?.payment_method === "JOMPAY" &&
+                        "opacity-60 cursor-not-allowed",
                     )}
                   >
                     Fixed Amount
@@ -448,7 +504,8 @@ export default function RecurringPage() {
                       data.amount_mode === "VARIABLE"
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-muted/50 text-muted-foreground border-border hover:bg-muted",
-                      selectedPayee?.payment_method === "JOMPAY" && "opacity-60 cursor-not-allowed",
+                      selectedPayee?.payment_method === "JOMPAY" &&
+                        "opacity-60 cursor-not-allowed",
                     )}
                   >
                     Variable Amount
@@ -484,7 +541,9 @@ export default function RecurringPage() {
                   <div className="rounded-lg bg-muted/40 border border-border p-3 text-xs text-muted-foreground flex items-center gap-2">
                     <Calendar className="size-4 shrink-0 text-muted-foreground" />
                     <span>
-                      Variable amount: Each generated monthly draft leaves amount blank for Finance or claimant entry, with a reminder 7 days before due date.
+                      Variable amount: Each generated monthly draft leaves
+                      amount blank for Finance or claimant entry, with a
+                      reminder 7 days before due date.
                     </span>
                   </div>
                 )}
@@ -575,43 +634,46 @@ export default function RecurringPage() {
                 </span>
               </div>
 
-              {/* Start Date */}
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="recurring-start-date"
-                  className="block text-sm font-medium text-foreground"
-                >
-                  Start date <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  id="recurring-start-date"
-                  aria-label="Start date"
-                  type="date"
-                  value={data.start_date}
-                  onChange={(e) =>
-                    setData({ ...data, start_date: e.target.value })
-                  }
-                  required
-                />
-              </div>
+              <div className="grid min-w-0 gap-4 sm:col-span-2 sm:grid-cols-2">
+                {/* Start Date */}
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="recurring-start-date"
+                    className="block text-sm font-medium text-foreground"
+                  >
+                    Start date <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    id="recurring-start-date"
+                    aria-label="Start date"
+                    type="date"
+                    value={data.start_date}
+                    onChange={(e) =>
+                      setData({ ...data, start_date: e.target.value })
+                    }
+                    required
+                  />
+                </div>
 
-              {/* End Date (Full Width) */}
-              <div className="space-y-1.5 sm:col-span-2">
-                <label
-                  htmlFor="recurring-end-date"
-                  className="block text-sm font-medium text-foreground"
-                >
-                  End date (optional)
-                </label>
-                <Input
-                  id="recurring-end-date"
-                  aria-label="End date (optional)"
-                  type="date"
-                  value={data.end_date}
-                  onChange={(e) =>
-                    setData({ ...data, end_date: e.target.value })
-                  }
-                />
+                {/* End Date */}
+                <div className="min-w-0 space-y-1.5">
+                  <label
+                    htmlFor="recurring-end-date"
+                    className="block text-sm font-medium text-foreground"
+                  >
+                    End date (optional)
+                  </label>
+                  <Input
+                    id="recurring-end-date"
+                    aria-label="End date (optional)"
+                    type="date"
+                    min={data.start_date || undefined}
+                    value={data.end_date}
+                    onChange={(e) =>
+                      setData({ ...data, end_date: e.target.value })
+                    }
+                  />
+                </div>
               </div>
             </div>
 
@@ -644,7 +706,7 @@ export default function RecurringPage() {
               </div>
             )}
 
-            <DialogFooter className="mt-6 flex flex-wrap justify-end gap-2">
+            <DialogFooter className="mt-6 grid grid-cols-1 gap-2 sm:flex">
               <Button
                 type="button"
                 variant="outline"
@@ -657,7 +719,13 @@ export default function RecurringPage() {
               >
                 Cancel
               </Button>
-              <Button loading={busy}>Save recurring bill</Button>
+              <Button
+                className="row-start-1 sm:row-auto"
+                loading={busy}
+                disabled={missingBankDetails}
+              >
+                Save recurring bill
+              </Button>
             </DialogFooter>
           </form>
         </Dialog>
@@ -676,7 +744,8 @@ export default function RecurringPage() {
           <ul className="divide-y rounded-lg border bg-card">
             {!schedules.length && (
               <li className="p-4 text-sm text-muted-foreground text-center">
-                No recurring bills configured. Click &quot;Add recurring bill&quot; to set up member allowances or utility bills.
+                No recurring bills configured. Click &quot;Add recurring
+                bill&quot; to set up member allowances or utility bills.
               </li>
             )}
             {schedules.map((s) => {
@@ -686,9 +755,9 @@ export default function RecurringPage() {
               return (
                 <li
                   key={s.id}
-                  className="p-4 flex flex-wrap items-center justify-between gap-3 hover:bg-muted/30 transition-colors"
+                  className="grid min-w-0 gap-3 p-3 transition-colors hover:bg-muted/30 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:p-4"
                 >
-                  <div className="space-y-1">
+                  <div className="min-w-0 space-y-1 break-words">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium text-foreground">{s.utility}</p>
                       <span
@@ -726,8 +795,11 @@ export default function RecurringPage() {
                       · Due day {s.due_day} of each month
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Recipient: <strong>{prof?.full_name || "Saved payee"}</strong> · Team:{" "}
-                      {teams.find((t) => t.id === s.ministry_id)?.name || "Team"}
+                      Recipient:{" "}
+                      <strong>{prof?.full_name || "Saved payee"}</strong> ·
+                      Team:{" "}
+                      {teams.find((t) => t.id === s.ministry_id)?.name ||
+                        "Team"}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -767,7 +839,8 @@ export default function RecurringPage() {
           <ul className="divide-y border rounded-lg bg-card">
             {!claims.filter((c) => c.recurring_schedule_id).length && (
               <li className="p-4 text-sm text-muted-foreground text-center">
-                No bills have been generated yet. Due bills generate 14 days in advance.
+                No bills have been generated yet. Due bills generate 14 days in
+                advance.
               </li>
             )}
             {claims
@@ -775,20 +848,25 @@ export default function RecurringPage() {
               .map((c) => (
                 <li
                   key={c.id}
-                  className="p-4 flex flex-wrap items-center justify-between gap-3 hover:bg-muted/30 transition-colors"
+                  className="grid min-w-0 gap-3 p-3 transition-colors hover:bg-muted/30 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:p-4"
                 >
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
+                  <div className="min-w-0 space-y-1 break-words">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <Link
                         href={`/claims/${c.id}`}
-                        className="font-medium text-foreground hover:underline flex items-center gap-1.5"
+                        className="flex min-w-0 max-w-full items-center gap-1.5 font-medium text-foreground hover:underline"
                       >
-                        <span>{c.purpose}</span>
-                        <ArrowRight className="size-3.5 text-muted-foreground" />
+                        <span className="min-w-0 [overflow-wrap:anywhere]">
+                          {c.purpose || "Recurring payment"}
+                        </span>
+                        <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" />
                       </Link>
-                      <span className="text-xs text-muted-foreground">
-                        · Due {c.recurring_due_date}
-                      </span>
+                      <time
+                        dateTime={c.recurring_due_date || undefined}
+                        className="whitespace-nowrap text-xs text-muted-foreground"
+                      >
+                        Due {formatDate(c.recurring_due_date)}
+                      </time>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Claimant / Payee: <strong>{c.claimant_name}</strong> ·{" "}
@@ -797,9 +875,9 @@ export default function RecurringPage() {
                         : "JomPAY"}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                     <ClaimStatusBadge status={c.status} />
-                    <span className="text-sm font-semibold text-foreground min-w-[80px] text-right">
+                    <span className="text-sm font-semibold text-foreground tabular-nums">
                       {c.total_amount
                         ? formatCurrency(c.total_amount)
                         : "Amount needed"}

@@ -743,6 +743,22 @@ export function ClaimForm({
           <CardHeader className="p-4 sm:p-5 pb-3">
             <h2 className="text-base font-semibold">Pay to</h2>
           </CardHeader>
+          {initialClaim?.recurring_schedule_id ? (
+            <CardContent className="p-4 sm:p-5 pt-0 space-y-1 break-words text-sm">
+              <p className="font-medium">{claimantName}</p>
+              <p className="text-muted-foreground">
+                {initialClaim.payee_payment_method === "JOMPAY"
+                  ? "JomPAY"
+                  : [
+                      initialClaim.bank_name || initialClaim.bank_code,
+                      maskBankAccountNumber(initialClaim.bank_account_number || ""),
+                    ].filter(Boolean).join(" · ")}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Payment details saved when this draft was generated.
+              </p>
+            </CardContent>
+          ) : (
           <CardContent className="p-4 sm:p-5 pt-0 space-y-4">
             <div className="space-y-1">
               <label htmlFor="payTo">Who should receive the payment?</label>
@@ -935,6 +951,8 @@ export function ClaimForm({
               </details>
             )}
           </CardContent>
+          )}
+
         </Card>
 
         {/* 2. Primary Expense Items Card (Receipt Upload + Expense Details in each item) */}

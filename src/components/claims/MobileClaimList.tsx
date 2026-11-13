@@ -46,7 +46,7 @@ export function MobileClaimList({
                   <p className="text-sm font-semibold">
                     {claim.claim_number || "Draft claim"}
                   </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="mt-1 break-words text-sm text-muted-foreground">
                     {claim.claimant_name ||
                       claim.claimant?.full_name ||
                       "Unknown payee"}
@@ -61,11 +61,16 @@ export function MobileClaimList({
               </p>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 <span>{claim.ministry?.name || "Team not selected"}</span>
-                <span>
+                <time
+                  className="whitespace-nowrap"
+                  dateTime={
+                    claim.claim_date || claim.submitted_at || claim.created_at
+                  }
+                >
                   {formatDate(
                     claim.claim_date || claim.submitted_at || claim.created_at,
                   )}
-                </span>
+                </time>
                 <span>
                   {claim.expenses?.length || 0} expense{" "}
                   {claim.expenses?.length === 1 ? "item" : "items"}
