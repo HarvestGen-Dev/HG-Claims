@@ -245,8 +245,8 @@ export function NamePromptDialog() {
               <Select
                 id="modal-bank-code"
                 value={bankCode}
-                onChange={(e) => {
-                  setBankCode(e.target.value);
+                onValueChange={(nextValue) => {
+                  setBankCode(nextValue);
                   if (error) setError("");
                 }}
                 required={!isMultiUser}

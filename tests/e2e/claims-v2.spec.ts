@@ -6,6 +6,21 @@ import { createHash } from "node:crypto";
 const fixture = JSON.parse(
   readFileSync("/private/tmp/hg-v2-browser-fixtures.json", "utf8"),
 );
+async function chooseOption(
+  page: import("@playwright/test").Page,
+  trigger: import("@playwright/test").Locator,
+  option: { label: string } | { value: string },
+) {
+  await trigger.click();
+  const list = page.getByRole("listbox");
+  if ("label" in option) {
+    await list.getByRole("option", { name: option.label, exact: true }).click();
+  } else {
+    await list
+      .locator(`[role="option"][data-option-value="${option.value}"]`)
+      .click();
+  }
+}
 test.beforeEach(async ({ page }) => {
   await page.route("**/auth/v1/**", (route) =>
     new URL(route.request().url()).origin === fixture.api
@@ -45,14 +60,17 @@ test("roleless member submits on narrow mobile viewport and duplicates all attac
       .locator("body")
       .evaluate((e) => e.scrollWidth <= window.innerWidth),
   ).toBe(true);
-  await page.locator('[id="receipt-0-category"]').selectOption({
+  await chooseOption(page, page.locator('[id="receipt-0-category"]'), {
     label: "Member care (flowers, wreaths, hospital visits, condolence)",
   });
   await expect(page.getByLabel("Who was it for? *")).toBeVisible();
-  await expect(page.locator('[id="receipt-0-beneficiary"]')).toHaveValue("INTERNAL");
-  await page
-    .locator('[id="receipt-0-category"]')
-    .selectOption({ label: "Utilities" });
+  await expect(page.locator('[id="receipt-0-beneficiary"]')).toHaveAttribute(
+    "data-value",
+    "INTERNAL",
+  );
+  await chooseOption(page, page.locator('[id="receipt-0-category"]'), {
+    label: "Utilities",
+  });
   await expect(page.getByLabel("Who was it for? *")).toHaveCount(0);
   await page.locator('[id="receipt-0-amount"]').fill("12.34");
   await page
@@ -157,9 +175,9 @@ test("submission does not wait for receipt upload and later attachment is retain
 }) => {
   await login(page);
   await page.goto("/claims/new");
-  await page
-    .locator('[id="receipt-0-category"]')
-    .selectOption({ label: "Utilities" });
+  await chooseOption(page, page.locator('[id="receipt-0-category"]'), {
+    label: "Utilities",
+  });
   await page.locator('[id="receipt-0-amount"]').fill("5.20");
   let release: (() => void) | undefined;
   const uploadGate = new Promise<void>((resolve) => {
@@ -169,14 +187,17 @@ test("submission does not wait for receipt upload and later attachment is retain
     if (route.request().method() === "POST") await uploadGate;
     await route.continue();
   });
-  await page.locator('input[type="file"]').first().setInputFiles({
-    name: "late-receipt.png",
-    mimeType: "image/png",
-    buffer: Buffer.from(
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=",
-      "base64",
-    ),
-  });
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles({
+      name: "late-receipt.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=",
+        "base64",
+      ),
+    });
   await page.getByRole("button", { name: "Submit Claim", exact: true }).click();
   await page.waitForURL(/\/claims\/[a-f0-9-]+$/);
   release!();
@@ -289,9 +310,9 @@ test("Finance creates and edits a JomPAY supplier without bank-transfer details"
     exact: true,
   });
   await editor.getByLabel("Supplier name", { exact: true }).fill(name);
-  await page
-    .getByLabel("Payment method", { exact: true })
-    .selectOption("JOMPAY");
+  await chooseOption(page, page.getByLabel("Payment method", { exact: true }), {
+    value: "JOMPAY",
+  });
   await expect(page.getByLabel("Account number", { exact: true })).toHaveCount(
     0,
   );
@@ -344,7 +365,9 @@ test("bank verification is a reviewed dialog action and payment changes clear it
   const dialog = page.getByRole("dialog");
   const name = "Bank review " + Date.now();
   await dialog.getByLabel("Supplier name", { exact: true }).fill(name);
-  await dialog.getByLabel("Bank", { exact: true }).selectOption("MBBEMYKL");
+  await chooseOption(page, dialog.getByLabel("Bank", { exact: true }), {
+    value: "MBBEMYKL",
+  });
   await dialog
     .getByLabel("Account holder name", { exact: true })
     .fill("Local Supplier");
@@ -393,14 +416,14 @@ test("claim supplier dialog does not submit its parent claim", async ({
 }) => {
   await login(page);
   await page.goto("/claims/new");
-  await page
-    .locator('[id="receipt-0-category"]')
-    .selectOption({ label: "Utilities" });
+  await chooseOption(page, page.locator('[id="receipt-0-category"]'), {
+    label: "Utilities",
+  });
   await page.locator('[id="receipt-0-amount"]').fill("12.34");
-  await page.locator("#payTo").selectOption("SUPPLIER");
-  await page
-    .getByLabel("Supplier", { exact: true })
-    .selectOption("__ADD_NEW__");
+  await chooseOption(page, page.locator("#payTo"), { value: "SUPPLIER" });
+  await chooseOption(page, page.getByLabel("Supplier", { exact: true }), {
+    value: "__ADD_NEW__",
+  });
   const dialog = page.getByRole("dialog", {
     name: "Add new supplier",
     exact: true,
@@ -488,6 +511,30 @@ test("new administration pages are centered and usable on narrow screens", async
   await expect(dialog).toHaveCount(0);
 });
 
+test("bank-transfer recurring title starts blank and dropdown Escape keeps the dialog open", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page, "finance");
+  await page.goto("/finance/recurring");
+  await page
+    .getByRole("button", { name: "Add recurring bill", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  const payee = dialog.getByRole("combobox", { name: "Payee", exact: true });
+  await payee.press("ArrowDown");
+  await expect(page.getByRole("listbox")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  await expect(page.getByRole("listbox")).toHaveCount(0);
+  await chooseOption(page, payee, { value: fixture.users.finance.id });
+  const title = dialog.getByRole("textbox", { name: /payment \/ bill title/i });
+  await expect(title).toHaveValue("");
+  await expect(dialog.locator("input[list]")).toHaveCount(0);
+  await title.fill("Testing Bill");
+  await expect(title).toHaveValue("Testing Bill");
+});
+
 test("recurring configuration distinguishes fixed and variable bills in a dialog", async ({
   page,
 }) => {
@@ -520,8 +567,10 @@ test("recurring configuration distinguishes fixed and variable bills in a dialog
     .getByRole("button", { name: "Add recurring bill", exact: true })
     .click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel(/payee/i).selectOption(ids[0]);
-  await dialog.getByLabel("Team", { exact: true }).selectOption(fixture.team);
+  await chooseOption(page, dialog.getByLabel(/payee/i), { value: ids[0] });
+  await chooseOption(page, dialog.getByLabel("Team", { exact: true }), {
+    value: fixture.team,
+  });
   await dialog.getByLabel("Start date", { exact: true }).fill("2099-01-01");
   await dialog
     .getByRole("button", { name: "Save recurring bill", exact: true })
@@ -542,12 +591,16 @@ test("recurring configuration distinguishes fixed and variable bills in a dialog
   await page
     .getByRole("button", { name: "Add recurring bill", exact: true })
     .click();
-  await dialog.getByLabel("Utility", { exact: true }).selectOption("TNB");
+  await chooseOption(page, dialog.getByLabel(/payee/i), { value: ids[1] });
+  await chooseOption(page, dialog.getByLabel("Utility", { exact: true }), {
+    value: "TNB",
+  });
   await expect(
     dialog.getByLabel("Fixed amount (RM)", { exact: true }),
   ).toHaveCount(0);
-  await dialog.getByLabel(/payee/i).selectOption(ids[1]);
-  await dialog.getByLabel("Team", { exact: true }).selectOption(fixture.team);
+  await chooseOption(page, dialog.getByLabel("Team", { exact: true }), {
+    value: fixture.team,
+  });
   await dialog.getByLabel("Start date", { exact: true }).fill("2099-01-01");
   await dialog
     .getByRole("button", { name: "Save recurring bill", exact: true })

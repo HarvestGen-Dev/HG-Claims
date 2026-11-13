@@ -22,9 +22,13 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
     document.body.style.overflow = "hidden";
     panel.current?.focus();
     const keydown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        (event.target instanceof Element && event.target.closest("[data-themed-select-content]"))
+      ) return;
       if (event.key === "Escape") close.current(false);
       if (event.key !== "Tab") return;
-      const elements = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]') || []).filter(element => element.getClientRects().length);
+      const elements = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]') || []).filter(element => element.tabIndex >= 0 && element.getClientRects().length);
       const first = elements[0];
       const last = elements[elements.length - 1];
       if (!first) { event.preventDefault(); return; }

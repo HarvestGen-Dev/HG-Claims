@@ -435,7 +435,7 @@ function FinanceClaimsContent() {
             <Select
               id="bank-file-status"
               value={fileStatus}
-              onChange={(event) => setFileStatus(event.target.value)}
+              onValueChange={(nextValue) => setFileStatus(nextValue)}
               className="w-full"
             >
               <option value="active">Active files</option>
@@ -583,7 +583,7 @@ function FinanceClaimsContent() {
               <Select
                 id="finance-status"
                 value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
+                onValueChange={(nextValue) => setSelectedStatus(nextValue)}
                 className="w-full"
               >
                 <option value="ALL">All Statuses</option>
@@ -605,7 +605,7 @@ function FinanceClaimsContent() {
               <Select
                 id="finance-ministry"
                 value={selectedMinistry}
-                onChange={(e) => setSelectedMinistry(e.target.value)}
+                onValueChange={(nextValue) => setSelectedMinistry(nextValue)}
                 className="w-full"
               >
                 <option value="ALL">All Teams</option>

@@ -38,7 +38,7 @@ import {
 } from "lucide-react";
 
 const initial = {
-  utility: "Monthly Allowance",
+  utility: "",
   payee_id: "",
   ministry_id: "",
   expense_category_id: "",
@@ -265,8 +265,8 @@ export default function RecurringPage() {
                   aria-label="Payee"
                   className="w-full"
                   value={data.payee_id}
-                  onChange={(e) => {
-                    const payeeId = e.target.value;
+                  onValueChange={(nextValue) => {
+                    const payeeId = nextValue;
                     const p = profiles.find((prof) => prof.id === payeeId);
                     const utilities = [
                       "Unifi",
@@ -287,7 +287,14 @@ export default function RecurringPage() {
                         fixed_amount: fixed ? data.fixed_amount : "",
                       });
                     } else {
-                      setData({ ...data, payee_id: payeeId });
+                      setData({
+                        ...data,
+                        payee_id: payeeId,
+                        utility:
+                          selectedPayee?.payment_method === "JOMPAY"
+                            ? ""
+                            : data.utility,
+                      });
                     }
                   }}
                   required
@@ -419,8 +426,8 @@ export default function RecurringPage() {
                     aria-label="Utility"
                     className="w-full"
                     value={data.utility}
-                    onChange={(e) => {
-                      const utility = e.target.value;
+                    onValueChange={(nextValue) => {
+                      const utility = nextValue;
                       setData({
                         ...data,
                         utility,
@@ -442,29 +449,15 @@ export default function RecurringPage() {
                     )}
                   </Select>
                 ) : (
-                  <div>
-                    <Input
-                      id="recurring-utility"
-                      aria-label="Utility"
-                      list="recurring-suggestions"
-                      placeholder="e.g. Monthly Staff Allowance, Rent..."
-                      value={data.utility}
-                      onChange={(e) =>
-                        setData({ ...data, utility: e.target.value })
-                      }
-                      required
-                    />
-                    <datalist id="recurring-suggestions">
-                      <option value="Monthly Staff Allowance" />
-                      <option value="Monthly Pastoral Stipend" />
-                      <option value="Rental Reimbursement" />
-                      <option value="Telephone Subsidy" />
-                      <option value="Unifi" />
-                      <option value="Indah Water" />
-                      <option value="TNB" />
-                      <option value="Air Selangor" />
-                    </datalist>
-                  </div>
+                  <Input
+                    id="recurring-utility"
+                    autoComplete="off"
+                    value={data.utility}
+                    onChange={(e) =>
+                      setData({ ...data, utility: e.target.value })
+                    }
+                    required
+                  />
                 )}
               </div>
 
@@ -562,8 +555,8 @@ export default function RecurringPage() {
                   aria-label="Team"
                   className="w-full"
                   value={data.ministry_id}
-                  onChange={(e) =>
-                    setData({ ...data, ministry_id: e.target.value })
+                  onValueChange={(nextValue) =>
+                    setData({ ...data, ministry_id: nextValue })
                   }
                   required
                 >
@@ -594,8 +587,8 @@ export default function RecurringPage() {
                   aria-label="What was it?"
                   className="w-full"
                   value={data.expense_category_id}
-                  onChange={(e) =>
-                    setData({ ...data, expense_category_id: e.target.value })
+                  onValueChange={(nextValue) =>
+                    setData({ ...data, expense_category_id: nextValue })
                   }
                 >
                   <option value="">Utilities (default)</option>

@@ -147,7 +147,7 @@ export function PaymentModal({
             </label>
             <Select id="claims-select-1"
               value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
+              onValueChange={(nextValue) => setPaymentMethod(nextValue)}
               className="w-full"
             >
               <option value="JOMPAY">JomPAY</option><option value="BANK_TRANSFER">Bank Online Transfer (IBG / DuitNow)</option>

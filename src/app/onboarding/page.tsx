@@ -285,7 +285,7 @@ function OnboardingContent() {
                 <Select
                   id="bankCode"
                   value={bankCode}
-                  onChange={(e) => setBankCode(e.target.value)}
+                  onValueChange={(nextValue) => setBankCode(nextValue)}
                   required={!isMultiUser}
                   disabled={busy}
                   className="w-full"

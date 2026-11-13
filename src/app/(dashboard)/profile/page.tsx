@@ -173,7 +173,7 @@ export default function ProfilePage() {
               <Select
                 id="profile-bank"
                 value={bankCode}
-                onChange={(e) => setBankCode(e.target.value)}
+                onValueChange={(nextValue) => setBankCode(nextValue)}
                 className="w-full"
               >
                 <option value="">Select Bank from Directory...</option>

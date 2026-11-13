@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { masterDataClient, iamClient, claimsClient, workspaceStore } from "@/lib/domains";
 import { Ministry as Team, Profile, Claim } from "@/lib/types/database";
@@ -586,21 +587,22 @@ export default function TeamManagementPage() {
           <div className="space-y-3 my-2 text-xs">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Calendar Year *</label>
-                <select
+                <label htmlFor="budget-year" className="font-semibold text-slate-700">Calendar Year *</label>
+                <Select
+                  id="budget-year"
                   value={budgetYear}
-                  onChange={(e) => {
-                    const yr = parseInt(e.target.value, 10);
+                  onValueChange={(nextValue) => {
+                    const yr = parseInt(nextValue, 10);
                     handleOpenBudget(budgetMin, yr);
                   }}
-                  className="w-full h-8 px-2 text-xs border border-zinc-200 dark:border-zinc-800 rounded-md bg-white dark:bg-zinc-900 font-mono"
+                  className="w-full tabular-nums"
                 >
                   {[currentCalendarYear - 1, currentCalendarYear, currentCalendarYear + 1, currentCalendarYear + 2].map((yr) => (
                     <option key={yr} value={yr}>
                       {yr}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               <div className="space-y-1">
@@ -729,9 +731,9 @@ export default function TeamManagementPage() {
             </div>
 
             <label className="block space-y-1">Required team field
-              <select className="w-full rounded-md border p-3 bg-background" value={formData.context_kind} onChange={e => setFormData({...formData,context_kind:e.target.value})}>
+              <Select className="w-full" value={formData.context_kind} onValueChange={context_kind => setFormData({...formData,context_kind})}>
                 <option value="">Optional event only</option><option value="SPEAKER">Speaker name</option><option value="EVENT">Event name</option><option value="MISSION">Mission / outreach name</option><option value="MEETING">Meeting / conference name</option>
-              </select>
+              </Select>
             </label>
             <label className="flex items-start gap-2 py-3"><input type="checkbox" checked={formData.require_team_lead_approval} onChange={e => setFormData({...formData,require_team_lead_approval:e.target.checked})} /><span>Require Team Lead approval<br /><span className="font-normal text-muted-foreground">Assign an active Team Lead first. Their own claims go directly to Finance.</span></span></label>
             <label className="flex items-center gap-2 pt-1 cursor-pointer">

@@ -86,7 +86,7 @@ export default function DropdownsPage() {
                   className="w-full"
                   value={kind}
                   disabled={!!editing}
-                  onChange={(e) => setKind(e.target.value as DirectoryKind)}
+                  onValueChange={(nextValue) => setKind(nextValue as DirectoryKind)}
                 >
                   {Object.entries(CONTEXT_LABELS).map(([k, v]) => (
                     <option key={k} value={k}>
