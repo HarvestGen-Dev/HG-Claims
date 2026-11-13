@@ -6,7 +6,10 @@ import { createClient } from "@supabase/supabase-js";
 
 // Explicit local-only target. Never reads application production env files.
 const api = process.env.HG_V2_TEST_URL || "http://127.0.0.1:58321";
-assert.match(api, /^http:\/\/(127\.0\.0\.1|localhost):58321$/);
+assert.match(api, /^http:\/\/(127\.0\.0\.1|localhost):(58321|59321)$/);
+const testDb = api.endsWith(":59321")
+  ? "supabase_db_hg-claims-v2-clean"
+  : "supabase_db_hg-claims-v2-test";
 const anon =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
 const serviceKey =
@@ -57,7 +60,7 @@ function sql(query) {
     [
       "exec",
       "-i",
-      "supabase_db_hg-claims-v2-test",
+      testDb,
       "psql",
       "-U",
       "postgres",
@@ -1169,6 +1172,135 @@ check(
   (await detail(finance, fixedId)).total_amount === 129.9,
   "recurring edits do not rewrite previously generated bill amounts",
 );
+// Verify the actual command, generation, and submission path for registered users.
+const memberScheduleData = {
+  utility: "Monthly member allowance",
+  payee_id: member.id,
+  ministry_id: team.id,
+  amount_mode: "FIXED",
+  fixed_amount: 60.5,
+  due_day: 31,
+  start_date: "2027-08-01",
+  end_date: "2027-08-31",
+};
+await denied(member, "save_recurring_payment", memberScheduleData);
+const memberSchedule = await cmd(
+  finance,
+  "save_recurring_payment",
+  memberScheduleData,
+);
+await denied(finance, "save_recurring_payment", memberScheduleData);
+sql("SELECT private.run_recurring_payments('2027-08-16');");
+check(
+  sql(
+    `SELECT count(*) FROM public.recurring_billing_periods WHERE schedule_id='${memberSchedule.id}'`,
+  ) === "0",
+  "member draft is not generated before its 14-day window",
+);
+sql(
+  "SELECT private.run_recurring_payments('2027-08-17'); SELECT private.run_recurring_payments('2027-08-17');",
+);
+const memberRecurringId = sql(
+  `SELECT claim_id FROM public.recurring_billing_periods WHERE schedule_id='${memberSchedule.id}'`,
+);
+const memberRecurringDraft = await detail(member, memberRecurringId);
+check(
+  memberRecurringDraft.submitted_by_user_id === member.id &&
+    memberRecurringDraft.claimant_id === member.id &&
+    memberRecurringDraft.payee_payment_method === "BANK_TRANSFER" &&
+    memberRecurringDraft.bank_account_number === "001234567890" &&
+    memberRecurringDraft.recurring_due_date === "2027-08-31" &&
+    memberRecurringDraft.total_amount === 60.5,
+  "one member draft is generated for the member’s own bank account",
+);
+const memberRecurringPayload = {
+  ...payload,
+  id: memberRecurringId,
+  version: memberRecurringDraft.version,
+  request_key: randomUUID(),
+  payee_profile_id: member.id,
+  bank_account_number: "009876543210",
+  purpose: "Changed purpose",
+  expenses: [{ ...payload.expenses[0], amount: 60.5 }],
+};
+await denied(finance, "save_draft", {
+  ...memberRecurringPayload,
+  payee_profile_id: outsider.id,
+});
+await cmd(member, "profile", {
+  id: member.id,
+  data: { bank_account_number: "008765432109" },
+});
+await cmd(member, "submit_claim", memberRecurringPayload);
+const memberRecurringSubmitted = await detail(finance, memberRecurringId);
+check(
+  memberRecurringSubmitted.bank_account_number === "001234567890" &&
+    memberRecurringSubmitted.payee_payment_revision ===
+      memberRecurringDraft.payee_payment_revision &&
+    memberRecurringSubmitted.purpose === memberRecurringDraft.purpose &&
+    memberRecurringSubmitted.status === "PENDING_MINISTRY_APPROVAL",
+  "member submission preserves the bank snapshot and follows assigned Team Lead approval",
+);
+await transition(lead, "approve", memberRecurringId);
+check(
+  (await detail(finance, memberRecurringId)).status ===
+    "PENDING_FINANCE_REVIEW",
+  "Team Lead approval hands the recurring claim to Finance",
+);
+
+const financeDraftSchedule = await cmd(finance, "save_recurring_payment", {
+  ...memberScheduleData,
+  payee_id: outsider.id,
+  ministry_id: contextTeam.id,
+});
+const incompletePayeeSchedule = {
+  ...memberScheduleData,
+  payee_id: both.id,
+  amount_mode: "VARIABLE",
+  fixed_amount: undefined,
+};
+const skippedSchedule = await cmd(
+  finance,
+  "save_recurring_payment",
+  incompletePayeeSchedule,
+);
+sql(
+  `UPDATE public.profiles SET bank_account_holder_name=NULL WHERE id='${both.id}'`,
+);
+await denied(finance, "save_recurring_payment", {
+  ...incompletePayeeSchedule,
+  id: skippedSchedule.id,
+});
+const generationResult = JSON.parse(
+  sql("SELECT private.run_recurring_payments('2027-08-17');"),
+);
+check(
+  generationResult.skipped_invalid_payees >= 1 &&
+    sql(
+      `SELECT count(*) FROM public.recurring_billing_periods WHERE schedule_id='${skippedSchedule.id}'`,
+    ) === "0",
+  "incomplete bank details skip the affected schedule without blocking other drafts",
+);
+await cmd(finance, "deactivate_recurring_payment", { id: skippedSchedule.id });
+const financeMemberDraftId = sql(
+  `SELECT claim_id FROM public.recurring_billing_periods WHERE schedule_id='${financeDraftSchedule.id}'`,
+);
+const financeMemberDraft = await detail(finance, financeMemberDraftId);
+await cmd(finance, "submit_claim", {
+  ...memberRecurringPayload,
+  id: financeMemberDraftId,
+  version: financeMemberDraft.version,
+  request_key: randomUUID(),
+  payee_profile_id: outsider.id,
+});
+const financeMemberSubmitted = await detail(finance, financeMemberDraftId);
+check(
+  financeMemberSubmitted.claimant_id === outsider.id &&
+    financeMemberSubmitted.ministry_id === contextTeam.id &&
+    financeMemberSubmitted.status === "PENDING_FINANCE_REVIEW",
+  "Finance can submit on behalf of the member for a Team whose context field is absent from the claim form",
+);
+
 // Save local fixture credentials solely for browser QA, outside repository.
 writeFileSync(
   "/private/tmp/hg-v2-browser-fixtures.json",

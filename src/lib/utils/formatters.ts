@@ -15,10 +15,10 @@ export function formatCurrency(amount: number | string | null | undefined, curre
 export function formatDate(dateString: string | null | undefined, formatPattern = "dd MMM yyyy"): string {
   if (!dateString) return "-";
   try {
-    const d = typeof dateString === "string" && dateString.includes("T") ? parseISO(dateString) : new Date(dateString);
+    const d = parseISO(dateString);
     if (isNaN(d.getTime())) return dateString;
     return format(d, formatPattern);
-  } catch (err) {
+  } catch {
     return dateString || "-";
   }
 }
