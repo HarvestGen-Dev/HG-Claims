@@ -65,10 +65,10 @@ export function AdminCorrectionModal({
           <Select
             className="w-full"
             value={team}
-            onChange={(e) => {
-              setTeam(e.target.value);
+            onValueChange={(nextValue) => {
+              setTeam(nextValue);
               setKind(
-                teams.find((t) => t.id === e.target.value)?.context_kind ||
+                teams.find((t) => t.id === nextValue)?.context_kind ||
                   null,
               );
               setName("");
@@ -104,8 +104,8 @@ export function AdminCorrectionModal({
             <Select
               className="w-full"
               value={valueId || "OTHER"}
-              onChange={(e) => {
-                const v = values.find((v) => v.id === e.target.value);
+              onValueChange={(nextValue) => {
+                const v = values.find((v) => v.id === nextValue);
                 setValueId(v?.id || "");
                 setName(v?.name || "");
               }}
@@ -136,13 +136,13 @@ export function AdminCorrectionModal({
               <Select
                 className="w-full"
                 value={item.expense_category_id}
-                onChange={(e) =>
+                onValueChange={(nextValue) =>
                   setItems(
                     items.map((x, i) =>
                       i === index
                         ? {
                             ...x,
-                            expense_category_id: e.target.value,
+                            expense_category_id: nextValue,
                             beneficiary_type: null,
                           }
                         : x,
@@ -169,13 +169,13 @@ export function AdminCorrectionModal({
                 <Select
                   className="w-full"
                   value={item.beneficiary_type || ""}
-                  onChange={(e) =>
+                  onValueChange={(nextValue) =>
                     setItems(
                       items.map((x, i) =>
                         i === index
                           ? {
                               ...x,
-                              beneficiary_type: e.target.value as
+                              beneficiary_type: nextValue as
                                 | "INTERNAL"
                                 | "EXTERNAL",
                             }

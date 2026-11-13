@@ -356,7 +356,7 @@ export default function UserManagementPage() {
                 <fieldset disabled={busy} className={form}>
                   <div className={field}>
                     <Label htmlFor="link-role">Role</Label>
-                    <Select id="link-role" className="w-full" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as RoleCode)}>
+                    <Select id="link-role" className="w-full" value={inviteRole} onValueChange={(nextValue) => setInviteRole(nextValue as RoleCode)}>
                       <option value="">Member (baseline access)</option>{roles.map((role) => <option key={role} value={role}>{roleLabels[role]}</option>)}
                     </Select>
                   </div>
@@ -367,7 +367,7 @@ export default function UserManagementPage() {
                     </div>
                     <div className={field}>
                       <Label htmlFor="link-expiry">Expires in</Label>
-                      <Select id="link-expiry" className="w-full" value={expiresDays} onChange={(e) => setExpiresDays(Number(e.target.value))}>
+                      <Select id="link-expiry" className="w-full" value={expiresDays} onValueChange={(nextValue) => setExpiresDays(Number(nextValue))}>
                         {[3, 7, 14, 30].map((days) => <option key={days} value={days}>{days} days</option>)}
                       </Select>
                     </div>

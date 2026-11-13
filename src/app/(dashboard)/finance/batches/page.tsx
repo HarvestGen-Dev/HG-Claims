@@ -348,7 +348,7 @@ export default function FinanceBatchesPage() {
                   </label>
                   <Select id="batches-select-1"
                     value={selectedMinistry}
-                    onChange={(e) => setSelectedMinistry(e.target.value)}
+                    onValueChange={(nextValue) => setSelectedMinistry(nextValue)}
                     className="w-full"
                   >
                     <option value="ALL">All Teams</option>

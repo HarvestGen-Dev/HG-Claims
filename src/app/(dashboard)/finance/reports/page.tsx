@@ -120,7 +120,7 @@ export default function FinancialReportsPage() {
             <label htmlFor="reports-select-1" className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">Team</label>
             <Select id="reports-select-1"
               value={selectedMinistry}
-              onChange={(e) => setSelectedMinistry(e.target.value)}
+              onValueChange={(nextValue) => setSelectedMinistry(nextValue)}
               className="w-full"
             >
               <option value="ALL">All Teams</option>

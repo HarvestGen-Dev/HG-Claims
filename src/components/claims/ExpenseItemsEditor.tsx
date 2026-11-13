@@ -383,8 +383,8 @@ const ExpenseReceiptCard = React.memo(function ExpenseReceiptCard({
               id={`receipt-${index}-category`}
               value={item.expense_category_id || ""}
               disabled={disabled}
-              onChange={(e) =>
-                onUpdateField(index, "expense_category_id", e.target.value)
+              onValueChange={(nextValue) =>
+                onUpdateField(index, "expense_category_id", nextValue)
               }
               required
             >
@@ -413,8 +413,8 @@ const ExpenseReceiptCard = React.memo(function ExpenseReceiptCard({
                 id={`receipt-${index}-beneficiary`}
                 value={item.beneficiary_type || "INTERNAL"}
                 disabled={disabled}
-                onChange={(e) =>
-                  onUpdateField(index, "beneficiary_type", e.target.value)
+                onValueChange={(nextValue) =>
+                  onUpdateField(index, "beneficiary_type", nextValue)
                 }
                 required
               >

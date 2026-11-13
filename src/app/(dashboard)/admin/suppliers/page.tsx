@@ -137,7 +137,7 @@ export default function SuppliersPage() {
             aria-label="Supplier status"
             className="sm:w-44"
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onValueChange={(nextValue) => setStatus(nextValue)}
           >
             <option value="ALL">All suppliers</option>
             <option value="ACTIVE">Active</option>
@@ -279,10 +279,10 @@ export default function SuppliersPage() {
                 className="w-full"
                 disabled={busy}
                 value={data.payment_method}
-                onChange={(e) =>
+                onValueChange={(nextValue) =>
                   setData({
                     ...data,
-                    payment_method: e.target.value as PayeePaymentMethod,
+                    payment_method: nextValue as PayeePaymentMethod,
                   })
                 }
               >
@@ -312,8 +312,8 @@ export default function SuppliersPage() {
                     disabled={busy}
                     required
                     value={data.bank_code}
-                    onChange={(e) =>
-                      setData({ ...data, bank_code: e.target.value })
+                    onValueChange={(nextValue) =>
+                      setData({ ...data, bank_code: nextValue })
                     }
                   >
                     <option value="">Choose bank</option>

@@ -766,8 +766,8 @@ export function ClaimForm({
                 id="payTo"
                 className="w-full"
                 value={payToSupplier ? "SUPPLIER" : "ME"}
-                onChange={(e) => {
-                  if (e.target.value === "ME") {
+                onValueChange={(nextValue) => {
+                  if (nextValue === "ME") {
                     setPayToSupplier(false);
                     handleFillMyDetails();
                   } else {
@@ -794,12 +794,12 @@ export function ClaimForm({
                   className="w-full"
                   required
                   value={selectedPayeeProfileId}
-                  onChange={(e) => {
-                    if (e.target.value === "__ADD_NEW__") {
+                  onValueChange={(nextValue) => {
+                    if (nextValue === "__ADD_NEW__") {
                       handleOpenAddBankProfile();
                       return;
                     }
-                    const p = profiles.find((p) => p.id === e.target.value);
+                    const p = profiles.find((p) => p.id === nextValue);
                     if (p) handleSelectClaimantProfile(p);
                   }}
                 >
@@ -896,8 +896,8 @@ export function ClaimForm({
                         resolveCanonicalBank(bankCode || bankName)?.swiftCode ||
                         ""
                       }
-                      onChange={(e) => {
-                        const bank = resolveCanonicalBank(e.target.value);
+                      onValueChange={(nextValue) => {
+                        const bank = resolveCanonicalBank(nextValue);
                         if (bank) {
                           setBankCode(bank.swiftCode);
                           setBankName(bank.name);
@@ -1145,7 +1145,7 @@ export function ClaimForm({
             <Select
               id="newProfileBankCode"
               value={newProfileBankCode}
-              onChange={(e) => setNewProfileBankCode(e.target.value)}
+              onValueChange={(nextValue) => setNewProfileBankCode(nextValue)}
               disabled={isSavingProfile}
               className="w-full"
               required

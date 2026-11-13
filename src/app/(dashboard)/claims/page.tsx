@@ -212,7 +212,7 @@ function ClaimsContent() {
           <Select
             id="claims-status"
             value={selectedStatus}
-            onChange={(event) => setSelectedStatus(event.target.value)}
+            onValueChange={(nextValue) => setSelectedStatus(nextValue)}
             className="w-full"
           >
             {statuses.map((status) => (
@@ -243,7 +243,7 @@ function ClaimsContent() {
             id="claims-sort"
             aria-label="Sort claims"
             value={sort}
-            onChange={(event) => setSort(event.target.value as typeof sort)}
+            onValueChange={(nextValue) => setSort(nextValue as typeof sort)}
             className="w-full"
           >
             <option value="newest">Newest first</option>
