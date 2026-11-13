@@ -1,15 +1,10 @@
 "use client";
 
 import {
-  CONTEXT_LABELS,
   needsBeneficiary,
   validateItemClassification,
 } from "@/lib/claims-v2";
-import {
-  ReceiptUploader,
-  AttachmentDraft as UploadDraft,
-} from "./ReceiptUploader";
-import type { DirectoryKind } from "@/lib/types/database";
+import type { AttachmentDraft } from "./ExpenseItemsEditor";
 import { Select } from "@/components/ui/select";
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -30,7 +25,6 @@ import {
 } from "@/lib/constants/banks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { ExpenseItemsEditor, ExpenseItemDraft } from "./ExpenseItemsEditor";
@@ -153,114 +147,130 @@ export function ClaimForm({
     initialClaim?.bank_account_number || user?.bank_account_number || "",
   );
 
-  const [generalAttachments, setGeneralAttachments] = useState<UploadDraft[]>(
+  // Preserve any historical attachments from an existing claim
+  const [historicalAttachments] = useState<AttachmentDraft[]>(
     (initialClaim?.attachments || []).filter((a) => !a.expense_id),
   );
   const savedClaimId = useRef<string | null>(null);
-  const latestGeneralAttachments = useRef(generalAttachments);
-  const attachLateReceipts = async (id: string, attachments: UploadDraft[]) => {
-    for (const attachment of attachments) {
-      try {
-        await workspaceStore.dispatchDomainCommand(
-          "/api/v1/claims",
-          "attach_receipt",
-          { claim_id: id, attachment },
-        );
-      } catch (error) {
-        showToast.error(
-          error instanceof Error
-            ? error.message
-            : "Your receipt could not be attached.",
-        );
-      }
+  const attachLateReceipt = async (id: string, attachment: AttachmentDraft) => {
+    try {
+      await workspaceStore.dispatchDomainCommand(
+        "/api/v1/claims",
+        "attach_receipt",
+        { claim_id: id, attachment },
+      );
+    } catch (error) {
+      showToast.error(
+        error instanceof Error
+          ? error.message
+          : "Your receipt could not be attached.",
+      );
     }
   };
-  const onGeneralAttachmentsChange = (attachments: UploadDraft[]) => {
-    const previous = new Set(
-      latestGeneralAttachments.current.map((a) => a.storage_path),
-    );
-    latestGeneralAttachments.current = attachments;
-    setGeneralAttachments(attachments);
-    setDirty(true);
-    if (savedClaimId.current)
-      void attachLateReceipts(
-        savedClaimId.current,
-        attachments.filter((a) => !previous.has(a.storage_path)),
-      );
-  };
+
   const [payToSupplier, setPayToSupplier] = useState(
     Boolean(initialClaim?.claimant_id && initialClaim.claimant_id !== user?.id),
   );
-  const [contextKind, setContextKind] = useState<DirectoryKind | null>(
-    initialClaim?.context_kind || null,
-  );
-  const [contextValueId, setContextValueId] = useState(
-    initialClaim?.context_value_id || "",
-  );
-  const [contextName, setContextName] = useState(
-    initialClaim?.context_name || "",
-  );
+
   const categories = masterDataClient.getCategories();
-  const managedValues = workspaceStore.getState().managedClaimValues;
 
   // 02: Claim Details State
-  const [ministryId, setMinistryId] = useState(initialClaim?.ministry_id || "");
+  // Derive team securely from claimant/submitter profile or settings rather than manual entry
+  const derivedMinistryId =
+    initialClaim?.ministry_id ||
+    user?.ministry_id ||
+    user?.default_ministry_id ||
+    profiles.find((p) => p.id === user?.id)?.ministry_id ||
+    ministries.find((m) => m.is_active)?.id ||
+    "";
   const [claimDate, setClaimDate] = useState(initialClaim?.claim_date || today);
-  const [purpose, setPurpose] = useState(initialClaim?.purpose || "");
+  const [purpose] = useState(initialClaim?.purpose || "");
   const [internalRef, setInternalRef] = useState(
     initialClaim?.internal_reference || "",
   );
 
-  // 03: Receipts State
-  const [expenses, setExpenses] = useState<ExpenseItemDraft[]>(
-    initialClaim?.expenses && initialClaim.expenses.length > 0
-      ? initialClaim.expenses.map((e) => {
-          const matchingAttachment = (initialClaim.attachments || []).find(
-            (a) => a.expense_id === e.id,
-          );
-          return {
-            id: e.id,
-            temp_id: crypto.randomUUID(),
-            expense_date: e.expense_date,
-            expense_category_id: e.expense_category_id || undefined,
-            vendor: e.vendor || "",
-            description: e.description,
-            amount:
-              initialClaim?.recurring_schedule_id && Number(e.amount) === 0
-                ? ""
-                : e.amount,
-            notes: e.notes || "",
-            invoice_number: e.invoice_number || "",
-            beneficiary_type: e.beneficiary_type || null,
-            sort_order: e.sort_order,
-            attachment: matchingAttachment
-              ? {
-                  id: matchingAttachment.id,
-                  expense_id: e.id,
-                  original_filename: matchingAttachment.original_filename,
-                  file_size: matchingAttachment.file_size,
-                  mime_type: matchingAttachment.mime_type,
-                  storage_path: matchingAttachment.storage_path,
-                  file_category: matchingAttachment.file_category,
-                  uploaded_by: matchingAttachment.uploaded_by,
-                  signed_url: matchingAttachment.signed_url,
-                }
-              : null,
-          };
-        })
-      : [
-          {
-            temp_id: crypto.randomUUID(),
-            expense_date: today,
-            vendor: "",
-            description: "",
-            amount: "",
-            notes: "",
-            sort_order: 1,
-            attachment: null,
+  // 03: Expense Items State
+  // Default "Who was it for?" to INTERNAL on newly created items
+  const [expenses, setExpenses] = useState<ExpenseItemDraft[]>(() => {
+    if (initialClaim?.expenses && initialClaim.expenses.length > 0) {
+      return initialClaim.expenses.map((e) => {
+        const matchingAttachment = (initialClaim.attachments || []).find(
+          (a) => a.expense_id === e.id,
+        );
+        return {
+          id: e.id,
+          temp_id: crypto.randomUUID(),
+          expense_date: e.expense_date,
+          expense_category_id: e.expense_category_id || undefined,
+          vendor: e.vendor || "",
+          description: e.description,
+          amount:
+            initialClaim?.recurring_schedule_id && Number(e.amount) === 0
+              ? ""
+              : e.amount,
+          notes: e.notes || "",
+          invoice_number: e.invoice_number || "",
+          beneficiary_type: e.beneficiary_type || "INTERNAL",
+          sort_order: e.sort_order,
+          attachment: matchingAttachment
+            ? {
+                id: matchingAttachment.id,
+                expense_id: e.id,
+                original_filename: matchingAttachment.original_filename,
+                file_size: matchingAttachment.file_size,
+                mime_type: matchingAttachment.mime_type,
+                storage_path: matchingAttachment.storage_path,
+                file_category: matchingAttachment.file_category,
+                uploaded_by: matchingAttachment.uploaded_by,
+                signed_url: matchingAttachment.signed_url,
+              }
+            : null,
+        };
+      });
+    }
+
+    if (initialClaim?.attachments && initialClaim.attachments.length > 0) {
+      // Claim duplication preserved Part 1 attachments: populate them into Expense Items
+      return initialClaim.attachments.map((att, idx) => {
+        const tempId = crypto.randomUUID();
+        return {
+          temp_id: tempId,
+          expense_date: today,
+          vendor: "",
+          description: "",
+          amount: "",
+          notes: "",
+          beneficiary_type: "INTERNAL",
+          sort_order: idx + 1,
+          attachment: {
+            id: att.id,
+            expense_id: tempId,
+            original_filename: att.original_filename,
+            file_size: att.file_size,
+            mime_type: att.mime_type,
+            storage_path: att.storage_path,
+            file_category: att.file_category,
+            uploaded_by: att.uploaded_by,
+            signed_url: att.signed_url,
           },
-        ],
-  );
+        };
+      });
+    }
+
+    return [
+      {
+        temp_id: crypto.randomUUID(),
+        expense_date: today,
+        vendor: "",
+        description: "",
+        amount: "",
+        notes: "",
+        beneficiary_type: "INTERNAL",
+        sort_order: 1,
+        attachment: null,
+      },
+    ];
+  });
 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -403,7 +413,7 @@ export function ClaimForm({
         bank_account_holder_name:
           newProfileHolderName.trim() || newProfileName.trim(),
         bank_account_number: acctValidation.normalized,
-        ministry_id: ministryId || null,
+        ministry_id: derivedMinistryId || null,
       });
       setProfiles(iamClient.getProfiles());
       handleSelectClaimantProfile(savedProfile);
@@ -461,15 +471,6 @@ export function ClaimForm({
       return (
         acctValidation.error || "Please enter a valid bank account number."
       );
-    if (!ministryId) return "Please select a Team.";
-    if (!claimDate) return "Please select the claim date.";
-    const requiredContext = ministries.find(
-      (m) => m.id === ministryId,
-    )?.context_kind;
-    if (requiredContext && contextKind !== requiredContext)
-      return "Complete the required team field.";
-    if (contextKind && !contextName.trim())
-      return `${CONTEXT_LABELS[contextKind]} is required.`;
 
     if (expenses.length === 0) return "Please add at least one expense item.";
 
@@ -478,16 +479,10 @@ export function ClaimForm({
       if (!e.expense_date) return `Item ${i + 1}: Date is required.`;
       const classificationError = validateItemClassification(e, categories);
       if (classificationError) return `Item ${i + 1}: ${classificationError}`;
-      if (formConfig.require_vendor_name && !e.vendor?.trim())
-        return `Item ${i + 1}: Supplier / merchant is required.`;
       const amountCents = moneyToCents(e.amount);
       if (amountCents === null || amountCents <= 0)
         return `Item ${i + 1}: Enter a positive amount with at most two decimal places.`;
-      if (
-        formConfig.require_receipt_for_all_expenses &&
-        !e.attachment &&
-        generalAttachments.length === 0
-      ) {
+      if (formConfig.require_receipt_for_all_expenses && !e.attachment) {
         return `Item ${i + 1}: Please upload the supporting receipt file.`;
       }
     }
@@ -496,7 +491,8 @@ export function ClaimForm({
   };
 
   const gatherAttachments = () => {
-    const atts: any[] = [...generalAttachments];
+    // Preserve any existing general attachments from historical claims
+    const atts: any[] = [...historicalAttachments];
     expenses.forEach((e) => {
       if (e.attachment) {
         atts.push({
@@ -543,10 +539,10 @@ export function ClaimForm({
           undefined,
         bank_account_number:
           bankAccountNumber.replace(/[\s\-]/g, "") || undefined,
-        ministry_id: ministryId || undefined,
-        context_kind: contextKind,
-        context_value_id: contextValueId || null,
-        context_name: contextName || null,
+        ministry_id: derivedMinistryId || undefined,
+        context_kind: initialClaim?.context_kind || null,
+        context_value_id: initialClaim?.context_value_id || null,
+        context_name: initialClaim?.context_name || null,
         claim_date: claimDate,
         purpose: purpose || "",
         internal_reference: internalRef || undefined,
@@ -563,7 +559,7 @@ export function ClaimForm({
           beneficiary_type: needsBeneficiary(
             categories.find((c) => c.id === e.expense_category_id),
           )
-            ? e.beneficiary_type
+            ? e.beneficiary_type || "INTERNAL"
             : null,
           sort_order: idx + 1,
           attachment: e.attachment
@@ -583,16 +579,6 @@ export function ClaimForm({
         version: initialClaim?.version,
         request_key: requestKey.current,
       });
-      savedClaimId.current = savedClaim.id;
-      void attachLateReceipts(
-        savedClaim.id,
-        latestGeneralAttachments.current.filter(
-          (a) =>
-            !claimData.attachments.some(
-              (sent) => sent.storage_path === a.storage_path,
-            ),
-        ),
-      );
       setDirty(false);
       showToast.flashSuccess(
         isEditMode
@@ -641,10 +627,10 @@ export function ClaimForm({
         bank_account_holder_name:
           bankAccountHolderName.trim() || claimantName.trim(),
         bank_account_number: bankAccountNumber.replace(/[\s\-]/g, ""),
-        ministry_id: ministryId || undefined,
-        context_kind: contextKind,
-        context_value_id: contextValueId || null,
-        context_name: contextName || null,
+        ministry_id: derivedMinistryId || undefined,
+        context_kind: initialClaim?.context_kind || null,
+        context_value_id: initialClaim?.context_value_id || null,
+        context_name: initialClaim?.context_name || null,
         claim_date: claimDate,
         purpose: purpose.trim(),
         internal_reference: internalRef.trim() || undefined,
@@ -662,7 +648,7 @@ export function ClaimForm({
           beneficiary_type: needsBeneficiary(
             categories.find((c) => c.id === e.expense_category_id),
           )
-            ? e.beneficiary_type
+            ? e.beneficiary_type || "INTERNAL"
             : null,
           sort_order: idx + 1,
           attachment: e.attachment
@@ -683,15 +669,6 @@ export function ClaimForm({
         request_key: requestKey.current,
       });
       savedClaimId.current = submitted.id;
-      void attachLateReceipts(
-        submitted.id,
-        latestGeneralAttachments.current.filter(
-          (a) =>
-            !claimData.attachments.some(
-              (sent) => sent.storage_path === a.storage_path,
-            ),
-        ),
-      );
       setDirty(false);
       showToast.flashSuccess(
         isEditMode
@@ -725,27 +702,30 @@ export function ClaimForm({
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div>
-            <h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
               {isEditMode
                 ? `Edit claim ${initialClaim?.claim_number || ""}`
                 : "Submit Claim"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Add expenses, choose who to pay, and submit for review.
+              Add your receipts and expense details, choose who to pay, and submit for review.
             </p>
           </div>
         </header>
+
         {formConfig.form_guidance_banner && (
           <p className="text-sm text-muted-foreground">
             {formConfig.form_guidance_banner}
           </p>
         )}
+
         {error && (
           <Alert ref={errorRef} tabIndex={-1} variant="destructive">
             <AlertTitle>Please check your submission</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
+
         {initialClaim?.recurring_schedule_id && (
           <Alert>
             <AlertDescription>
@@ -757,28 +737,8 @@ export function ClaimForm({
             </AlertDescription>
           </Alert>
         )}
-        <Card className="claim-section">
-          <CardHeader className="p-4 sm:p-5 pb-3">
-            <h2 className="text-base font-semibold">
-              Receipt / invoice photos
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {formConfig.require_receipt_for_all_expenses
-                ? "Receipts are required by the current form settings."
-                : "Optional. Add photos here or attach a document to an expense item below."}{" "}
-              You can submit while a photo is uploading.
-            </p>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-5 pt-0">
-            <ReceiptUploader
-              attachments={generalAttachments}
-              onChange={onGeneralAttachmentsChange}
-              userId={user?.id || ""}
-              maxFileSizeMb={formConfig.max_file_size_mb}
-              maxAttachments={formConfig.max_attachment_count}
-            />
-          </CardContent>
-        </Card>
+
+        {/* 1. Pay To Card */}
         <Card className="claim-section">
           <CardHeader className="p-4 sm:p-5 pb-3">
             <h2 className="text-base font-semibold">Pay to</h2>
@@ -976,143 +936,13 @@ export function ClaimForm({
             )}
           </CardContent>
         </Card>
-        <Card className="claim-section">
-          <CardHeader className="p-4 sm:p-5 pb-3">
-            <h2 className="text-base font-semibold">Team and purpose</h2>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-5 pt-0 space-y-4">
-            <div className="space-y-1">
-              <label htmlFor="ministryId">Team *</label>
-              <Select
-                id="ministryId"
-                className="w-full"
-                required
-                value={ministryId}
-                onChange={(e) => {
-                  setMinistryId(e.target.value);
-                  setContextKind(
-                    ministries.find((m) => m.id === e.target.value)
-                      ?.context_kind || null,
-                  );
-                  setContextValueId("");
-                  setContextName("");
-                }}
-              >
-                <option value="">Choose Team</option>
-                {ministries
-                  .filter(
-                    (m) => m.is_active || m.id === initialClaim?.ministry_id,
-                  )
-                  .map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-              </Select>
-            </div>
-            {ministryId &&
-              !ministries.find((m) => m.id === ministryId)?.context_kind && (
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={contextKind === "EVENT"}
-                    onChange={(e) => {
-                      setContextKind(e.target.checked ? "EVENT" : null);
-                      setContextValueId("");
-                      setContextName("");
-                    }}
-                  />
-                  This is for an event
-                </label>
-              )}
-            {contextKind && (
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <label htmlFor="teamContext">
-                    {CONTEXT_LABELS[contextKind]} *
-                  </label>
-                  <Select
-                    id="teamContext"
-                    className="w-full"
-                    value={contextValueId || "OTHER"}
-                    onChange={(e) => {
-                      const value = managedValues.find(
-                        (v) => v.id === e.target.value,
-                      );
-                      setContextValueId(value?.id || "");
-                      setContextName(value?.name || "");
-                    }}
-                  >
-                    <option value="OTHER">Other – type the name</option>
-                    {managedValues
-                      .filter((v) => v.kind === contextKind && v.is_active)
-                      .map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.name}
-                        </option>
-                      ))}
-                  </Select>
-                </div>
-                {!contextValueId && (
-                  <Input
-                    aria-label={CONTEXT_LABELS[contextKind]}
-                    placeholder={`Enter ${CONTEXT_LABELS[contextKind].toLowerCase()}`}
-                    value={contextName}
-                    onChange={(e) => setContextName(e.target.value)}
-                    required
-                  />
-                )}
-              </div>
-            )}
-            <details className="rounded-lg border p-4">
-              <summary className="cursor-pointer text-sm font-medium">
-                Additional claim details (optional)
-              </summary>
-              <div className="mt-4 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label htmlFor="claimDate">Claim date *</label>
-                    <Input
-                      type="date"
-                      id="claimDate"
-                      value={claimDate}
-                      onChange={(e) => setClaimDate(e.target.value)}
-                      required
-                    />
-                  </div>
-                  {formConfig.enable_internal_reference !== false && (
-                    <div className="space-y-1">
-                      <label htmlFor="internalRef">
-                        Reference code (optional)
-                      </label>
-                      <Input
-                        id="internalRef"
-                        value={internalRef}
-                        onChange={(e) => setInternalRef(e.target.value)}
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className="space-y-1">
-                  <label htmlFor="purpose">Summary (optional)</label>
-                  <Textarea
-                    id="purpose"
-                    rows={2}
-                    value={purpose}
-                    onChange={(e) => setPurpose(e.target.value)}
-                    placeholder="Anything else the reviewer should know?"
-                  />
-                </div>
-              </div>
-            </details>
-          </CardContent>
-        </Card>
+
+        {/* 2. Primary Expense Items Card (Receipt Upload + Expense Details in each item) */}
         <Card className="claim-section">
           <CardHeader className="p-4 sm:p-5 pb-3">
             <h2 className="text-base font-semibold">Expense items</h2>
             <p className="text-sm text-muted-foreground">
-              Enter each receipt or invoice amount as an item. Attachments are
-              optional unless required by the form settings.
+              Add your receipts and enter expense amounts below. Each item has its own receipt uploader.
             </p>
           </CardHeader>
           <CardContent className="p-4 sm:p-5 pt-0">
@@ -1121,18 +951,54 @@ export function ClaimForm({
               categories={categories}
               userId={user?.id || ""}
               maxFileSizeMb={formConfig.max_file_size_mb}
-              requireVendorName={formConfig.require_vendor_name}
               onChange={(items) => {
                 setExpenses(items);
                 setDirty(true);
               }}
+              onAttachmentUploaded={(att) => {
+                if (savedClaimId.current) {
+                  void attachLateReceipt(savedClaimId.current, att);
+                }
+              }}
             />
           </CardContent>
         </Card>
+
+        {/* 3. Optional Additional Details (Date & Internal Ref) */}
+        <details className="rounded-xl border bg-card p-4 sm:p-5">
+          <summary className="cursor-pointer text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Additional claim details (optional)
+          </summary>
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label htmlFor="claimDate">Claim date *</label>
+              <Input
+                type="date"
+                id="claimDate"
+                value={claimDate}
+                onChange={(e) => setClaimDate(e.target.value)}
+                required
+              />
+            </div>
+            {formConfig.enable_internal_reference !== false && (
+              <div className="space-y-1">
+                <label htmlFor="internalRef">Reference code (optional)</label>
+                <Input
+                  id="internalRef"
+                  placeholder="e.g. REF-2026-001"
+                  value={internalRef}
+                  onChange={(e) => setInternalRef(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+        </details>
+
+        {/* 4. Total and Submission Section */}
         <section className="rounded-xl border bg-card p-4 sm:p-5 space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <span className="font-medium">Claim total</span>
-            <strong className="text-lg tabular-nums">
+            <span className="font-medium text-zinc-900 dark:text-zinc-100">Claim total</span>
+            <strong className="text-xl tabular-nums text-emerald-700 dark:text-emerald-400">
               {formatCurrency(totalAmount)}
             </strong>
           </div>
@@ -1143,6 +1009,7 @@ export function ClaimForm({
               loading={isSavingDraft}
               disabled={isSavingDraft || isSubmitting}
               onClick={handleSaveDraft}
+              className="flex-1 sm:flex-none min-h-11"
             >
               <Save className="h-4 w-4 mr-2" />
               Save Draft
@@ -1151,6 +1018,7 @@ export function ClaimForm({
               type="submit"
               loading={isSubmitting}
               disabled={isSubmitting || isSavingDraft}
+              className="flex-1 sm:flex-none min-h-11 bg-emerald-600 hover:bg-emerald-700 text-white"
             >
               <Send className="h-4 w-4 mr-2" />
               Submit Claim
@@ -1158,6 +1026,7 @@ export function ClaimForm({
           </div>
         </section>
       </form>
+
       {/* Add New Claimant Bank Profile Modal */}
       <Dialog
         open={isAddBankProfileOpen}

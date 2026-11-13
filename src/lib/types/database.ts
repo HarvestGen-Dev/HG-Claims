@@ -582,7 +582,7 @@ export interface JompayDetails {
 }
 export interface RecurringPayment {
   id: string;
-  utility: 'Unifi' | 'Indah Water' | 'TNB' | 'Air Selangor';
+  utility: 'Unifi' | 'Indah Water' | 'TNB' | 'Air Selangor' | string;
   payee_id: string;
   ministry_id: string;
   expense_category_id: string;

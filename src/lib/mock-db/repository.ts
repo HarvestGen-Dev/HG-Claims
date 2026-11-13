@@ -678,9 +678,9 @@ class DatabaseRepository {
     bank_code?: string;
     bank_account_holder_name?: string;
     bank_account_number?: string;
-    ministry_id: string;
+    ministry_id?: string;
     claim_date: string;
-    purpose: string;
+    purpose?: string;
     internal_reference?: string;
     expenses: Array<Omit<ClaimExpense, "id" | "claim_id" | "created_at" | "updated_at">>;
     attachments?: Array<Omit<ClaimAttachment, "id" | "claim_id" | "created_at">>;
@@ -703,6 +703,16 @@ class DatabaseRepository {
       const idx = this.claims.findIndex(c => c.id === params.id);
       if (idx >= 0) {
         const existing = this.claims[idx];
+        const derivedMinistryId =
+          params.ministry_id ||
+          existing.ministry_id ||
+          linkedProfile?.ministry_id ||
+          linkedProfile?.default_ministry_id ||
+          this.profiles.find(p => p.id === submitterId)?.ministry_id ||
+          this.ministries.find(m => m.is_active)?.id ||
+          "";
+        const derivedPurpose =
+          params.purpose !== undefined ? params.purpose : existing.purpose || "";
         const updatedExpenses: ClaimExpense[] = params.expenses.map((exp, i) => ({
           ...exp,
           id: (exp as any).id || `exp-${Date.now()}-${i}`,
@@ -723,9 +733,9 @@ class DatabaseRepository {
           bank_code: resolvedBank?.swiftCode || params.bank_code || linkedProfile?.bank_code || existing.bank_code,
           bank_account_holder_name: params.bank_account_holder_name || linkedProfile?.bank_account_holder_name || existing.bank_account_holder_name || params.claimant_name,
           bank_account_number: params.bank_account_number || linkedProfile?.bank_account_number || existing.bank_account_number,
-          ministry_id: params.ministry_id,
+          ministry_id: derivedMinistryId,
           claim_date: params.claim_date,
-          purpose: params.purpose,
+          purpose: derivedPurpose,
           internal_reference: params.internal_reference,
           total_amount,
           expenses: updatedExpenses,
@@ -742,6 +752,15 @@ class DatabaseRepository {
       }
     }
 
+    const derivedMinistryId =
+      params.ministry_id ||
+      linkedProfile?.ministry_id ||
+      linkedProfile?.default_ministry_id ||
+      this.profiles.find(p => p.id === submitterId)?.ministry_id ||
+      this.ministries.find(m => m.is_active)?.id ||
+      "";
+    const derivedPurpose = params.purpose !== undefined ? params.purpose : "";
+
     const claimId = `claim-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const claimExpenses: ClaimExpense[] = params.expenses.map((exp, i) => ({
       ...exp,
@@ -752,7 +771,15 @@ class DatabaseRepository {
       updated_at: now,
     }));
 
-    const claimAttachments: ClaimAttachment[] = (params.attachments || []).map((att, i) => ({
+    const rawAttachments = [...(params.attachments || [])];
+    params.expenses.forEach((e: any) => {
+      const att = e.attachment as any;
+      if (att && !rawAttachments.some(a => (a as any).id === att.id || a.storage_path === att.storage_path)) {
+        rawAttachments.push(att);
+      }
+    });
+
+    const claimAttachments: ClaimAttachment[] = rawAttachments.map((att, i) => ({
       ...att,
       id: `att-${Date.now()}-${i}`,
       claim_id: claimId,
@@ -771,9 +798,9 @@ class DatabaseRepository {
       bank_code: resolvedBank?.swiftCode || params.bank_code || linkedProfile?.bank_code,
       bank_account_holder_name: params.bank_account_holder_name || linkedProfile?.bank_account_holder_name || params.claimant_name || linkedProfile?.full_name,
       bank_account_number: params.bank_account_number || linkedProfile?.bank_account_number,
-      ministry_id: params.ministry_id,
+      ministry_id: derivedMinistryId,
       claim_date: params.claim_date,
-      purpose: params.purpose,
+      purpose: derivedPurpose,
       internal_reference: params.internal_reference,
       total_amount,
       currency: "MYR",
@@ -805,9 +832,9 @@ class DatabaseRepository {
     bank_code?: string;
     bank_account_holder_name?: string;
     bank_account_number?: string;
-    ministry_id: string;
+    ministry_id?: string;
     claim_date: string;
-    purpose: string;
+    purpose?: string;
     internal_reference?: string;
     declaration_accepted: boolean;
     expenses: Array<Omit<ClaimExpense, "id" | "claim_id" | "created_at" | "updated_at">>;
@@ -824,13 +851,26 @@ class DatabaseRepository {
     }
 
     const formConfig = this.getSetting("claim_form_config");
+    const rawAttachments = [...(params.attachments || [])];
+    params.expenses.forEach((e: any) => {
+      const att = e.attachment as any;
+      if (att && !rawAttachments.some(a => (a as any).id === att.id || a.storage_path === att.storage_path)) {
+        rawAttachments.push(att);
+      }
+    });
+
     if (formConfig?.require_receipt_for_all_expenses) {
-      const attachments = params.attachments || [];
       params.expenses.forEach((exp, idx) => {
         const expId = (exp as any).id;
         const tempId = (exp as any).temp_id;
-        const hasAtt = attachments.some(a => (expId && a.expense_id === expId) || (tempId && (a as any).expense_id === tempId));
-        if (!hasAtt && (!attachments[idx] || attachments.length < params.expenses.length)) {
+        const hasAtt =
+          Boolean((exp as any).attachment) ||
+          rawAttachments.some(
+            a => (expId && a.expense_id === expId) ||
+                 (tempId && (a as any).expense_id === tempId) ||
+                 (a as any).expense_temp_id === tempId
+          );
+        if (!hasAtt && (!rawAttachments[idx] || rawAttachments.length < params.expenses.length)) {
           // throw validation error if any receipt lacks attachment
           throw new Error(`Receipt #${idx + 1}: Please upload the supporting receipt`);
         }
@@ -854,7 +894,7 @@ class DatabaseRepository {
         throw new Error("Claim draft not found");
       }
     } else {
-      const draft = this.saveClaimDraft(params);
+      const draft = this.saveClaimDraft({ ...params, attachments: rawAttachments });
       claim = this.claims.find(c => c.id === draft.id)!;
     }
 
@@ -873,11 +913,14 @@ class DatabaseRepository {
     }));
 
     // Re-map attachments to persisted expense IDs
-    const claimAttachments: ClaimAttachment[] = (params.attachments || []).map((att, i) => {
+    const claimAttachments: ClaimAttachment[] = rawAttachments.map((att, i) => {
       let expense_id = att.expense_id;
-      // Match by expense index if temp_id matched or if expense_id is not already an exp-*
+      // Match by expense index or temp_id if expense_id is not already an exp-*
       if (!expense_id || !claimExpenses.some(e => e.id === expense_id)) {
-        if (claimExpenses[i]) {
+        const matchingExp = claimExpenses.find(e => (e as any).temp_id && (e as any).temp_id === (att as any).expense_temp_id);
+        if (matchingExp) {
+          expense_id = matchingExp.id;
+        } else if (claimExpenses[i]) {
           expense_id = claimExpenses[i].id;
         }
       }
@@ -908,9 +951,14 @@ class DatabaseRepository {
     claim.bank_code = resolvedBank?.swiftCode || params.bank_code || linkedProfile?.bank_code || claim.bank_code;
     claim.bank_account_holder_name = params.bank_account_holder_name || linkedProfile?.bank_account_holder_name || claim.bank_account_holder_name || claim.claimant_name;
     claim.bank_account_number = params.bank_account_number || linkedProfile?.bank_account_number || claim.bank_account_number;
-    claim.ministry_id = params.ministry_id;
+    claim.ministry_id =
+      params.ministry_id ||
+      claim.ministry_id ||
+      this.profiles.find(p => p.id === claim.submitted_by_user_id)?.ministry_id ||
+      this.ministries.find(m => m.is_active)?.id ||
+      "";
     claim.claim_date = params.claim_date;
-    claim.purpose = params.purpose;
+    claim.purpose = params.purpose !== undefined ? params.purpose : claim.purpose || "";
     claim.internal_reference = params.internal_reference;
     claim.total_amount = total_amount;
     claim.declaration_accepted = true;
@@ -1240,9 +1288,14 @@ class DatabaseRepository {
     claim.claimant_name = params.claimant_name || claim.claimant_name;
     claim.claimant_email = params.claimant_email || claim.claimant_email;
     claim.claimant_phone = params.claimant_phone || claim.claimant_phone;
-    claim.ministry_id = params.ministry_id;
+    claim.ministry_id =
+      params.ministry_id ||
+      claim.ministry_id ||
+      this.profiles.find(p => p.id === claim.submitted_by_user_id)?.ministry_id ||
+      this.ministries.find(m => m.is_active)?.id ||
+      "";
     claim.claim_date = params.claim_date;
-    claim.purpose = params.purpose;
+    claim.purpose = params.purpose !== undefined ? params.purpose : claim.purpose || "";
     claim.internal_reference = params.internal_reference;
     claim.total_amount = total_amount;
     claim.resubmitted_at = now;
