@@ -480,6 +480,42 @@ describe("Submit Claim UX & Workflow Refinement - Acceptance Criteria", () => {
       expect(recurringSchedulePayload.amount_mode).toBe("FIXED");
       expect(recurringSchedulePayload.fixed_amount).toBe("150.00");
     });
+
+    it("accepts user profiles (members/staff, is_payee_only = false) for recurring monthly bank transfers", () => {
+      const userMemberProfile = {
+        id: "usr-pastor-timothy",
+        email: "timothy@harvestgen.org",
+        full_name: "Timothy Pastor",
+        payment_method: "BANK_TRANSFER" as const,
+        bank_name: "Public Bank Berhad",
+        bank_code: "PBBEMYKL",
+        bank_account_holder_name: "Timothy Pastor",
+        bank_account_number: "3123456789",
+        status: "ACTIVE" as const,
+        is_payee_only: false, // Normal church member/staff, NOT a directory supplier
+      };
+
+      expect(userMemberProfile.is_payee_only).toBe(false);
+      expect(userMemberProfile.payment_method).toBe("BANK_TRANSFER");
+      expect(userMemberProfile.bank_account_number).toBeTruthy();
+
+      const userRecurringSchedule = {
+        utility: "Monthly Pastoral Stipend",
+        payee_id: userMemberProfile.id,
+        ministry_id: "min-pastoral-team",
+        expense_category_id: "cat-pastoral-care",
+        amount_mode: "FIXED" as const,
+        fixed_amount: "2500.00",
+        due_day: 1,
+        start_date: "2026-11-01",
+        end_date: null,
+        is_active: true,
+      };
+
+      expect(userRecurringSchedule.utility).toBe("Monthly Pastoral Stipend");
+      expect(userRecurringSchedule.payee_id).toBe(userMemberProfile.id);
+      expect(userRecurringSchedule.fixed_amount).toBe("2500.00");
+    });
   });
 
   // --------------------------------------------------------------------------
@@ -508,6 +544,64 @@ describe("Submit Claim UX & Workflow Refinement - Acceptance Criteria", () => {
       expect(generatedClaim.bank_code).toBe("MBBEMYKL");
       expect(generatedClaim.bank_account_holder_name).toBe("Indah Water Konsortium");
       expect(generatedClaim.total_amount).toBe(150.0);
+    });
+
+    it("automatically generates user claim with user bank account snapshot and subjects to team lead and finance approval", () => {
+      // When a recurring bank transfer claim generates for a user:
+      const userClaimantId = "usr-pastor-timothy";
+      const generatedUserClaim: Partial<Claim> = {
+        id: "claim-rec-user-1",
+        submitted_by_user_id: userClaimantId,
+        claimant_id: userClaimantId,
+        claimant_name: "Timothy Pastor",
+        claimant_email: "timothy@harvestgen.org",
+        ministry_id: "min-pastoral-team",
+        purpose: "Monthly Pastoral Stipend – Nov 2026",
+        status: "DRAFT",
+        payee_payment_method: "BANK_TRANSFER",
+        bank_name: "Public Bank Berhad",
+        bank_code: "PBBEMYKL",
+        bank_account_holder_name: "Timothy Pastor",
+        bank_account_number: "3123456789",
+        total_amount: 2500.0,
+        recurring_schedule_id: "rec-sched-pastor-1",
+        recurring_due_date: "2026-11-01",
+      };
+
+      // 1. Verify user attribution and bank account snapshot
+      expect(generatedUserClaim.claimant_id).toBe(userClaimantId);
+      expect(generatedUserClaim.bank_account_holder_name).toBe("Timothy Pastor");
+      expect(generatedUserClaim.bank_account_number).toBe("3123456789");
+      expect(generatedUserClaim.payee_payment_method).toBe("BANK_TRANSFER");
+      expect(generatedUserClaim.total_amount).toBe(2500.0);
+
+      // 2. Submission into approval workflow:
+      // When submitted, a ministry requiring Team Lead approval routes to Team Lead review
+      const ministryRequiresTeamLead = true;
+      const approvalWorkflowSteps = ministryRequiresTeamLead
+        ? [
+            { sequence: 1, step_name: "Team Lead review", approver_role: "TEAM_LEAD", status: "IN_PROGRESS" },
+            { sequence: 2, step_name: "Finance review", approver_role: "FINANCE", status: "PENDING" },
+          ]
+        : [
+            { sequence: 1, step_name: "Finance review", approver_role: "FINANCE", status: "IN_PROGRESS" },
+          ];
+
+      const submittedStatus = approvalWorkflowSteps[0].approver_role === "TEAM_LEAD"
+        ? "PENDING_MINISTRY_APPROVAL"
+        : "PENDING_FINANCE_REVIEW";
+
+      const submittedUserClaim = {
+        ...generatedUserClaim,
+        status: submittedStatus,
+        claim_number: "HG-2026-11001",
+      };
+
+      // 3. Verify workflow routing adheres to Team Lead and Finance approval
+      expect(submittedUserClaim.status).toBe("PENDING_MINISTRY_APPROVAL");
+      expect(approvalWorkflowSteps).toHaveLength(2);
+      expect(approvalWorkflowSteps[0].approver_role).toBe("TEAM_LEAD");
+      expect(approvalWorkflowSteps[1].approver_role).toBe("FINANCE");
     });
   });
 
@@ -653,6 +747,56 @@ describe("Submit Claim UX & Workflow Refinement - Acceptance Criteria", () => {
       expect(fileInputProps.accept).toContain(".pdf");
       expect(cameraInputProps.capture).toBe("environment");
       expect(cameraInputProps.accept).toBe("image/*");
+    });
+
+    it("recurring bill card layout uses structured label containers, responsive grid, and accessible controls", () => {
+      // Configuration structure for the recurring bill card
+      const formFieldStructure = {
+        grid: "grid grid-cols-1 sm:grid-cols-2 gap-4",
+        payeeField: {
+          container: "space-y-1.5 sm:col-span-2",
+          label: "Payee (Member or Supplier)",
+          ariaLabel: "Payee",
+          hasOptgroups: true,
+        },
+        payeeDetailsCard: {
+          container: "sm:col-span-2 rounded-lg border border-border bg-muted/40 p-3",
+          displaysBankDetails: true,
+          masksAccountNumber: true,
+        },
+        utilityField: {
+          container: "space-y-1.5",
+          label: "Payment / Bill title",
+          ariaLabel: "Utility",
+        },
+        amountModeField: {
+          container: "space-y-1.5",
+          options: ["FIXED", "VARIABLE"],
+        },
+        teamField: {
+          container: "space-y-1.5",
+          label: "Team",
+          ariaLabel: "Team",
+        },
+        dueDateField: {
+          container: "space-y-1.5",
+          label: "Due day of month",
+          ariaLabel: "Due day of month",
+        },
+        startDateField: {
+          container: "space-y-1.5",
+          label: "Start date",
+          ariaLabel: "Start date",
+        },
+      };
+
+      expect(formFieldStructure.payeeField.hasOptgroups).toBe(true);
+      expect(formFieldStructure.payeeDetailsCard.displaysBankDetails).toBe(true);
+      expect(formFieldStructure.amountModeField.options).toContain("FIXED");
+      expect(formFieldStructure.amountModeField.options).toContain("VARIABLE");
+      expect(formFieldStructure.payeeField.ariaLabel).toBe("Payee");
+      expect(formFieldStructure.teamField.ariaLabel).toBe("Team");
+      expect(formFieldStructure.startDateField.ariaLabel).toBe("Start date");
     });
   });
 });

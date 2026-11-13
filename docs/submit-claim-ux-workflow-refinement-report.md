@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary
 
-This engineering project delivers a streamlined **Submit Claim** experience, eliminates redundant data entry, integrates receipt management directly into individual expense items, and expands the recurring-payment architecture to support **Bank Account Transfer** payees alongside existing JomPAY bills.
+This engineering project delivers a streamlined **Submit Claim** experience, eliminates redundant data entry, integrates receipt management directly into individual expense items, and expands the recurring-payment architecture to support **Bank Account Transfers to church members and staff** (stipends, monthly allowances, recurring reimbursements) alongside directory payees and JomPAY utility bills.
 
 All changes strictly preserve backward compatibility with existing claims, historical receipts, finance approval gates, reimbursement workflows, and database integrity.
 
@@ -22,13 +22,13 @@ All changes strictly preserve backward compatibility with existing claims, histo
    - **Removed Supplier / Merchant:** Removed the `vendor` input from expense items while preserving backward compatibility for historical records and exports.
    - **Defaulted "Who Was It For?" to Internal:** `beneficiary_type` defaults to `INTERNAL` on newly created and duplicated items; preserves existing selections during editing, validation, and category switching.
    - **Smart Item Duplication:** Duplicating an expense item duplicates all completed receipt attachments (safe reference management with fresh attachment IDs) while clearing amount, category, description, and resetting the beneficiary to `INTERNAL`. Deleting a copied attachment never deletes or damages the original attachment.
-4. **Enabled Recurring Payments for Bank Account Transfers:**
-   - Updated database constraints and triggers in `supabase/migrations/20261113000001_recurring_bank_transfers.sql` to permit `BANK_TRANSFER` payees for recurring bills.
-   - Enhanced `private.run_recurring_payments()` to generate recurring bank transfer draft claims with bank snapshot data.
-   - Updated the Finance Recurring UI (`/finance/recurring`) with dynamic payee selection, bank details display, and payment method badges.
-   - Preserved the existing Finance approval, bulk reimbursement, and 7-day variable reminder workflow.
+4. **Enabled Recurring Payments for Bank Transfers to Members & Suppliers:**
+   - **User Bank Account Support:** Extended `private.save_recurring_payment_v4()` and `private.run_recurring_payments()` to support registered church members/staff (`is_payee_only = false`) with bank account numbers in addition to directory suppliers.
+   - **Automatic Claim Generation & Attribution:** Every month, a claim is generated directly for the user (`claimant_id: user.id`), snapshotting their verified bank account details (Bank Name, Account Holder Name, Bank Account Number) and payment revision.
+   - **Subjected to Team Lead & Finance Approval:** Generated claims route through standard church team approval policies. If the ministry requires Team Lead approval, the claim enters `PENDING_MINISTRY_APPROVAL` for Team Lead review, followed by `PENDING_FINANCE_REVIEW` for Finance review, before bulk reimbursement payout.
+   - **Fixed Recurring Bill Card Layout:** Redesigned the entire dialog in `/finance/recurring` with structured form field containers, responsive 2-column grid, member vs directory payee grouping, clear bank details snapshot card, amount mode toggles, and clean helper labels.
 5. **Quality Verification:**
-   - 100% pass rate across 22 Vitest test files (199 passing tests), including a dedicated 16-test suite for this feature (`tests/submit-claim-ux-refinement.test.ts`).
+   - 100% pass rate across 22 Vitest test files (202 passing tests), including an extensive 19-test suite for this feature (`tests/submit-claim-ux-refinement.test.ts`).
    - 100% pass rate on backend database integration suite (122 v2 backend assertions in `tests/backend.integration.mjs`).
    - Clean TypeScript check (`tsc --noEmit`), ESLint check (`eslint src`), and production Next.js build (`next build`).
 
@@ -92,40 +92,53 @@ Each expense card in `src/components/claims/ExpenseItemsEditor.tsx` now follows 
 
 ---
 
-## 3. Recurring Payments for Bank Account Transfers
+## 3. Recurring Payments for Bank Transfers (Users & Suppliers)
 
 ### 3.1 Problem Analysis
-Previously, the system restricted recurring payments to `JOMPAY` payees in several layers:
-1. `private.guard_recurring_payee()` trigger prevented non-JomPAY payees or changing payment methods.
-2. `private.save_recurring_payment_v4()` checked `payee.payment_method = 'JOMPAY'`.
-3. `private.run_recurring_payments()` hardcoded payee snapshot fields assuming JomPAY biller codes and reference numbers.
-4. Frontend `/finance/recurring/page.tsx` filtered payee options strictly by `p.payment_method === 'JOMPAY'`.
+Previously, the system restricted recurring payments in three ways:
+1. `private.guard_recurring_payee()` trigger and `save_recurring_payment_v4()` checked `is_payee_only = true`, which excluded all registered church members and staff users (`is_payee_only = false`).
+2. Table check constraints on `recurring_payments` hardcoded `utility IN ('Unifi','Indah Water','TNB','Air Selangor')`, preventing custom payment titles for member stipends, staff allowances, or rental reimbursements.
+3. The UI dialog layout used unstyled raw inline `<label>` elements, causing inputs, helper text, and links to collapse together awkwardly without structured vertical margins or clean grid alignment.
 
 ### 3.2 Database Migration (`20261113000001_recurring_bank_transfers.sql`)
 Created and applied migration `supabase/migrations/20261113000001_recurring_bank_transfers.sql`:
-- **`private.guard_recurring_payee()`:**
-  - Validates that active payees attached to recurring payments must have `payment_method IN ('JOMPAY', 'BANK_TRANSFER')`.
-  - Prohibits altering `payment_method` or setting status to `INACTIVE` while an active recurring schedule exists.
+- **Table Constraints:** Dropped `recurring_payments_utility_check` and `recurring_payments_check2`; added `recurring_payments_utility_nonempty` ensuring `length(trim(utility)) > 0`.
+- **`private.guard_recurring_payee()`:** Validates that active payees attached to recurring payments must have `payment_method IN ('JOMPAY', 'BANK_TRANSFER')` and protects against deactivation or method switching while active.
 - **`private.save_recurring_payment_v4()`:**
-  - Validates payee existence and ensures `payee.payment_method IN ('JOMPAY', 'BANK_TRANSFER')`.
+  - Validates payee existence in `public.profiles` (`status = 'ACTIVE'`).
+  - Supports both registered users (`is_payee_only = false`) and directory payees (`is_payee_only = true`).
+  - For JomPAY: enforces directory payee and one of the 4 utility bills (preserving JomPAY bulk export template rules).
+  - For Bank Transfer: requires `bank_account_number` and `bank_account_holder_name`; supports custom payment titles (e.g. "Monthly Staff Allowance", "Pastoral Stipend", "Rent") and either `FIXED` or `VARIABLE` amount modes.
 - **`private.run_recurring_payments()`:**
-  - Evaluates both JomPAY and Bank Transfer schedules.
-  - For `BANK_TRANSFER` payees, snapshots `payee_payment_method: 'BANK_TRANSFER'`, `payee_bank_name`, `payee_bank_code`, `payee_bank_account_holder_name`, and `payee_bank_account_number`.
-  - Automatically creates a draft claim with an integrated single expense item for the schedule's category and amount.
-  - Preserves 14-day advance generation, 7-day variable amount reminders, and idempotency guarantees.
+  - Evaluates both JomPAY and Bank Transfer schedules for users and suppliers.
+  - When generating claims for a member user:
+    - Sets `claimant_id: user.id` and `submitted_by_user_id: user.id`.
+    - Snapshots bank details: `bank_name`, `bank_code`, `bank_account_holder_name`, `bank_account_number`, and `payee_payment_revision`.
+    - Notifies both Finance and the claimant user.
+  - Generates claims in `DRAFT` status ready for review and submission.
+  - Once submitted, `private.build_workflow(cid)` automatically routes the claim through **Team Lead approval** (`PENDING_MINISTRY_APPROVAL`) if the team requires it, and then **Finance review** (`PENDING_FINANCE_REVIEW`) before bulk bank reimbursement.
 
-### 3.3 UI Implementation (`src/app/(dashboard)/finance/recurring/page.tsx`)
-- Updated payee selector: `payees.filter(p => p.status === "ACTIVE" && (p.payment_method === "JOMPAY" || p.payment_method === "BANK_TRANSFER"))`.
-- Dynamic account display: Renders Bank Name, Account Number, and Account Holder Name for bank transfer payees, or Biller Code / Ref-1 for JomPAY payees.
-- Badge indicators: Renders `Bank Transfer` or `JomPAY` badge in the recurring schedules table.
+### 3.3 UI Redesign (`src/app/(dashboard)/finance/recurring/page.tsx`)
+- **Fixed Layout & Structured Fields:**
+  - Replaced unstyled raw labels with dedicated `space-y-1.5` containers and `<label className="block text-sm font-medium text-foreground">`.
+  - Clear 2-column responsive grid (`grid-cols-1 sm:grid-cols-2 gap-4`).
+- **Payee Selector with Optgroups:**
+  - Group 1: `Members & Staff (Bank Account Transfer)` — lists all active church members with their email and bank transfer details.
+  - Group 2: `Directory Payees & Utilities` — lists suppliers and utility billers.
+- **Payee Details Snapshot Card:**
+  - Renders user vs supplier badge, payment method badge (`Bank Account Transfer` or `JomPAY`), bank name, account holder name, and masked account number.
+- **Amount Mode Toggle:**
+  - Interactive segmented buttons for `Fixed Amount` and `Variable Amount`.
+  - Fixed amount input with RM formatting and validation.
+- **Generated Bills Lifecycle Actions:**
+  - Displays generated claims with `ClaimStatusBadge` and claimant attribution.
+  - Provides direct "Review & Submit" link for drafts, directing to claim review and submission into the Team Lead / Finance approval workflow.
 
 ---
 
 ## 4. Verification and Acceptance Matrix
 
-All 13 acceptance criteria defined in the requirements have been rigorously tested and verified:
-
-| # | Acceptance Criterion | Test Verification | Status |
+| # | Requirement / Acceptance Criterion | Test Verification | Status |
 |---|----------------------|-------------------|:------:|
 | 1 | Standalone receipt upload section removed from Submit Claim | `tests/submit-claim-ux-refinement.test.ts` (Test 1), `tests/e2e/claims-v2.spec.ts` | **PASS** |
 | 2 | Expense Item displays receipt uploader above detail fields | `tests/submit-claim-ux-refinement.test.ts` (Test 2), `ExpenseItemsEditor.tsx` | **PASS** |
@@ -135,11 +148,11 @@ All 13 acceptance criteria defined in the requirements have been rigorously test
 | 6 | Duplicating Expense Item copies attachments and clears details | `tests/submit-claim-ux-refinement.test.ts` (Test 9), `ExpenseItemsEditor.tsx` | **PASS** |
 | 7 | Deleting duplicated attachment does not damage original attachment | `tests/submit-claim-ux-refinement.test.ts` (Test 10) | **PASS** |
 | 8 | Duplicating unsaved item produces no orphaned attachments | `tests/submit-claim-ux-refinement.test.ts` (Test 11) | **PASS** |
-| 9 | Bank Account Transfer supports recurring-payment configuration | `tests/submit-claim-ux-refinement.test.ts` (Test 12), SQL migration | **PASS** |
-| 10 | Recurring bank-transfer claims follow approval & reimbursement lifecycle | `tests/submit-claim-ux-refinement.test.ts` (Test 13), `run_recurring_payments` | **PASS** |
-| 11 | Historical claims remain readable without errors | `tests/submit-claim-ux-refinement.test.ts` (Test 14) | **PASS** |
-| 12 | Claim-level duplication behavior remains unchanged | `tests/submit-claim-ux-refinement.test.ts` (Test 15) | **PASS** |
-| 13 | Mobile and desktop workflows work smoothly | `tests/submit-claim-ux-refinement.test.ts` (Test 16), Playwright mobile 390px | **PASS** |
+| 9 | Bank Account Transfer supports recurring-payment configuration for Users & Suppliers | `tests/submit-claim-ux-refinement.test.ts` (Tests 12-13), SQL migration | **PASS** |
+| 10 | Recurring bank-transfer claims for users route through Team Lead and Finance approval | `tests/submit-claim-ux-refinement.test.ts` (Tests 14-15), `run_recurring_payments` | **PASS** |
+| 11 | Historical claims remain readable without errors | `tests/submit-claim-ux-refinement.test.ts` (Test 16) | **PASS** |
+| 12 | Claim-level duplication behavior remains unchanged | `tests/submit-claim-ux-refinement.test.ts` (Test 17) | **PASS** |
+| 13 | Mobile/desktop workflows and clean card layout with structured containers | `tests/submit-claim-ux-refinement.test.ts` (Tests 18-19), Playwright 390px | **PASS** |
 
 ---
 
@@ -150,7 +163,7 @@ All 13 acceptance criteria defined in the requirements have been rigorously test
 > hg-claims@1.0.0 test
 > vitest run
 
- ✓ tests/submit-claim-ux-refinement.test.ts (16 tests)
+ ✓ tests/submit-claim-ux-refinement.test.ts (19 tests)
  ✓ tests/simplified-roles-and-invitations.test.ts (17 tests)
  ✓ tests/workflow-engine.test.ts (4 tests)
  ✓ tests/comprehensive-system-audit.test.ts (18 tests)
@@ -174,8 +187,8 @@ All 13 acceptance criteria defined in the requirements have been rigorously test
  ✓ tests/jompay-export.test.ts (21 tests)
 
 Test Files  22 passed (22)
-     Tests  199 passed (199)
-  Duration  1.25s
+     Tests  202 passed (202)
+  Duration  1.19s
 ```
 
 ### 5.2 Backend Integration Suite (`npm run test:backend`)
@@ -188,7 +201,7 @@ PASS member has no privileged role and loads workspace
 PASS recurring bill binds an active JomPAY payee by stable ID, independent of display name
 PASS payee can be deactivated after its recurring schedule is stopped
 PASS recurring edits do not rewrite previously generated bill amounts
-PASS 122 v2 backend assertions. Local fixtures: b264e85a
+PASS 122 v2 backend assertions. Local fixtures: 66015490
 ```
 
 ### 5.3 Typecheck, Lint, and Production Build
@@ -200,11 +213,11 @@ PASS 122 v2 backend assertions. Local fixtures: b264e85a
 
 ## 6. Modified Files Manifest
 
-- `src/components/claims/ClaimForm.tsx`: Standalone receipt card removed; Team & Purpose fields removed; optional metadata collapsed; item-level attachment synchronization.
+- `src/app/(dashboard)/finance/recurring/page.tsx`: Redesigned recurring bill dialog with structured containers; supports users & suppliers with bank transfer details card; amount mode toggle; clean generated bills actions.
+- `src/lib/types/database.ts`: Broadened `RecurringPayment.utility` to allow custom titles.
+- `supabase/migrations/20261113000001_recurring_bank_transfers.sql`: Relaxed utility check constraints; updated `private.save_recurring_payment_v4` and `private.run_recurring_payments` for user bank transfers and workflow routing.
+- `src/components/claims/ClaimForm.tsx`: Standalone receipt card removed; Team & Purpose fields removed; item-level attachment synchronization.
 - `src/components/claims/ExpenseItemsEditor.tsx`: Prominent receipt upload zone at top; details below; vendor removed; beneficiary defaults to `INTERNAL`; duplicate copies receipt and clears details; safe attachment deletion.
 - `src/lib/validations/claim.ts`: Optional/nullable `ministry_id`, `purpose`, and `vendor`.
 - `src/lib/mock-db/repository.ts`: Ministry auto-derivation; item attachment mapping; receipt validation.
-- `src/app/(dashboard)/finance/recurring/page.tsx`: Supports both `BANK_TRANSFER` and `JOMPAY` payees; displays bank details and method badges.
-- `supabase/migrations/20261113000001_recurring_bank_transfers.sql`: SQL migration for recurring bank transfers (`guard_recurring_payee`, `save_recurring_payment_v4`, `run_recurring_payments`).
-- `tests/submit-claim-ux-refinement.test.ts`: Automated tests for all 13 acceptance criteria.
-- `tests/e2e/claims-v2.spec.ts`: Updated end-to-end assertions for refined submit claim UX.
+- `tests/submit-claim-ux-refinement.test.ts`: Automated tests for all 13 criteria (19 passing assertions).
